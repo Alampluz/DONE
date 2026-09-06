@@ -69,10 +69,15 @@ async function renderBoardReport(pid){
   const doneTasks = tasks.filter(t=>t.status==='done');
   const onTime = doneTasks.filter(t=>!t.due_date || (t.completed_at && new Date(t.completed_at) <= new Date(t.due_date+'T23:59:59')));
   const onTimePct = doneTasks.length? Math.round(onTime.length/doneTasks.length*100) : null;
+  // Throughput: what came in and what got finished this week, and how long finishing takes.
+  const wk = daysAgoISO(7), mo = daysAgoISO(30);
+  const done7 = doneTasks.filter(t=>(t.completed_at||'')>=wk), new7 = tasks.filter(t=>(t.created_at||'')>=wk);
+  const solveDays = doneTasks.filter(t=>t.completed_at && (t.completed_at>=mo)).map(t=>(new Date(t.completed_at)-new Date(t.created_at))/86400000).filter(d=>d>=0).sort((a,b)=>a-b);
+  const medianDays = solveDays.length? Math.round(solveDays[Math.floor(solveDays.length/2)]*10)/10 : null;
   const requests = reqs||[];
   const openReqs = requests.filter(r=>['submitted','in_review','approved','in_progress'].includes(r.status));
   const slaBreach = openReqs.filter(r=>r.sla_due_at && new Date(r.sla_due_at)<Date.now());
-  S._dashCtx = {tasks, requests, open, overdue, dueWeek, doneTasks, openReqs, slaBreach,
+  S._dashCtx = {tasks, requests, open, overdue, dueWeek, doneTasks, done7, new7, openReqs, slaBreach,
                 scopeProjects:[p], wsSel:p.workspace_id, groups:S._groups||[]};
   S._widgets = wdg||[];
   if(!S._widgets.length && canEdit() && !(S._seededBoardReports?.[pid])){
@@ -90,6 +95,7 @@ async function renderBoardReport(pid){
   S._reportStats = [
     ['Open tasks', open.length], ['Overdue', overdue.length], ['Due within 7 days', dueWeek.length],
     ['On-time completion', onTimePct===null? '—' : onTimePct+'%'], ['Done', doneTasks.length],
+    ['Done this week', done7.length], ['New this week', new7.length], ['Median days to finish (30d)', medianDays===null? '—' : medianDays],
     ...(requests.length? [['SLA breached', slaBreach.length]] : []),
   ];
   C.innerHTML = `
@@ -99,6 +105,8 @@ async function renderBoardReport(pid){
       <div class="stat"><div class="n amber">${dueWeek.length}</div><div class="l">Due within 7 days</div></div>
       <div class="stat"><div class="n ${onTimePct===null?'':onTimePct>=80?'green':onTimePct>=50?'amber':'red'}">${onTimePct===null?'—':onTimePct+'%'}</div><div class="l">On-time completion</div></div>
       <div class="stat"><div class="n">${doneTasks.length}</div><div class="l">Done</div></div>
+      <div class="stat"><div class="n green">${done7.length}</div><div class="l">Done this week</div><div class="sub">${new7.length} new this week</div></div>
+      <div class="stat"><div class="n">${medianDays===null?'—':medianDays}</div><div class="l">Median days to finish</div><div class="sub">last 30 days${solveDays.length?` · ${solveDays.length} tasks`:''}</div></div>
       ${requests.length? `<div class="stat"><div class="n ${slaBreach.length?'red':'green'}">${slaBreach.length}</div><div class="l">SLA breached</div></div>`:''}
     </div>
     <div class="section-title" style="margin-top:22px;display:flex;align-items:center;gap:12px">Widgets
@@ -183,7 +191,7 @@ async function renderWorkspaceReport(wsId){
 }
 
 /* ================= DASHBOARD WIDGETS ================= */
-const W_SHOWS_TASKS = [['open','Open'],['overdue','Overdue'],['due7','Due within 7 days'],['done','Done'],['blocked','Blocked'],['review','In review'],['all','All']];
+const W_SHOWS_TASKS = [['open','Open'],['overdue','Overdue'],['due7','Due within 7 days'],['done','Done'],['done7','Done this week'],['new7','New this week'],['blocked','Blocked'],['review','In review'],['all','All']];
 const W_SHOWS_REQS  = [['open','Open'],['sla','SLA breached'],['all','All']];
 const W_GROUPS_TASKS= [['status','Status'],['priority','Priority'],['workspace','Workspace'],['project','Board'],['assignee','Assignee'],['group','Group']];
 const W_GROUPS_REQS = [['status','Status'],['type','Request type']];
@@ -199,6 +207,8 @@ function widgetTaskRows(cfg){
     else if(cfg.show==='overdue') rows=c.overdue;
     else if(cfg.show==='due7') rows=c.dueWeek;
     else if(cfg.show==='done') rows=c.doneTasks;
+    else if(cfg.show==='done7') rows=c.done7 || c.doneTasks.filter(t=>(t.completed_at||'')>=daysAgoISO(7));
+    else if(cfg.show==='new7') rows=c.new7 || c.tasks.filter(t=>(t.created_at||'')>=daysAgoISO(7));
     else if(cfg.show==='blocked') rows=rows.filter(t=>t.status==='blocked');
     else if(cfg.show==='review') rows=rows.filter(t=>t.status==='review');
     if(cfg.mine) rows=rows.filter(t=>t.assignee_id===S.me.id);

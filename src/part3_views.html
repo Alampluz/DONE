@@ -627,15 +627,32 @@ function newProjectModal(wsId){
 let boardMode = 'table';
 /* Per-board filters. Keyed by board id so each board remembers its own. */
 const boardFilters = {};
-const bfGet = pid => (boardFilters[pid] || (boardFilters[pid] = {q:'', status:'', priority:'', assignee:'', group:''}));
-function bfActiveCount(pid){ const f=bfGet(pid); return ['q','status','priority','assignee','group'].filter(k=>f[k]).length; }
+/* Quick filters: one-click views a CS or ops person reaches for all day. The chosen chip is
+   remembered per board in localStorage so "My open" is still on tomorrow morning. */
+const OPEN_STATES = new Set(['todo','in_progress','review','blocked']);
+const daysAgoISO = n => { const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString(); };
+const BF_QUICK = [
+  {k:'mine',       label:'My open',        test:t=> OPEN_STATES.has(t.status) && t.assignee_id===(S.me||{}).id},
+  {k:'unassigned', label:'Unassigned',     test:t=> OPEN_STATES.has(t.status) && !t.assignee_id},
+  {k:'urgent',     label:'Urgent open',    test:t=> OPEN_STATES.has(t.status) && t.priority==='urgent'},
+  {k:'overdue',    label:'Overdue',        test:t=> OPEN_STATES.has(t.status) && t.due_date && daysDiff(t.due_date)<0},
+  {k:'new7',       label:'New this week',  test:t=> (t.created_at||'') >= daysAgoISO(7)},
+  {k:'done7',      label:'Done this week', test:t=> t.status==='done' && (t.completed_at||'') >= daysAgoISO(7)},
+];
+function bfQuickLoad(pid){ try{ return localStorage.getItem('workos.quick.'+pid)||''; }catch(e){ return ''; } }
+function bfQuickSave(pid, k){ try{ k? localStorage.setItem('workos.quick.'+pid, k) : localStorage.removeItem('workos.quick.'+pid); }catch(e){} }
+const bfGet = pid => (boardFilters[pid] || (boardFilters[pid] = {q:'', status:'', priority:'', assignee:'', group:'', quick:bfQuickLoad(pid)}));
+function bfActiveCount(pid){ const f=bfGet(pid); return ['q','status','priority','assignee','group','quick'].filter(k=>f[k]).length; }
 function bfSet(pid, key, val){ bfGet(pid)[key] = val; renderBoardBody(pid); }
-function bfClear(pid){ boardFilters[pid] = {q:'', status:'', priority:'', assignee:'', group:''}; renderProject(pid); }
+function bfQuick(pid, k){ const f=bfGet(pid); f.quick = (f.quick===k)? '' : k; bfQuickSave(pid, f.quick); renderProject(pid); }
+function bfClear(pid){ boardFilters[pid] = {q:'', status:'', priority:'', assignee:'', group:'', quick:''}; bfQuickSave(pid,''); renderProject(pid); }
 function bfApply(pid, rows){
   const f = bfGet(pid);
   const q = f.q.trim().toLowerCase();
+  const quick = BF_QUICK.find(x=>x.k===f.quick);
   return rows.filter(t=>
-    (!q || (t.title||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q))
+    (!quick || quick.test(t))
+    && (!q || (t.title||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q))
     && (!f.status   || t.status===f.status)
     && (!f.priority || t.priority===f.priority)
     && (!f.assignee || (f.assignee==='__none__' ? !t.assignee_id : t.assignee_id===f.assignee))
@@ -655,7 +672,8 @@ function filterBarHTML(pid){
   const sel = (key, label, opts) => `<select class="bf-sel ${f[key]?'on':''}" onchange="bfSet('${pid}','${key}',this.value)">
       <option value="">${label}</option>
       ${opts.map(o=>`<option value="${o.v}" ${f[key]===o.v?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`;
-  return `<div class="bfbar">
+  const quick = BF_QUICK.map(x=>`<button class="bf-chip ${f.quick===x.k?'on':''}" onclick="bfQuick('${pid}','${x.k}')">${x.label}</button>`).join('');
+  return `<div class="bfbar bf-quickbar">${quick}</div><div class="bfbar">
     <input class="bf-q ${f.q?'on':''}" placeholder="Search tasks…" value="${esc(f.q)}" oninput="bfSet('${pid}','q',this.value)">
     ${sel('status','Status', STATUSES.map(s=>({v:s.k,l:s.label})))}
     ${sel('priority','Priority', PRIORITIES.map(p=>({v:p.k,l:p.label})))}
