@@ -237,10 +237,9 @@ tr.tv-arch .tv-name .tv-open{text-decoration:line-through}
 .pf-val{display:block;font-size:13px;color:var(--ink2);cursor:text;padding:3px 6px;margin-left:-6px;border-radius:6px;border:1px solid transparent;min-height:24px}
 .pf-val:hover{border-color:var(--line);background:var(--gray-soft)} .pf-val.empty{color:var(--ink3);font-style:italic} .pf-val.ro{cursor:default} .pf-val.ro:hover{border-color:transparent;background:none}
 .pf-val input{width:100%;font-size:13px;padding:3px 6px}
-.pf-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .pf-team{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px}
 .pf-h{font-size:15px;font-weight:700;margin:0 0 10px}
-@media (max-width:820px){.pf{grid-template-columns:1fr}.pf-nav{display:flex;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}.pf-head{grid-template-columns:100px 1fr}.pf-grid2{grid-template-columns:1fr}}
+@media (max-width:820px){.pf{grid-template-columns:1fr}.pf-nav{display:flex;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}.pf-head{grid-template-columns:100px 1fr}}
 .ro-field{padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--gray-soft);font-size:13.5px;font-weight:600;color:var(--ink2);display:flex;align-items:center;gap:8px}
 /* ---- attachments ---- */
 .att-none{color:var(--ink3);font-size:13px}
@@ -1341,15 +1340,12 @@ async function updateApprovalBadge(){
 }
 /* Profile page (monday-style): a left nav and a personal-info sheet where every field is
    click-to-edit. People edit their own row; admins may open anyone's and edit it too.
-   Email and role stay read-only here (role changes go through Admin → Users). */
+   Email and role stay read-only here (role changes go through Admin → Users). Personal info
+   is one card (photo, name, position, contact); teams live on their own tab. */
 const PF_FIELDS = [
   {k:'phone',            label:'Phone',            type:'tel',  ico:'☎'},
   {k:'mobile',           label:'Mobile phone',     type:'tel',  ico:'📱'},
   {k:'location',         label:'Location',         type:'text', ico:'📍'},
-];
-const PF_DATES = [
-  {k:'birthday',         label:'Birthday',         ico:'🎂'},
-  {k:'work_anniversary', label:'Work anniversary', ico:'📅'},
 ];
 let pfUser = null, pfTab = 'info';
 function pfCanEdit(){ return !!pfUser && (pfUser.id===(S.me||{}).id || isAdmin()); }
@@ -1402,11 +1398,7 @@ function pfInfoHTML(){
         <div class="pf-row"><label>✉ Email</label><span class="pf-val ro" title="Changed by an admin under Admin → Users">${esc(u.email||'')}</span></div>
         ${PF_FIELDS.map(f=>`<div class="pf-row"><label>${f.ico} ${f.label}</label>${pfVal(f.k, f.type)}</div>`).join('')}
       </div>
-    </div></div>
-    <div class="pf-grid2">
-      <div class="pf-card">${PF_DATES.map(f=>`<div class="pf-row"><label>${f.ico} ${f.label}</label>${pfVal(f.k,'date')}</div>`).join('')}</div>
-      <div class="pf-card"><div class="pf-h">My teams</div>${pfTeamsList()}</div>
-    </div>`;
+    </div></div>`;
 }
 function pfTeamsList(){
   const ts = teamsForUser(pfUser.id);
