@@ -35,6 +35,16 @@ const driver=`window.__run=async function(){const r={}; try{
  r.escCalls=window.__calls.filter(c=>c.table==='profiles').length; r.phoneStill=S.me.phone;
  // a photo renders as an image in every avatar
  S.me.avatar_url='https://cdn.test/avatars/me/1.jpg'; r.avatarImg=/<img src="https:\\/\\/cdn\\.test\\/avatars\\/me\\/1\\.jpg"/.test(avatar(S.me));
+ // photo rules: JPG/PNG/GIF only, 2 MB cap, hint shown, picker restricted
+ closeModals(); myProfileModal();
+ const mk=(name,type,size)=>({name,type,size});
+ r.photo={ jpg:pfPhotoCheck(mk('me.JPG','image/jpeg',900*1024)), png:pfPhotoCheck(mk('me.png','image/png',10)), gif:pfPhotoCheck(mk('me.gif','image/gif',1024)),
+   webp:pfPhotoCheck(mk('me.webp','image/webp',10)), exe:pfPhotoCheck(mk('me.jpg.exe','application/octet-stream',10)), lied:pfPhotoCheck(mk('me.jpg','image/svg+xml',10)),
+   big:pfPhotoCheck(mk('me.jpg','image/jpeg',2*1024*1024+1)), edge:pfPhotoCheck(mk('me.jpg','image/jpeg',2*1024*1024)) };
+ r.accept=(document.getElementById('pf-file')||{}).accept||''; r.hint=/JPG, PNG or GIF · up to 2 MB/.test(document.getElementById('pf-main').textContent);
+ window.__calls.length=0; window.__toasts=[]; const _t=window.toast; window.toast=(m)=>window.__toasts.push(m);
+ await pfUploadPhoto(mk('huge.png','image/png',9*1024*1024)); r.bigRefused=window.__toasts.length===1 && /limit is 2 MB/.test(window.__toasts[0]) && !window.__calls.some(c=>c.table==='profiles');
+ window.toast=_t;
  // admin may open someone else's profile and edit; the self-only tabs are hidden
  closeModals(); profileModal('u2'); r.otherNav=[...document.querySelectorAll('#pf-nav button')].map(b=>b.textContent).join(','); r.otherName=/Prim V/.test(document.getElementById('pf-main').textContent); r.otherEditable=pfCanEdit();
  // a non-admin cannot edit someone else
@@ -51,6 +61,9 @@ w.eval('window.__run()').then(j=>{ const r=JSON.parse(j); let ok=true;
  check('sidebar shows the new position', r.sideAfter==='April N | CX Team Lead');
  check('Escape cancels without writing', r.escCalls===0 && r.phoneStill==='');
  check('photo renders in avatars', r.avatarImg);
+ check('photo rules: jpg/png/gif pass, webp/exe/mislabelled refused, 2 MB cap inclusive', r.photo && r.photo.jpg===null && r.photo.png===null && r.photo.gif===null && /JPG, PNG or GIF/.test(r.photo.webp) && /JPG, PNG or GIF/.test(r.photo.exe) && /JPG, PNG or GIF/.test(r.photo.lied) && /limit is 2 MB/.test(r.photo.big) && r.photo.edge===null);
+ check('picker limited to those types and the hint is shown', /\.jpg,\.jpeg,\.png,\.gif/.test(r.accept) && !/image\/\*/.test(r.accept) && r.hint);
+ check('an oversized upload is refused before anything is written', r.bigRefused);
  check('admin opens a colleague: editable, self-only tabs hidden', r.otherNav==='Personal info,Teams' && r.otherName && r.otherEditable===true);
  check('staff cannot edit a colleague', r.staffCanEditOther===false);
  if(!ok) process.exit(1);
