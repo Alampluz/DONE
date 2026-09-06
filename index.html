@@ -491,6 +491,8 @@ td.tv-name .tv-open{padding-left:20px}
 .login-card h1{font-size:21px;margin-bottom:4px}
 .login-card p{color:var(--ink2);font-size:13.5px;margin-bottom:10px}
 .login-err{background:var(--red-soft);color:var(--red);padding:9px 12px;border-radius:8px;font-size:13px;margin-top:14px;display:none}
+.login-err.ok{background:var(--green-soft,#E6F4EC);color:var(--green,#12915E)}
+.li-forgot{display:inline-block;margin-top:8px;color:var(--ink3)}
 
 /* home */
 .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
@@ -605,6 +607,7 @@ td.tv-name .tv-open{padding-left:20px}
     <button class="btn btn-primary" id="li-btn" style="width:100%;justify-content:center;margin-top:18px;padding:11px">Sign in</button>
     <p style="margin-top:16px;font-size:12.5px;color:var(--ink3);text-align:center">
       <span id="li-toggle-wrap">New company? <a href="#" id="li-toggle">Start a free 14-day trial</a></span>
+      <br><a href="#" id="li-forgot" class="li-forgot">Forgot password?</a>
     </p>
   </div>
 </div>
@@ -1004,6 +1007,21 @@ async function signIn(){
   }catch(e){ errBox.textContent=e.message; errBox.style.display='block'; }
   btn.disabled=false; btn.textContent = signupMode? 'Create company':'Sign in';
 }
+/* Forgot password: Supabase emails a one-time link back to this page; the link signs the
+   person in with a recovery session and onAuthStateChange opens the new-password dialog.
+   Nobody else - admin or otherwise - ever sees or sets the password. */
+async function forgotPassword(){
+  const email=$('#li-email').value.trim(), errBox=$('#li-err'), a=$('#li-forgot');
+  errBox.classList.remove('ok'); errBox.style.display='block';
+  if(!email){ errBox.textContent='Type your email in the box above, then click Forgot password.'; return; }
+  a.textContent='Sending…';
+  const {error} = await db.auth.resetPasswordForEmail(email, {redirectTo: location.origin+location.pathname});
+  a.textContent='Forgot password?';
+  if(error){ errBox.textContent=error.message; return; }
+  errBox.classList.add('ok');
+  errBox.textContent=`If ${email} has an account, a reset link is on its way. Open it and choose a new password. Nothing after a few minutes? Check spam.`;
+}
+$('#li-forgot').addEventListener('click', e=>{ e.preventDefault(); forgotPassword(); });
 $('#li-toggle').addEventListener('click', e=>{ e.preventDefault(); setAuthMode(!signupMode); });
 $('#li-btn').addEventListener('click', signIn);
 $('#li-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') signIn(); });
@@ -1011,7 +1029,9 @@ $('#li-email').addEventListener('keydown', e=>{ if(e.key==='Enter') signIn(); })
 
 db.auth.onAuthStateChange(async (event, session)=>{
   S.session = session;
+  if(event==='PASSWORD_RECOVERY') S._recovery = true;    // arrived through a reset link
   if(session && !S.me){ await boot(); }
+  if(S._recovery && S.me){ S._recovery=false; changePasswordModal(true); }
   if(!session){ S.me=null; $('#app').classList.add('hidden'); $('#login-screen').classList.remove('hidden'); }
 });
 
@@ -1218,10 +1238,10 @@ async function updateApprovalBadge(){
   const b = $('#badge-appr'); if(!b) return;
   if(count>0){ b.textContent=count; b.classList.remove('hidden'); b.classList.add('hot'); } else b.classList.add('hidden');
 }
-function changePasswordModal(){
-  const m = modal(`<div class="modal-head"><h2>Change password</h2><button class="x" onclick="closeModals()">✕</button></div>
-    <div class="modal-body"><label>New password</label><input id="np" type="password" placeholder="At least 8 characters"></div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="np-save">Save</button></div>`);
+function changePasswordModal(recovery=false){
+  const m = modal(`<div class="modal-head"><h2>${recovery?'Choose a new password':'Change password'}</h2>${recovery?'':'<button class="x" onclick="closeModals()">✕</button>'}</div>
+    <div class="modal-body">${recovery?`<p style="margin:0 0 12px;color:var(--ink2)">You opened a password reset link for <b>${esc((S.me||{}).email||'')}</b>. Set a new password to finish.</p>`:''}<label>New password</label><input id="np" type="password" placeholder="At least 8 characters" autocomplete="new-password"></div>
+    <div class="modal-foot">${recovery?'':'<button class="btn btn-ghost" onclick="closeModals()">Cancel</button>'}<button class="btn btn-primary" id="np-save">Save</button></div>`);
   m.querySelector('#np-save').onclick = async ()=>{
     const p = m.querySelector('#np').value;
     if(p.length<8) return toast('Password must be at least 8 characters', true);
