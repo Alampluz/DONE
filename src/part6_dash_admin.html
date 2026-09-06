@@ -4,7 +4,7 @@
    `wsSel` (a workspace id, or null for everything) scopes every widget. */
 async function buildDashCtx(wsSel){
   const [tks, reqs, apprs] = await Promise.all([
-    db.from('tasks').select('id,project_id,title,status,priority,assignee_id,due_date,completed_at,created_at'),
+    allRows(()=>db.from('tasks').select('id,project_id,title,status,priority,assignee_id,due_date,completed_at,created_at').order('id')),
     db.from('requests').select('id,ticket_no,title,status,sla_due_at,completed_at,created_at,request_type_id,decided_at,submitted_by,assigned_to'),
     db.from('approvals').select('id,status,request_id'),
   ]);

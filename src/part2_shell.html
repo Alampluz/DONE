@@ -238,6 +238,22 @@ function avatarStack(ids, cap=3){
 const $ = s=>document.querySelector(s);
 const el = (h)=>{const t=document.createElement('template');t.innerHTML=h.trim();return t.content.firstChild;};
 const esc = s=> (s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* Supabase returns at most 1,000 rows per request. allRows() walks a query in
+   pages so a big board (the CS inquiry board has 3,000+ rows) loads whole.
+   `build` must return a FRESH builder each call, ordered deterministically. */
+async function allRows(build, page=1000){
+  let out=[], from=0;
+  for(;;){
+    const q = build();
+    if(typeof q.range!=='function') return await q;   // test stubs without paging
+    const {data, error} = await q.range(from, from+page-1);
+    if(error) return {data:out, error};
+    out = out.concat(data||[]);
+    if(!data || data.length<page) break;
+    from += page;
+  }
+  return {data:out, error:null};
+}
 function toast(msg, err=false){
   const t=el(`<div class="toast ${err?'err':''}">${esc(msg)}</div>`);
   $('#toasts').appendChild(t); setTimeout(()=>t.remove(), 3800);

@@ -5,12 +5,12 @@ async function renderHome(){
   const C=$('#content');
   C.innerHTML = '<div class="empty">Loading…</div>';
   const [tks, reqs, apprs, cal] = await Promise.all([
-    db.from('tasks').select('*').eq('assignee_id',S.me.id).neq('status','done').order('due_date',{ascending:true,nullsFirst:false}),
+    allRows(()=>db.from('tasks').select('*').eq('assignee_id',S.me.id).neq('status','done').order('due_date',{ascending:true,nullsFirst:false}).order('id')),
     db.from('requests').select('*').eq('submitted_by',S.me.id).not('status','in',"(done,cancelled)").order('created_at',{ascending:false}),
     db.from('approvals').select('*').eq('approver_id',S.me.id).eq('status','pending'),
     // My calendar: everything assigned to me that has a date, done included - a
     // finished task still happened on that day, and the grid greys it out.
-    db.from('tasks').select('*').eq('assignee_id',S.me.id).is('archived_at',null).not('due_date','is',null),
+    allRows(()=>db.from('tasks').select('*').eq('assignee_id',S.me.id).is('archived_at',null).not('due_date','is',null).order('id')),
   ]);
   const tasks = tks.data||[], requests = reqs.data||[], approvals = apprs.data||[];
   S._myTasks = tasks;
@@ -144,7 +144,7 @@ async function renderWorkspace(id, tab){
   const ids = projects.map(p=>p.id);
   let counts = {};
   if(ids.length){
-    const {data} = await db.from('tasks').select('project_id,status').in('project_id', ids);
+    const {data} = await allRows(()=>db.from('tasks').select('project_id,status').in('project_id', ids).order('id'));
     (data||[]).forEach(t=>{ counts[t.project_id]=counts[t.project_id]||{open:0,done:0}; t.status==='done'?counts[t.project_id].done++:counts[t.project_id].open++; });
   }
   C.innerHTML = `
@@ -238,7 +238,7 @@ async function saveTemplateModal(pid){
     const [{data:g},{data:f},{data:t}] = await Promise.all([
       db.from('project_groups').select('*').eq('project_id',pid).order('position').order('created_at'),
       db.from('project_fields').select('*').eq('project_id',pid).order('position').order('created_at'),
-      db.from('tasks').select('*').eq('project_id',pid).order('position'),
+      allRows(()=>db.from('tasks').select('*').eq('project_id',pid).order('position').order('id')),
     ]);
     groups=g||[]; fields=f||[]; tasks=t||[];
   }
@@ -694,7 +694,7 @@ async function renderProject(id){
      ${(canEditOnBoard(id) || isRequester() && boardPreset(id)!=='view')? `<button class="btn btn-primary btn-sm" onclick="newTaskModal('${id}')">＋ New task</button>`:''}`);
   const C=$('#content'); C.innerHTML='<div class="empty">Loading…</div>';
   const [{data:tasks, error},{data:sc},{data:fields},{data:groups}] = await Promise.all([
-    db.from('tasks').select('*').eq('project_id',id).order('position'),
+    allRows(()=>db.from('tasks').select('*').eq('project_id',id).order('position').order('id')),
     db.from('subtasks').select('task_id,status,tasks!inner(project_id)').eq('tasks.project_id', id),
     db.from('project_fields').select('*').eq('project_id',id).order('position').order('created_at'),
     db.from('project_groups').select('*').eq('project_id',id).order('position').order('created_at'),
@@ -916,7 +916,7 @@ async function renderWorkspaceCalendar(wsId){
   const ids = projects.map(p=>p.id);
   let tasks = [];
   if(ids.length){
-    const {data, error} = await db.from('tasks').select('*').in('project_id', ids).is('archived_at', null);
+    const {data, error} = await allRows(()=>db.from('tasks').select('*').in('project_id', ids).is('archived_at', null).order('id'));
     if(error){ C.innerHTML = `${wsTabsHTML(wsId,'calendar')}<div class="card empty">${esc(error.message)}</div>`; return; }
     tasks = data||[];
   }
@@ -1285,7 +1285,7 @@ async function tvLinkPick(el, tid, fid){
   if(!target) return toast('This link column has no target board yet — edit the column', true);
   let opts = _linkPickCache[target];
   if(!opts){
-    const {data, error} = await db.from('tasks').select('id,title').eq('project_id',target).is('archived_at',null).order('position');
+    const {data, error} = await allRows(()=>db.from('tasks').select('id,title').eq('project_id',target).is('archived_at',null).order('position').order('id'));
     if(error) return toast(error.message, true);
     opts = _linkPickCache[target] = (data||[]).map(x=>({v:x.id, l:x.title||'(untitled)'}));
   }
