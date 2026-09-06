@@ -1,0 +1,227 @@
+<title>CREA WorkOS Roadmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap">
+<style>
+:root{
+  --bg:#F7F7F4; --panel:#FFFFFF; --ink:#16181D; --ink2:#575B61; --ink3:#989CA3;
+  --line:#E7E6E0; --accent:#0F766E; --accent-soft:#E8F2F0; --accent-ink:#0B5D57;
+  --green:#12915E; --green-soft:#E4F3EB; --amber:#A8770E; --amber-soft:#FAF2DD;
+  --red:#C2434F; --red-soft:#FAECEC; --gray-soft:#EFEEE8; --code:#F0EFE9;
+}
+:root:not([data-theme="light"]){ }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15171B; --panel:#1D2025; --ink:#ECEDEE; --ink2:#A8ADB4; --ink3:#6E737B;
+    --line:#2C3036; --accent:#3BA99F; --accent-soft:#1B2E2C; --accent-ink:#5FC2B8;
+    --green:#3FB27F; --green-soft:#1C2E26; --amber:#CE9C3A; --amber-soft:#2E2818;
+    --red:#D9707A; --red-soft:#33222A; --gray-soft:#25282D; --code:#22252A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15171B; --panel:#1D2025; --ink:#ECEDEE; --ink2:#A8ADB4; --ink3:#6E737B;
+  --line:#2C3036; --accent:#3BA99F; --accent-soft:#1B2E2C; --accent-ink:#5FC2B8;
+  --green:#3FB27F; --green-soft:#1C2E26; --amber:#CE9C3A; --amber-soft:#2E2818;
+  --red:#D9707A; --red-soft:#33222A; --gray-soft:#25282D; --code:#22252A;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 'DM Sans',system-ui,-apple-system,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:0 20px 90px}
+.wrap{max-width:860px;margin:0 auto}
+header{padding:64px 0 34px;border-bottom:1px solid var(--line)}
+.kicker{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink)}
+h1{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(30px,5vw,42px);line-height:1.12;
+  letter-spacing:.2px;margin:10px 0 12px;text-wrap:balance}
+.lede{color:var(--ink2);max-width:62ch;font-size:16px}
+.meta{display:flex;gap:22px;flex-wrap:wrap;margin-top:22px;font-size:12.5px;color:var(--ink3)}
+.meta b{color:var(--ink2);font-weight:600}
+h2{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:24px;margin:56px 0 6px;letter-spacing:.2px}
+h2 .no{color:var(--ink3);font-weight:500;margin-right:8px}
+.h2sub{color:var(--ink2);margin-bottom:20px;max-width:66ch}
+h3{font-size:14.5px;font-weight:700;margin:26px 0 8px}
+p{max-width:68ch}
+p+p{margin-top:10px}
+.scorebar{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:30px 0 0}
+.score{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 18px}
+.score .n{font-size:27px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.score .l{font-size:12px;color:var(--ink3);margin-top:3px}
+.score.g .n{color:var(--green)} .score.a .n{color:var(--amber)} .score.m .n{color:var(--ink3)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;background:var(--panel);
+  border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tblwrap{overflow-x:auto;border-radius:12px;margin:14px 0 6px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3);
+  font-weight:700;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.what{font-weight:600;white-space:nowrap}
+td.note{color:var(--ink2)}
+.chip{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;letter-spacing:.02em}
+.chip.live{background:var(--green-soft);color:var(--green)}
+.chip.part{background:var(--amber-soft);color:var(--amber)}
+.chip.no{background:var(--gray-soft);color:var(--ink3)}
+.chip.cut{background:var(--red-soft);color:var(--red)}
+.sprint{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:20px 22px;margin:14px 0;
+  display:grid;grid-template-columns:52px 1fr;gap:16px}
+.sprint .num{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:600;color:var(--accent);line-height:1}
+.sprint h3{margin:0 0 6px;font-size:15.5px}
+.sprint p{color:var(--ink2);font-size:14px}
+.sprint .why{margin-top:8px;font-size:12.5px;color:var(--ink3)}
+.sprint .why b{color:var(--ink2)}
+.callout{border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 11px 11px 0;
+  padding:14px 18px;margin:18px 0;font-size:14px;color:var(--ink2)}
+.callout b{color:var(--ink)}
+.callout.warn{border-color:var(--amber);background:var(--amber-soft)}
+ul.tight{padding-left:20px;margin:8px 0;max-width:68ch}
+ul.tight li{margin:5px 0;color:var(--ink2)}
+ul.tight li b{color:var(--ink)}
+code{font:12.5px/1.5 ui-monospace,'SF Mono',Menlo,monospace;background:var(--code);padding:1px 6px;border-radius:5px}
+.cutlist td.what{white-space:normal}
+footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink3);max-width:68ch}
+@media (max-width:640px){ .scorebar{grid-template-columns:1fr} .sprint{grid-template-columns:1fr} .sprint .num{font-size:20px} }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="kicker">CREA · Internal · 6 September 2026</div>
+  <h1>DONE Roadmap</h1>
+  <p class="lede">The August plan ran Sprints A through E, and all five have shipped. This version records what is actually live, what changed after the sprints ended, and the short list worth building next — ordered by what the team keeps running into, not by what would be impressive.</p>
+  <div class="meta">
+    <span><b>Live app:</b> alampluz.github.io/done</span>
+    <span><b>Stack:</b> Supabase · single-page app · GitHub Pages</span>
+    <span><b>Deploys:</b> GitHub Actions — build from <code>src/</code>, 40 suites, then publish</span>
+    <span><b>Data:</b> RLS-enforced, per-company</span>
+  </div>
+  <div class="scorebar">
+    <div class="score g"><div class="n">5 / 5</div><div class="l">sprints shipped (A–E)</div></div>
+    <div class="score g"><div class="n">40</div><div class="l">regression suites gating every deploy</div></div>
+    <div class="score a"><div class="n">19</div><div class="l">request types live, SLA-timed</div></div>
+    <div class="score g"><div class="n">3,040</div><div class="l">CS inquiries imported from monday (6 Sep)</div></div>
+  </div>
+</header>
+
+<h2><span class="no">1</span>What shipped</h2>
+<p class="h2sub">The five sprints from the August plan, each against the acceptance criteria it was given.</p>
+
+<div class="tblwrap"><table>
+<tr><th style="width:20%">Sprint</th><th style="width:13%">State</th><th>What landed</th></tr>
+<tr><td class="what">A · SLA v2</td><td><span class="chip live">Live</span></td><td class="note">Working-hours counting with an editable Thai holiday calendar, pause statuses, per-priority speed, per-type hours, a custom warning threshold and <b>Apply to open tickets</b> — all editable in Admin → SLA rather than hard-coded. <code>compute_sla_due()</code> walks working time.</td></tr>
+<tr><td class="what">B · Approval governance</td><td><span class="chip live">Live</span></td><td class="note">Per-board sign-off gate with a database trigger, and maker ≠ checker enforced by a CHECK constraint rather than by the UI.</td></tr>
+<tr><td class="what">C · Automations</td><td><span class="chip live">Live</span></td><td class="note">Eight built-in rules plus custom When→Then recipes, swept by pg_cron every 15 minutes. The rule editor that was trimmed in August came back as recipes once the fixed rules proved too few.</td></tr>
+<tr><td class="what">D · Dashboards &amp; export</td><td><span class="chip live">Live</span></td><td class="note">Workspace and per-board Report tabs with customisable widgets, per-board Workload with a Heavy flag, CSV and XLSX export everywhere.</td></tr>
+<tr><td class="what">E · Repeatability</td><td><span class="chip live">Live</span></td><td class="note">Board templates, recurring tasks, and dependencies enforced in the database (<code>task_deps</code>, <code>enforce_task_deps</code>).</td></tr>
+</table></div>
+
+<h3>After the sprints — 30 August to 1 September</h3>
+<div class="tblwrap"><table>
+<tr><th style="width:34%">Change</th><th style="width:13%">State</th><th>Notes</th></tr>
+<tr><td class="what">Ownership model</td><td><span class="chip live">Live</span></td><td class="note">Boards and workspaces have one or more owners. A workspace owner manages everything inside the workspace; a board owner manages that board; only an admin can delete a workspace, because deleting one destroys every board and task in it. Owners are set from a heart toggle in the member dialogs.</td></tr>
+<tr><td class="what">Teams</td><td><span class="chip live">Live</span></td><td class="note">A saved group of people for bulk-adding members. Deliberately <b>not</b> a permission grant: access stays stored per person, so adding someone to a team later gives them nothing.</td></tr>
+<tr><td class="what">Member search</td><td><span class="chip live">Live</span></td><td class="note">Both member dialogs open with a search box over name, email, job title, role and team; current members first, with counts. Measured at 250 people: 59 ms to build, 15 ms worst keystroke.</td></tr>
+<tr><td class="what">One date format</td><td><span class="chip live">Live</span></td><td class="note"><code>31 Aug 2026</code> everywhere, year always shown, no day-slip on a UTC+7 clock.</td></tr>
+<tr><td class="what">RPC lockdown</td><td><span class="chip live">Live</span></td><td class="note">Nine SECURITY DEFINER functions were reachable by <code>anon</code> over the REST RPC endpoint — public request forms make <code>anon</code> a live role. EXECUTE was held by PUBLIC, so revoking from <code>anon</code> would have changed nothing.</td></tr>
+<tr><td class="what">Sweep authorization</td><td><span class="chip live">Live</span></td><td class="note"><code>run_automation_sweep()</code> now refuses any signed-in non-admin while still letting pg_cron through, which runs with no JWT at all.</td></tr>
+<tr><td class="what">monday import</td><td><span class="chip live">Live</span></td><td class="note">6 Sep: the whole Q3 CS inquiry board (3,040 items) moved onto <b>CS Inquiries — Q3 2026</b> with groups, reasons, priorities, admin names, categories and dates preserved and a <b>Monday ID</b> per row so a re-run updates instead of duplicating. Zero notifications fired. Only Prim had a login at import time; the other seven CS owners are held in a <b>CS Owner</b> column until their accounts exist, then one backfill command assigns them.</td></tr>
+<tr><td class="what">Big boards</td><td><span class="chip live">Live</span></td><td class="note">6 Sep: loaders page past Supabase's 1,000-row cap, table groups draw 100 rows then <b>Show more / Show all</b>, kanban columns cap at 200 cards, and the <code>tasks</code> read policy went from ~780 ms to ~125 ms per page by evaluating access once per board instead of once per row.</td></tr>
+<tr><td class="what">Board view picker</td><td><span class="chip live">Live</span></td><td class="note">6 Sep: the plain browser dropdown for Table / Board / Calendar / Report / Workload is now a proper menu with icons and one-line descriptions, and each board remembers the view you last used, so a CS agent who lives in Table and a manager who lives in Report each land where they left off.</td></tr>
+<tr><td class="what">CI</td><td><span class="chip live">Live</span></td><td class="note">Every push to <code>src/</code> builds the bundle, runs every suite in <code>tests/</code>, and publishes <code>index.html</code> only if they pass. The manual web upload is retired; a failing suite now blocks a deploy instead of shipping with it.</td></tr>
+</table></div>
+
+<div class="callout">
+<b>Deploys need a hard refresh.</b> GitHub Pages sits behind a CDN, so after a deploy the team should reload with Ctrl/Cmd+Shift+R before reporting that a new feature is missing.
+</div>
+
+<h2><span class="no">2</span>Where the product stands</h2>
+<p class="h2sub">Module by module, verified against the running app and database rather than the spec.</p>
+
+<h3>Workspaces, access &amp; people</h3>
+<div class="tblwrap"><table>
+<tr><th style="width:44%">Capability</th><th style="width:13%">State</th><th>Notes</th></tr>
+<tr><td class="what">Workspaces + membership</td><td><span class="chip live">Live</span></td><td class="note">Create, rename, recolour, delete behind a typed confirm. One person, many workspaces, assignable from either direction.</td></tr>
+<tr><td class="what">Roles &amp; permissions</td><td><span class="chip live">Live</span></td><td class="note">admin · management · internal · requester · partner · freelancer, enforced in the database rather than only in the UI.</td></tr>
+<tr><td class="what">Board &amp; workspace owners</td><td><span class="chip live">Live</span></td><td class="note">Settings, columns, groups and deletion run off ownership — never off <code>canEdit()</code>, which means "can work on tasks".</td></tr>
+<tr><td class="what">Board visibility</td><td><span class="chip live">Live</span></td><td class="note">Private / Collaborate / Shareable, enforced server-side.</td></tr>
+<tr><td class="what">Per-board edit presets</td><td><span class="chip live">Live</span></td><td class="note">Shipped 4 Sep: Edit everything / Edit assigned tasks only / View only, set per board by its owners and enforced in the <code>tasks</code>, <code>subtasks</code> and checklist policies. Owners, admins and management are never restricted. The per-action matrix stays deferred.</td></tr>
+</table></div>
+
+<h3>Boards &amp; tasks</h3>
+<div class="tblwrap"><table>
+<tr><th style="width:44%">Capability</th><th style="width:13%">State</th><th>Notes</th></tr>
+<tr><td class="what">Table, Kanban, Report, Workload</td><td><span class="chip live">Live</span></td><td class="note">Table is the default view; List was removed. Report and Workload are per board, with a Heavy flag above the cap.</td></tr>
+<tr><td class="what">Column types</td><td><span class="chip live">Live</span></td><td class="note">text, number, date, select, checkbox, brand, formula (safe tokenizer, no <code>eval</code>), link, two-way mirror, platform, file.</td></tr>
+<tr><td class="what">Platform &amp; file columns on real data</td><td><span class="chip part">Untested</span></td><td class="note">Both exist in the builder but no board uses either yet — zero rows of each in <code>project_fields</code>.</td></tr>
+<tr><td class="what">Subtasks, checklists, bulk edit</td><td><span class="chip live">Live</span></td><td class="note">Archive is the reversible default; permanent delete is admin-only behind a typed count.</td></tr>
+<tr><td class="what">Comments &amp; attachments</td><td><span class="chip live">Live</span></td><td class="note">@mentions with notifications, edit in place, remove with Undo, drag/paste/drop files to 25 MB.</td></tr>
+<tr><td class="what">Task history</td><td><span class="chip live">Live</span></td><td class="note">Database triggers record every path — cells, bulk, drag, dialog — with before/after values.</td></tr>
+<tr><td class="what">Templates, recurring, dependencies</td><td><span class="chip live">Live</span></td><td class="note">Shipped in Sprint E.</td></tr>
+<tr><td class="what">Calendar view</td><td><span class="chip live">Live</span></td><td class="note">Shipped 2–4 Sep, on every board, every workspace, and as a List / Calendar toggle on My Work. Board: month grid of due dates honouring the board filters. Workspace: every board on one grid with a legend to toggle boards. Folded at three tasks a day, overdue in red, click to open the task. Undated tasks and tasks outside the shown weeks are counted rather than dropped.</td></tr>
+<tr><td class="what">Timeline / Gantt</td><td><span class="chip cut">Deferred</span></td><td class="note">Still P2 — Workload answers the capacity question and Calendar now answers the "what lands when" one.</td></tr>
+</table></div>
+
+<h3>Requests, tickets &amp; SLA</h3>
+<div class="tblwrap"><table>
+<tr><th style="width:44%">Capability</th><th style="width:13%">State</th><th>Notes</th></tr>
+<tr><td class="what">19 typed forms + public links</td><td><span class="chip live">Live</span></td><td class="note">Per-type fields, required-field validation, no login needed to submit.</td></tr>
+<tr><td class="what">WO numbers &amp; routing</td><td><span class="chip live">Live</span></td><td class="note">Request type routes to its workspace; convert to a task on any board.</td></tr>
+<tr><td class="what">SLA</td><td><span class="chip live">Live</span></td><td class="note">Fully customisable in Admin → SLA. All 19 types are now on multiples of 24 hours.</td></tr>
+<tr><td class="what">Email intake (email-to-task)</td><td><span class="chip no">Not built</span></td><td class="note">Needs an inbound mail provider and an edge function.</td></tr>
+</table></div>
+
+<h3>Approvals, dashboards, notifications, audit</h3>
+<div class="tblwrap"><table>
+<tr><th style="width:44%">Capability</th><th style="width:13%">State</th><th>Notes</th></tr>
+<tr><td class="what">Sign-off</td><td><span class="chip live">Live</span></td><td class="note">Per-board gate, trigger-enforced, maker ≠ checker by constraint.</td></tr>
+<tr><td class="what">Dashboards &amp; reports</td><td><span class="chip live">Live</span></td><td class="note">Personal dashboard, workspace and per-board Report tabs, CSV/XLSX export everywhere.</td></tr>
+<tr><td class="what">Notifications</td><td><span class="chip part">Email built, awaiting credentials</span></td><td class="note">Bell, unread dot, all ten kinds. Since 4 Sep every notification is also queued for email via Microsoft 365 (workos@crea.asia), with per-person mutes under bell → Email settings. Sending starts when IT saves the Entra app credentials — see <code>docs_email_setup.md</code>.</td></tr>
+<tr><td class="what">Automation</td><td><span class="chip live">Live</span></td><td class="note">Eight built-ins plus custom recipes, pg_cron every 15 minutes, admin-visible run log.</td></tr>
+<tr><td class="what">Audit &amp; soft delete</td><td><span class="chip live">Live</span></td><td class="note">Full task history, archived tasks restorable, removed comments recoverable, workspace and board deletes logged.</td></tr>
+</table></div>
+
+<h2><span class="no">3</span>What&#39;s next</h2>
+<p class="h2sub">Ordered by what the team actually runs into. Each one starts only when the previous is accepted.</p>
+
+<div class="sprint"><div class="num">1</div><div>
+  <h3>Make ownership imply visibility — fixed 4 Sep</h3>
+  <p><b>Verified 1 Sep:</b> a non-admin owner can delete a board they own, cannot delete the workspace it sits in, cannot touch a board they do not own, and a requester cannot hold ownership at all. The model works — with one hole. Postgres applies SELECT policies to any delete whose WHERE reads a column, and <code>projects_select</code> is membership-based, so an owner who is not a member of the board or workspace cannot see it: the delete matches nothing and raises no error, and the UI simply does nothing. Nobody is affected today, but the member dialogs can hand ownership to a non-member.</p>
+  <div class="why"><b>Accepted 4 Sep:</b> <code>projects_select</code> now admits <code>is_board_owner(id)</code> and <code>is_ws_owner(workspace_id)</code>; probed before and after in rolled-back transactions.</div>
+</div></div>
+
+<div class="sprint"><div class="num">2</div><div>
+  <h3>Notifications that leave the app — built 4 Sep, waiting on IT</h3>
+  <p>Every notification now queues for email through Microsoft 365 (<code>workos@crea.asia</code>) with per-person mutes. The one thing left is credentials: an Entra app with <code>Mail.Send</code> scoped to that mailbox and five Supabase secrets, listed in <code>docs_email_setup.md</code>. Email-to-task (inbound) is the follow-on once mail is flowing.</p>
+  <div class="why"><b>Accepts when:</b> the queued test message reaches April's inbox, then a real mention and an SLA breach each arrive within a minute.</div>
+</div></div>
+
+<div class="sprint"><div class="num">3</div><div>
+  <h3>Per-board permission presets — shipped 4 Sep</h3>
+  <p>Three presets per board, enforced in the database and mirrored in the UI. What remains from the original ask is the granular per-action matrix; the preset functions (<code>can_write_board</code>, <code>can_edit_task</code>) are where it would grow if a real case appears.</p>
+  <div class="why"><b>Accepted:</b> a view-only member is refused an edit by the database, not just by a hidden button, and <code>test_presets.cjs</code> covers each preset.</div>
+</div></div>
+
+<div class="sprint"><div class="num">4</div><div>
+  <h3>Somewhere safe to break things</h3>
+  <p>There is no test environment: <code>sandbox.html</code> is the live database wearing an orange bar. Supabase branching needs the Pro plan, so the route is a second free project replayed from <code>supabase_migrations.schema_migrations</code>, seeded with its own auth users.</p>
+  <div class="why"><b>Accepts when:</b> the schema rebuilds from migration history alone, someone can log in, and a destructive test there leaves production untouched.</div>
+</div></div>
+
+<div class="sprint"><div class="num">5</div><div>
+  <h3>Operational hygiene</h3>
+  <p><b>New 6 Sep:</b> seven CS logins to create (list in the session notes) and then the assignee backfill on the imported board; three pre-import test rows on CS Inquiries to archive. Then the standing items: five root-level files were truncated to zero bytes in the same minute on 31 August with no write issued to four of them; the cause is still unidentified. That deserves an off-folder copy of the handoff and runners. Alongside it: turn on Supabase leaked-password protection, and exercise the platform and file column types on one real board before a team meets them cold.</p>
+  <div class="why"><b>Accepts when:</b> losing the WorkOS folder costs nothing that matters, and both unused column types have been used in anger at least once.</div>
+</div></div>
+
+<h2><span class="no">4</span>Still deliberately not built</h2>
+<p class="h2sub">Cut is not rejected — each returns when real usage produces the problem it solves.</p>
+
+<div class="tblwrap"><table class="cutlist">
+<tr><th style="width:36%">Proposed</th><th>Position</th></tr>
+<tr><td class="what">12-status workflow</td><td class="note">Still five statuses plus the SLA pause. Twelve states on a small team becomes theatre; people stop updating them and every report goes wrong.</td></tr>
+<tr><td class="what">Seven roles (Department Head, Manager, Team Lead)</td><td class="note">The existing six, now joined by ownership and teams — which is what those extra roles were reaching for. Each additional role multiplies every permission test.</td></tr>
+<tr><td class="what">Field-level permissions</td><td class="note">Still heavy machinery with no incident driving it. Board presets (item 3 above) are the cheaper answer to the same complaint.</td></tr>
+<tr><td class="what">Gantt / Timeline, capacity forecasting</td><td class="note">P2. Per-board Workload already answers who is overloaded.</td></tr>
+<tr><td class="what">Time tracking &amp; estimates</td><td class="note">Turnaround is measured from history automatically. Manual timers go unused unless billing depends on them.</td></tr>
+<tr><td class="what">Stripe billing, custom domain, <code>admin_fn_v5</code> edge function</td><td class="note">Only worth doing if WorkOS is offered outside CREA. Nothing internal is waiting on them.</td></tr>
+</table></div>
+
+<footer>
+Prepared from the live system state on 2&nbsp;September&nbsp;2026 — feature states verified against the running app, the database and the deploy pipeline, not the spec. Companion documents: HANDOFF.md (architecture &amp; operations), the 28 regression suites in <code>tests/</code>, and the CI workflow in <code>.github/workflows/ci.yml</code>.
+</footer>
+</div>
