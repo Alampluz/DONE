@@ -15,7 +15,7 @@ window.supabase={createClient:()=>({from:window.__mkQuery,
  storage:{from:()=>({getPublicUrl:(p)=>({data:{publicUrl:'https://cdn.test/'+p}}), upload:async()=>({error:null})})},functions:{}})};`);
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
 const driver=`window.__run=async function(){const r={}; try{
- const me={id:'me',role:'admin',full_name:'April N',email:'april@example.test',job_title:'',avatar_color:'#0F766E',active:true,company_id:'c',phone:'',location:'Thailand'};
+ const me={id:'me',role:'admin',full_name:'April N',email:'april@example.test',job_title:'',avatar_color:'#0F766E',active:true,company_id:'c',mobile:'',location:'Thailand'};
  const other={id:'u2',role:'internal',full_name:'Prim V',email:'prim@example.test',job_title:'CS Lead',avatar_color:'#3E5C95',active:true,company_id:'c'};
  Object.assign(S,{me, profiles:[me,other], workspaces:[], projects:[], company:{name:'CREA'}, route:{view:'home'},
    teams:[{id:'t1',name:'Customer Service',color:'#0F766E'}], teamMembers:[{team_id:'t1',user_id:'me'}]});
@@ -23,7 +23,7 @@ const driver=`window.__run=async function(){const r={}; try{
  myProfileModal();
  r.wide=!!document.querySelector('.modal.profile'); r.nav=[...document.querySelectorAll('#pf-nav button')].map(b=>b.textContent).join(',');
  const txt=document.getElementById('pf-main').textContent.replace(/\\s+/g,' ');
- r.shows={name:/April N/.test(txt), email:/april@example\\.test/.test(txt), role:/admin/.test(txt), location:/Thailand/.test(txt), addPhone:/Add phone/.test(txt), noTeam:!/Customer Service/.test(txt), noBirthday:!/Birthday/.test(txt), noAnniv:!/Work anniversary/.test(txt)};
+ r.shows={name:/April N/.test(txt), email:/april@example\\.test/.test(txt), role:/admin/.test(txt), location:/Thailand/.test(txt), addPhone:/Add mobile/.test(txt), noLandline:!/☎ Phone/.test(txt), noTeam:!/Customer Service/.test(txt), noBirthday:!/Birthday/.test(txt), noAnniv:!/Work anniversary/.test(txt)};
  r.emailRO=!!document.querySelector('.pf-val.ro') && ![...document.querySelectorAll('.pf-val')].some(el=>(el.getAttribute('onclick')||'').includes("'email'"));
  // click-to-edit position, Enter saves
  pfEdit('job_title','text'); const inp=document.querySelector('#pf-main .pf-val input'); r.inputShown=!!inp;
@@ -31,8 +31,8 @@ const driver=`window.__run=async function(){const r={}; try{
  r.saveCall=window.__calls.find(c=>c.table==='profiles'); r.meTitle=S.me.job_title;
  r.sideAfter=[...document.querySelectorAll('#sidebar-user .who > *')].map(e=>e.textContent.trim()).join(' | ');
  // Escape cancels, nothing written
- pfEdit('phone','tel'); const inp2=document.querySelector('#pf-main .pf-val input'); inp2.value='0812345678'; window.__calls.length=0; inp2.onkeydown({key:'Escape'}); await new Promise(x=>setTimeout(x,0));
- r.escCalls=window.__calls.filter(c=>c.table==='profiles').length; r.phoneStill=S.me.phone;
+ pfEdit('mobile','tel'); const inp2=document.querySelector('#pf-main .pf-val input'); inp2.value='0812345678'; window.__calls.length=0; inp2.onkeydown({key:'Escape'}); await new Promise(x=>setTimeout(x,0));
+ r.escCalls=window.__calls.filter(c=>c.table==='profiles').length; r.phoneStill=S.me.mobile;
  // a photo renders as an image in every avatar
  S.me.avatar_url='https://cdn.test/avatars/me/1.jpg'; r.avatarImg=/<img src="https:\\/\\/cdn\\.test\\/avatars\\/me\\/1\\.jpg"/.test(avatar(S.me));
  // photo rules: JPG/PNG/GIF only, 2 MB cap, hint shown, picker restricted
@@ -55,7 +55,7 @@ w.eval('window.__run()').then(j=>{ const r=JSON.parse(j); let ok=true;
  const check=(n,c)=>{ console.log((c?'PASS':'FAIL')+' '+n+(c?'':' -> '+JSON.stringify(r))); if(!c) ok=false; };
  check('sidebar shows role until a position exists', r.sideBefore==='April N | admin');
  check('profile page: wide, nav has Personal info/Notifications/Password/Teams', r.wide && r.nav==='Personal info,Notifications,Password,Teams');
- check('sheet shows name, email, role, location, add-phone prompt; no dates or teams card', Object.values(r.shows).every(Boolean));
+ check('sheet shows name, email, role, location, add-mobile prompt; no landline, dates or teams card', Object.values(r.shows).every(Boolean));
  check('email is read-only', r.emailRO);
  check('click-to-edit position, Enter saves exactly that column', r.inputShown && r.saveCall && r.saveCall.op==='update' && r.saveCall.eq.id==='me' && JSON.stringify(r.saveCall.payload)==='{"job_title":"CX Team Lead"}' && r.meTitle==='CX Team Lead');
  check('sidebar shows the new position', r.sideAfter==='April N | CX Team Lead');
