@@ -428,6 +428,20 @@ async function finishReset(pass){
   if(uErr) throw new Error(uErr.message);
   leaveResetCard();
 }
+/* Creating a company sits one click away from Sign in, and on 6 Sep a CREA admin created
+   an empty company by mistake. Say plainly what is about to happen and name the way out. */
+function confirmNewCompany(company_name, email){
+  return new Promise(resolve=>{
+    const m = modal(`<div class="modal-head"><h2>Create a new company?</h2></div>
+      <div class="modal-body">
+        <p style="margin:0 0 10px">This starts a <b>brand-new, empty company</b> called <b>${esc(company_name)}</b>, with <b>${esc(email)}</b> as its first admin.</p>
+        <p style="margin:0;color:var(--ink2)">Already part of a company that uses DONE — CREA, for example? Then this is not what you want: go back and <b>sign in</b> with the account your admin gave you, or use <b>Forgot password?</b></p>
+      </div>
+      <div class="modal-foot"><button class="btn btn-ghost" id="nc-back">Back to sign in</button><button class="btn btn-primary" id="nc-go">Yes, create ${esc(company_name)}</button></div>`);
+    m.querySelector('#nc-back').onclick = ()=>{ closeModals(); setAuthMode(false); resolve(false); };
+    m.querySelector('#nc-go').onclick   = ()=>{ closeModals(); resolve(true); };
+  });
+}
 async function signIn(){
   const email=$('#li-email').value.trim(), pass=$('#li-pass').value;
   const errBox=$('#li-err'); errBox.style.display='none'; errBox.classList.remove('ok');
@@ -445,6 +459,7 @@ async function signIn(){
       const company_name=$('#su-company').value.trim(), full_name=$('#su-name').value.trim();
       if(!company_name||!full_name) throw new Error('Company name and your name are required');
       if(pass.length<8) throw new Error('Password must be at least 8 characters');
+      if(!(await confirmNewCompany(company_name, email))){ btn.disabled=false; btn.textContent='Sign in'; return; }
       btn.textContent='Creating your workspace…';
       const res = await fetch(ADMIN_API+'/signup', {method:'POST',
         headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON,'Authorization':'Bearer '+SUPABASE_ANON},
