@@ -710,15 +710,12 @@ async function updateApprovalBadge(){
 }
 /* Profile page (monday-style): a left nav and a personal-info sheet where every field is
    click-to-edit. People edit their own row; admins may open anyone's and edit it too.
-   Email and role stay read-only here (role changes go through Admin → Users). */
+   Email and role stay read-only here (role changes go through Admin → Users). Personal info
+   is one card (photo, name, position, contact); teams live on their own tab. */
 const PF_FIELDS = [
   {k:'phone',            label:'Phone',            type:'tel',  ico:'☎'},
   {k:'mobile',           label:'Mobile phone',     type:'tel',  ico:'📱'},
   {k:'location',         label:'Location',         type:'text', ico:'📍'},
-];
-const PF_DATES = [
-  {k:'birthday',         label:'Birthday',         ico:'🎂'},
-  {k:'work_anniversary', label:'Work anniversary', ico:'📅'},
 ];
 let pfUser = null, pfTab = 'info';
 function pfCanEdit(){ return !!pfUser && (pfUser.id===(S.me||{}).id || isAdmin()); }
@@ -771,11 +768,7 @@ function pfInfoHTML(){
         <div class="pf-row"><label>✉ Email</label><span class="pf-val ro" title="Changed by an admin under Admin → Users">${esc(u.email||'')}</span></div>
         ${PF_FIELDS.map(f=>`<div class="pf-row"><label>${f.ico} ${f.label}</label>${pfVal(f.k, f.type)}</div>`).join('')}
       </div>
-    </div></div>
-    <div class="pf-grid2">
-      <div class="pf-card">${PF_DATES.map(f=>`<div class="pf-row"><label>${f.ico} ${f.label}</label>${pfVal(f.k,'date')}</div>`).join('')}</div>
-      <div class="pf-card"><div class="pf-h">My teams</div>${pfTeamsList()}</div>
-    </div>`;
+    </div></div>`;
 }
 function pfTeamsList(){
   const ts = teamsForUser(pfUser.id);
