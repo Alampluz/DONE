@@ -701,9 +701,11 @@ async function renderProject(id){
   ]);
   if(error){ C.innerHTML=`<div class="card empty">${esc(error.message)}</div>`; return; }
   // Dependencies for the whole board in one go — powers the ⛓ marker per row.
-  const tids = (tasks||[]).map(t=>t.id);
-  if(tids.length){ const {data:deps} = await db.from('task_deps').select('*').in('task_id',tids); S._deps = deps||[]; }
+  // Filter through the task's board rather than listing task ids: a 3,000-row board
+  // made the id list longer than a URL may be and the request threw.
+  if((tasks||[]).length){ const {data:deps} = await db.from('task_deps').select('task_id,depends_on,tasks!task_deps_task_id_fkey!inner(project_id)').eq('tasks.project_id', id); S._deps = deps||[]; }
   else S._deps = [];
+  if(tvPid!==id) tvResetShown();
   S._tasksAll = tasks||[];
   S._tasks = tvShowArch ? S._tasksAll : S._tasksAll.filter(t=>!t.archived_at);
   S._fields = fields||[]; S._groups = groups||[];
@@ -721,6 +723,7 @@ async function renderProject(id){
 }
 /* Re-renders only the content below the filter bar, so typing in the search
    box never steals focus from itself. */
+const KB_CAP = 200;   // cards per kanban column before the column stops drawing (big boards)
 function renderBoardBody(id){
   const host = $('#board-body') || $('#content'); if(!host) return;
   const rows = bfApply(id, S._tasks||[]);
@@ -735,7 +738,7 @@ function renderBoardBody(id){
     const list = rows.filter(t=>t.status===s.k);
     return `<div class="col" data-status="${s.k}">
       <div class="col-head"><span class="dot" style="background:${s.color}"></span>${s.label}<span class="count">${list.length}</span></div>
-      <div class="col-body" data-status="${s.k}">${list.map(taskCard).join('')}</div>
+      <div class="col-body" data-status="${s.k}">${list.slice(0,KB_CAP).map(taskCard).join('')}${list.length>KB_CAP? `<div class="kb-more">${(list.length-KB_CAP).toLocaleString()} more not drawn — use the Table view for the full list</div>`:''}</div>
       ${(canEditOnBoard(id) || isRequester() && boardPreset(id)!=='view')? `<button class="add-card" onclick="newTaskModal('${id}','${s.k}')">＋ Add task</button>`:''}
     </div>`;}).join('')}</div>`;
   wireDnD(id);
@@ -985,7 +988,7 @@ function renderProjectFromCache(id){
     const list = S._tasks.filter(t=>t.status===s.k);
     return `<div class="col" data-status="${s.k}">
       <div class="col-head"><span class="dot" style="background:${s.color}"></span>${s.label}<span class="count">${list.length}</span></div>
-      <div class="col-body" data-status="${s.k}">${list.map(taskCard).join('')}</div>
+      <div class="col-body" data-status="${s.k}">${list.slice(0,KB_CAP).map(taskCard).join('')}${list.length>KB_CAP? `<div class="kb-more">${(list.length-KB_CAP).toLocaleString()} more not drawn — use the Table view for the full list</div>`:''}</div>
       <button class="add-card" onclick="newTaskModal('${id}','${s.k}')">＋ Add task</button>
     </div>`;}).join('')}</div>`;
   wireDnD(id);
@@ -1605,6 +1608,19 @@ function tvRowHTML(t, flds, gc){
     ${isStaff()? '<td></td>':''}
   </tr>`;
 }
+/* Big boards: a group shows its first TV_CHUNK rows and a "show more" line. Rows
+   are only hidden from the DOM - filters, counts and CSV export still see them all.
+   tvShown[gid] grows as the person asks for more; it resets when the board changes. */
+const TV_CHUNK = 100;
+let tvShown = {};
+function tvResetShown(){ tvShown = {}; }
+function tvShowMore(gid, n){
+  tvShown[gid] = (n===Infinity)? Infinity : (tvShown[gid] ?? TV_CHUNK) + n;
+  const y=scrollY; renderBoardBody(tvPid); scrollTo(0,y);
+}
+function tvMoreRowHTML(gid, shown, total, cols){
+  return `<tr class="tv-more"><td colspan="${cols}"><span onclick="tvShowMore('${gid}',200)">Show 200 more</span> · <span onclick="tvShowMore('${gid}',Infinity)">Show all ${total.toLocaleString()}</span><em>${shown.toLocaleString()} of ${total.toLocaleString()} shown</em></td></tr>`;
+}
 function renderProjectTableView(id, rowSet, host){
   const C = host || $('#board-body') || $('#content');
   tvPid = id;
@@ -1613,12 +1629,16 @@ function renderProjectTableView(id, rowSet, host){
   tvBuildOpts(flds);
   const cols = 5+(canEdit()?1:0)+flds.length+(isStaff()?1:0);
   const byPos = (a,b)=> (a.position||0)-(b.position||0);
-  const tableFor = (rows, gid, first, gc)=> `<div class="tv-wrap" data-gid="${gid||''}" ondragover="tvDragOver(event)" ondragleave="tvDragLeave(event)" ondrop="tvDrop(event,'${id}')">
+  const tableFor = (rows, gid, first, gc)=>{
+    const key = gid||'__all__', lim = tvShown[key] ?? TV_CHUNK;
+    const shown = rows.length > lim + 50 ? rows.slice(0, lim) : rows;   // never hide fewer than 50
+    return `<div class="tv-wrap" data-gid="${gid||''}" ondragover="tvDragOver(event)" ondragleave="tvDragLeave(event)" ondrop="tvDrop(event,'${id}')">
     <table class="tv"><thead>${tvHeadHTML(id, flds, first, gid||(groups.length?'':'__all__'))}</thead><tbody>
-      ${rows.length? rows.map(t=>tvRowHTML(t,flds,gc)).join('') : `<tr><td colspan="${cols}"><div style="padding:14px;color:var(--ink3);font-size:13px">Drop tasks here, or add one below</div></td></tr>`}
+      ${rows.length? shown.map(t=>tvRowHTML(t,flds,gc)).join('') : `<tr><td colspan="${cols}"><div style="padding:14px;color:var(--ink3);font-size:13px">Drop tasks here, or add one below</div></td></tr>`}
+      ${shown.length<rows.length? tvMoreRowHTML(key, shown.length, rows.length, cols) : ''}
     </tbody></table>
     ${canCreate()?`<div class="tv-quickadd"><input placeholder="＋ Add task" onkeydown="tvQuickAdd(event,'${id}',${gid?`'${gid}'`:'null'})"></div>`:''}
-  </div>`;
+  </div>`; };
   const nArch = (S._tasksAll||[]).filter(t=>t.archived_at).length;
   const archBar = (nArch||tvShowArch)? `<div class="tv-archbar" onclick="tvToggleArch()">${tvShowArch?'▾':'▸'} ${nArch} archived task${nArch===1?'':'s'} — ${tvShowArch?'hide':'show'}</div>` : '';
   if(!groups.length){
