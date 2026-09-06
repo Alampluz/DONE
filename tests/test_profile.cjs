@@ -23,7 +23,7 @@ const driver=`window.__run=async function(){const r={}; try{
  myProfileModal();
  r.wide=!!document.querySelector('.modal.profile'); r.nav=[...document.querySelectorAll('#pf-nav button')].map(b=>b.textContent).join(',');
  const txt=document.getElementById('pf-main').textContent.replace(/\\s+/g,' ');
- r.shows={name:/April N/.test(txt), email:/april@example\\.test/.test(txt), role:/admin/.test(txt), location:/Thailand/.test(txt), addPhone:/Add phone/.test(txt), team:/Customer Service/.test(txt), birthday:/Birthday/.test(txt), anniv:/Work anniversary/.test(txt)};
+ r.shows={name:/April N/.test(txt), email:/april@example\\.test/.test(txt), role:/admin/.test(txt), location:/Thailand/.test(txt), addPhone:/Add phone/.test(txt), noTeam:!/Customer Service/.test(txt), noBirthday:!/Birthday/.test(txt), noAnniv:!/Work anniversary/.test(txt)};
  r.emailRO=!!document.querySelector('.pf-val.ro') && ![...document.querySelectorAll('.pf-val')].some(el=>(el.getAttribute('onclick')||'').includes("'email'"));
  // click-to-edit position, Enter saves
  pfEdit('job_title','text'); const inp=document.querySelector('#pf-main .pf-val input'); r.inputShown=!!inp;
@@ -45,7 +45,7 @@ w.eval('window.__run()').then(j=>{ const r=JSON.parse(j); let ok=true;
  const check=(n,c)=>{ console.log((c?'PASS':'FAIL')+' '+n+(c?'':' -> '+JSON.stringify(r))); if(!c) ok=false; };
  check('sidebar shows role until a position exists', r.sideBefore==='April N | admin');
  check('profile page: wide, nav has Personal info/Notifications/Password/Teams', r.wide && r.nav==='Personal info,Notifications,Password,Teams');
- check('sheet shows name, email, role, location, add-phone prompt, team, dates', Object.values(r.shows).every(Boolean));
+ check('sheet shows name, email, role, location, add-phone prompt; no dates or teams card', Object.values(r.shows).every(Boolean));
  check('email is read-only', r.emailRO);
  check('click-to-edit position, Enter saves exactly that column', r.inputShown && r.saveCall && r.saveCall.op==='update' && r.saveCall.eq.id==='me' && JSON.stringify(r.saveCall.payload)==='{"job_title":"CX Team Lead"}' && r.meTitle==='CX Team Lead');
  check('sidebar shows the new position', r.sideAfter==='April N | CX Team Lead');
