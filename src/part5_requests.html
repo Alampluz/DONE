@@ -41,6 +41,18 @@ function exportRequestsCSV(){
   downloadXLSX(xlsxFilename('Requests'), out);
 }
 function newRequestFlow(){
+  // A company that has not built any request types yet (new sign-ups start empty) gets
+  // pointed at the builder instead of an empty grid.
+  if(!(S.requestTypes||[]).length){
+    modal(`<div class="modal-head"><h2>No request types yet</h2><button class="x" onclick="closeModals()">✕</button></div>
+      <div class="modal-body" style="padding-top:14px">
+        <p style="margin:0 0 10px;color:var(--ink2)">Requests are raised through forms that your company designs — what fields to ask for, who handles them and how fast (SLA).</p>
+        ${isAdmin()? `<p style="margin:0 0 14px;color:var(--ink2)">Build the first one in <b>Admin → Request types</b>.</p>
+        <button class="btn btn-primary" onclick="closeModals();adminTab='types';location.hash='#/admin'">Open Request types</button>`
+        : `<p style="margin:0;color:var(--ink2)">Ask an admin to create the first request type in Admin → Request types.</p>`}
+      </div>`, true);
+    return;
+  }
   const m = modal(`<div class="modal-head"><h2>What do you need?</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body" style="padding-top:14px"><div class="rt-grid">
       ${S.requestTypes.map(rt=>`<button class="rt-pick" onclick="newRequestForm('${rt.id}')">
