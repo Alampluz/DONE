@@ -498,11 +498,16 @@ td.tv-name .tv-open{padding-left:20px}
 .home-modes{padding:2px}
 .home-modes .tab{padding:4px 11px;font-size:12px}
 /* board view dropdown */
-.view-pick{position:relative;display:inline-flex;align-items:center;gap:6px;background:var(--gray-soft);border-radius:9px;padding:0 10px 0 10px;height:32px;cursor:pointer}
-.view-pick .vp-l{font-size:12px;font-weight:600;color:var(--ink3)}
-.view-pick select{appearance:none;-webkit-appearance:none;border:none;background:transparent;font:600 13px inherit;color:var(--ink);padding:0 16px 0 0;cursor:pointer;outline:none}
-.view-pick .vp-chev{position:absolute;right:10px;font-size:11px;color:var(--ink2);pointer-events:none}
-.view-pick:hover{background:var(--line)}
+.view-pick{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:0 10px 0 9px;height:32px;cursor:pointer;font:600 13px inherit;color:var(--ink);transition:border-color .12s,box-shadow .12s}
+.view-pick:hover{border-color:var(--ink3)} .view-pick.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.view-pick .vp-chev{font-size:11px;color:var(--ink3);margin-left:-2px}
+.vp-ico{display:inline-flex;width:16px;height:16px;color:var(--ink2)} .vp-ico svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.view-menu{position:fixed;z-index:1000;min-width:250px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(16,18,25,.14);padding:6px;animation:pop .12s ease}
+.view-menu .vm-head{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);padding:6px 10px 4px}
+.vm-opt{display:grid;grid-template-columns:18px 1fr 16px;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:8px;color:var(--ink);cursor:pointer;background:none;border:0}
+.vm-opt:hover,.vm-opt:focus{background:var(--gray-soft);outline:none} .vm-opt.on{background:var(--accent-soft)} .vm-opt.on .vp-ico{color:var(--accent-ink)}
+.vm-txt{display:flex;flex-direction:column;line-height:1.2} .vm-txt b{font-size:13px;font-weight:600} .vm-txt span{font-size:11.5px;color:var(--ink3);margin-top:1px}
+.vm-check{font-size:13px;font-weight:700;color:var(--accent-ink);text-align:right}
 /* email settings */
 .es-master{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;margin:6px 0 12px}
 .es-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink)}

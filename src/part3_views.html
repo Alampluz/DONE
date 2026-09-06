@@ -688,14 +688,53 @@ function filterBarHTML(pid){
 }
 /* The board's view switcher - one dropdown rather than five tabs, so the topbar
    stays short as views are added. Order is the order people reach for them. */
-const BOARD_VIEWS = [['table','Table'],['board','Board'],['calendar','Calendar'],['report','Report'],['workload','Workload']];
+const VIEW_ICON = {
+  table:    '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></svg>',
+  board:    '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="9.5" y="4" width="5" height="11" rx="1.5"/><rect x="16" y="4" width="5" height="7" rx="1.5"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  report:   '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  workload: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 20a5 5 0 0 1 5.5-5"/></svg>',
+};
+const BOARD_VIEWS = [
+  ['table','Table','Rows and columns, grouped'],
+  ['board','Board','Kanban cards by status'],
+  ['calendar','Calendar','Tasks on their due dates'],
+  ['report','Report','Numbers, charts and widgets'],
+  ['workload','Workload','Who holds how much'],
+];
+/* The last view chosen for a board is remembered in localStorage, so a CS agent who
+   lives in Table and a manager who lives in Report each land where they left off. */
+const viewLoad = pid => { try{ const v=localStorage.getItem('workos.view.'+pid); return BOARD_VIEWS.some(x=>x[0]===v)? v : null; }catch(e){ return null; } };
+const viewSave = (pid,k) => { try{ localStorage.setItem('workos.view.'+pid, k); }catch(e){} };
+function setBoardView(pid, k){ boardMode = k; viewSave(pid, k); S._viewPid = pid; document.getElementById('tvmenu')?.remove(); renderProject(pid); }
 function viewPickerHTML(id){
-  return `<label class="view-pick" title="Change view"><span class="vp-l">View</span>
-    <select onchange="boardMode=this.value;renderProject('${id}')">
-      ${BOARD_VIEWS.map(([k,l])=>`<option value="${k}" ${boardMode===k?'selected':''}>${l}</option>`).join('')}
-    </select><span class="vp-chev">▾</span></label>`;
+  const cur = BOARD_VIEWS.find(v=>v[0]===boardMode) || BOARD_VIEWS[0];
+  return `<button class="view-pick" title="Change view" aria-haspopup="menu" onclick="viewMenu(this,'${id}')">
+    <span class="vp-ico">${VIEW_ICON[cur[0]]}</span><span class="vp-cur">${cur[1]}</span><span class="vp-chev">▾</span></button>`;
+}
+function viewMenu(anchor, pid){
+  if(document.getElementById('tvmenu')){ document.getElementById('tvmenu').remove(); anchor.classList.remove('on'); return; }
+  const m = document.createElement('div'); m.id='tvmenu'; m.className='view-menu'; m.setAttribute('role','menu');
+  m.innerHTML = `<div class="vm-head">View</div>` + BOARD_VIEWS.map(([k,l,d])=>`<button role="menuitemradio" aria-checked="${boardMode===k}" class="vm-opt ${boardMode===k?'on':''}" data-k="${k}">
+      <span class="vp-ico">${VIEW_ICON[k]}</span><span class="vm-txt"><b>${l}</b><span>${d}</span></span><span class="vm-check">${boardMode===k?'✓':''}</span></button>`).join('');
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect(), mb = m.getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(r.left, innerWidth - mb.width - 10)) + 'px';
+  m.style.top  = (r.bottom + mb.height > innerHeight ? Math.max(8, r.top - mb.height - 6) : r.bottom + 6) + 'px';
+  anchor.classList.add('on');
+  const close = ()=>{ m.remove(); anchor.classList.remove('on'); document.removeEventListener('mousedown', off); document.removeEventListener('keydown', key); };
+  m.querySelectorAll('.vm-opt').forEach(o=> o.onclick = e=>{ e.stopPropagation(); close(); setBoardView(pid, o.dataset.k); });
+  const off = e=>{ if(!m.contains(e.target) && e.target!==anchor && !anchor.contains(e.target)) close(); };
+  const key = e=>{
+    if(e.key==='Escape') return close();
+    const opts=[...m.querySelectorAll('.vm-opt')], i=opts.indexOf(document.activeElement);
+    if(e.key==='ArrowDown'){ e.preventDefault(); (opts[i+1]||opts[0]).focus(); }
+    if(e.key==='ArrowUp'){ e.preventDefault(); (opts[i-1]||opts[opts.length-1]).focus(); }
+  };
+  setTimeout(()=>{ document.addEventListener('mousedown', off); document.addEventListener('keydown', key); (m.querySelector('.vm-opt.on')||m.querySelector('.vm-opt')).focus(); }, 0);
 }
 async function renderProject(id){
+  if(S._viewPid!==id){ boardMode = viewLoad(id) || 'table'; S._viewPid = id; }   // land on the view last used here
   const p = projById(id);
   if(!p){ // maybe not in cache (partner) — try fetch, but never loop on it
     const {data} = await db.from('projects').select('*').eq('id',id).single();
