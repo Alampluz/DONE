@@ -230,6 +230,7 @@ tr.tv-arch .tv-name .tv-open{text-decoration:line-through}
 .pf-photo .avatar{width:120px;height:120px;font-size:38px;border-radius:50%}
 .pf-photo .pf-photo-hint{position:absolute;inset:auto 0 0 0;background:rgba(0,0,0,.55);color:#fff;font-size:11px;text-align:center;padding:5px 0;opacity:0;transition:opacity .15s}
 .pf-photo:hover .pf-photo-hint{opacity:1}
+.pf-photo-note{font-size:11px;color:var(--ink3);text-align:center;margin-top:8px;width:120px;line-height:1.35}
 .pf-name{font-size:24px;font-weight:800;letter-spacing:-.2px;line-height:1.2}
 .pf-title{color:var(--ink2);margin-top:2px}
 .pf-badge{display:inline-block;margin-top:10px;padding:3px 10px;border-radius:6px;background:var(--accent-soft);color:var(--accent-ink);font-size:12px;font-weight:700;text-transform:capitalize}
@@ -1343,7 +1344,6 @@ async function updateApprovalBadge(){
    Email and role stay read-only here (role changes go through Admin → Users). Personal info
    is one card (photo, name, position, contact); teams live on their own tab. */
 const PF_FIELDS = [
-  {k:'phone',            label:'Phone',            type:'tel',  ico:'☎'},
   {k:'mobile',           label:'Mobile phone',     type:'tel',  ico:'📱'},
   {k:'location',         label:'Location',         type:'text', ico:'📍'},
 ];
@@ -1388,7 +1388,8 @@ function pfVal(k, type){
 function pfInfoHTML(){
   const u = pfUser, can = pfCanEdit();
   return `<div class="pf-card"><div class="pf-head">
-      <div class="pf-photo" ${can?`onclick="document.getElementById('pf-file').click()" title="Change photo"`:''}>${avatar(u)}${can?'<div class="pf-photo-hint">Change photo</div><input type="file" id="pf-file" accept="image/*" hidden onchange="pfUploadPhoto(this.files[0])">':''}</div>
+      <div><div class="pf-photo" ${can?`onclick="document.getElementById('pf-file').click()" title="Change photo"`:''}>${avatar(u)}${can?'<div class="pf-photo-hint">Change photo</div><input type="file" id="pf-file" accept=".jpg,.jpeg,.png,.gif,image/jpeg,image/png,image/gif" hidden onchange="pfUploadPhoto(this.files[0]); this.value=\'\'">':''}</div>
+        ${can?`<div class="pf-photo-note">${PF_PHOTO_HINT}</div>`:''}</div>
       <div>
         <div class="pf-name">${pfVal('full_name','text')}</div>
         <div class="pf-title">${pfVal('job_title','text')}</div>
@@ -1434,13 +1435,25 @@ async function pfSave(k, v){
   if(S.me && S.me.id===pfUser.id){ S.me[k]=v; renderSidebar(); }
   toast('Saved');
 }
+/* Profile photos: JPG, PNG or GIF, at most PF_PHOTO_MAX bytes. Checked by extension as well
+   as by the browser-reported type, so a renamed .exe or a 20 MB camera original is refused
+   before anything is uploaded. */
+const PF_PHOTO_MAX = 2*1024*1024;
+const PF_PHOTO_TYPES = {jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif'};
+const PF_PHOTO_HINT = 'JPG, PNG or GIF · up to 2 MB';
+function pfPhotoCheck(file){
+  if(!file) return 'No file chosen';
+  const ext = (file.name.split('.').pop()||'').toLowerCase();
+  if(!PF_PHOTO_TYPES[ext] || (file.type && !Object.values(PF_PHOTO_TYPES).includes(file.type))) return 'Photo must be a JPG, PNG or GIF';
+  if(file.size > PF_PHOTO_MAX) return `Photo is ${(file.size/1048576).toFixed(1)} MB — the limit is 2 MB`;
+  return null;
+}
 async function pfUploadPhoto(file){
   if(!file || !pfCanEdit()) return;
-  if(!/^image\//.test(file.type)) return toast('Please choose an image', true);
-  if(file.size > 5*1024*1024) return toast('Photo must be under 5 MB', true);
-  const ext = (file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
+  const bad = pfPhotoCheck(file); if(bad) return toast(bad, true);
+  const ext = file.name.split('.').pop().toLowerCase();
   const path = `avatars/${pfUser.id}/${Date.now()}.${ext}`;
-  const {error} = await db.storage.from('attachments').upload(path, file, {upsert:true, contentType:file.type});
+  const {error} = await db.storage.from('attachments').upload(path, file, {upsert:true, contentType:PF_PHOTO_TYPES[ext]});
   if(error) return toast(error.message, true);
   await pfSave('avatar_url', attUrl(path));
   pfRender();
