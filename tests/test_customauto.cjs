@@ -75,14 +75,14 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  // E. inactive people are not offered
  caModal();
  caActKey(0,'assign_person');
- const pbtn=document.querySelector('#ca-acts .pick'); r.personIsPicker = !!pbtn && /Pick a person/.test(pbtn.textContent);
+ const pbtn=document.querySelector('#ca-acts .pick:not(.sel-pick)'); r.personIsPicker = !!pbtn && /Pick a person/.test(pbtn.textContent);
  pickOpen(pbtn.id);
  r.noInactive = document.querySelectorAll('#pickmenu .pick-opt').length===2 && ![...document.querySelectorAll('#pickmenu .pick-opt')].some(o=>/Gone P/.test(o.textContent));
  // type to filter, Enter picks the highlighted match and writes the config
  const ps=document.querySelector('#pickmenu .pick-search'); ps.value='prim'; ps.dispatchEvent(new window.Event('input'));
  r.personFiltered = [...document.querySelectorAll('#pickmenu .pick-opt')].map(o=>o.textContent.trim()).join('|');
  ps.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Enter'}));
- r.personPicked = _ca.acts[0].cfg.user_id==='u2' && !document.getElementById('pickmenu') && /Prim V/.test(document.querySelector('#ca-acts .pick').textContent);
+ r.personPicked = _ca.acts[0].cfg.user_id==='u2' && !document.getElementById('pickmenu') && /Prim V/.test(document.querySelector('#ca-acts .pick:not(.sel-pick)').textContent);
  // scope is a searchable picker too: search narrows workspaces and boards, choosing switches scope
  pickOpen('ca-scope');
  r.scopeGroups = [...document.querySelectorAll('#pickmenu .pick-group')].map(g=>g.textContent).join(',');
