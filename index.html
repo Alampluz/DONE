@@ -431,6 +431,17 @@ td.tv-name .tv-open{padding-left:20px}
 .modal-back{position:fixed;inset:0;background:rgba(15,16,26,.45);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow-y:auto}
 .modal{background:#fff;border-radius:14px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:pop .16s ease;margin-bottom:5vh}
 .modal.wide{max-width:820px}
+/* Automation builder rows */
+.ca-sec{margin-top:16px} .ca-sec:first-child{margin-top:0} .ca-sec>label{display:block;margin-bottom:6px}
+.ca-opt{font-weight:400;color:var(--ink3);font-size:12px;margin-left:6px}
+.ca-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px} .ca-row select,.ca-row input{width:auto;min-width:120px;max-width:100%}
+.ca-inline{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--ink2);font-size:13px}
+.ca-act{padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.ca-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);font-size:12px;font-weight:700;flex:none}
+.ca-tools{margin-left:auto;display:inline-flex;gap:2px} .ca-x{color:var(--ink3)} .ca-x:hover{color:var(--red)}
+.ca-sub{display:flex;flex-direction:column;gap:6px;flex:1 1 100%} .ca-sub input{width:100%}
+.ca-hint{font-size:12.5px;color:var(--ink3);padding:6px 2px}
+.ca-preview{margin-top:18px;padding:12px 14px;background:var(--gray-soft);border-radius:10px;font-size:13.5px;color:var(--ink2);line-height:1.5}
 .modal-head{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
 .modal-head h2{font-size:16px;font-weight:700;flex:1}
 .modal-head .x{font-size:18px;color:var(--ink3);padding:4px 8px;border-radius:6px}
@@ -5351,8 +5362,10 @@ async function renderAutomationsTab(B, pinnedWs){
           <td style="width:40px"><label class="sw"><input type="checkbox" ${c.enabled?'checked':''} ${canA?'':'disabled'} onchange="caToggle('${c.id}', this.checked)"><span></span></label></td>
           <td style="font-weight:600">${esc(c.name||'Untitled automation')}</td>
           <td style="width:160px;color:var(--ink3);font-size:12px">${caScopeLabel(c)}</td>
-          <td style="text-align:right;white-space:nowrap;width:140px">${canA? `
+          <td style="text-align:right;white-space:nowrap;width:260px">
+            <button class="btn btn-ghost btn-sm" onclick="caRuns('${c.id}')">Runs</button>${canA? `
             <button class="btn btn-ghost btn-sm" onclick="caModal('${c.id}')">Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick="caDuplicate('${c.id}')">Duplicate</button>
             <button class="btn btn-ghost btn-sm" onclick="caDelete('${c.id}')">Remove</button>`:''}</td>
         </tr>`).join('')}</tbody></table>`
       : `<div class="empty" style="padding:26px">Build your own rule — when something happens on a task, DONE reacts for you.</div>`}
@@ -5376,7 +5389,7 @@ async function renderAutomationsTab(B, pinnedWs){
       ${(runs||[]).length? runs.map(x=>`<tr>
         <td style="white-space:nowrap;color:var(--ink2)">${timeAgo(x.created_at)}</td>
         <td style="font-weight:600">${x.rule_key==='custom'? esc(x.detail?.name||'Custom automation') : esc(ruleLabel(x.rule_key))}</td>
-        <td style="color:var(--ink2)">${x.entity_type==='task'? 'a task':'a ticket'}${x.detail?.notified? ` · ${x.detail.notified} notified`:''}${x.detail?.hours? ` · ${x.detail.hours}h turnaround`:''}</td>
+        <td style="color:var(--ink2)">${x.entity_type==='task'? (x.detail?.task_title? `<a href="#/task/${x.entity_id}">${esc(x.detail.task_title)}</a>`:'a task'):'a ticket'}${x.detail?.notified? ` · ${x.detail.notified} notified`:''}${x.detail?.hours? ` · ${x.detail.hours}h turnaround`:''}${x.rule_key==='custom' && caStepsText(x)? `<div style="font-size:11.5px;color:var(--ink3)">${caStepsText(x)}</div>`:''}</td>
         <td><span class="chip" style="background:${x.status==='ok'?'var(--green-soft);color:var(--green)':'var(--red-soft);color:var(--red)'}">${esc(x.status)}</span></td>
       </tr>`).join('') : '<tr><td colspan="4"><div class="empty" style="padding:22px">Nothing has fired yet.</div></td></tr>'}
     </tbody></table></div>`;
@@ -5548,27 +5561,57 @@ async function renderWorkspaceAutomations(wsId){
   await renderAutomationsTab(C.querySelector('#ws-auto'), wsId);
 }
 /* ---------- Custom automations: build your own When → Then recipe ---------- */
+/* Custom automations — a rule is: one trigger (with an optional transition filter), zero or
+   more "only if" conditions that must all hold, and an ordered list of actions. The database
+   engine (run_custom_task_autos / run_custom_date_sweep, migration 2026-09-07) evaluates them;
+   this is the builder, the list and the run log. Rows keep the legacy action_key/action_config/
+   condition columns filled from the first action so older readers keep working. */
 const CA_TRIGGERS = [
-  {key:'status_changed',   label:'Status changes',          cond:'status'},
-  {key:'priority_changed', label:'Priority changes',        cond:'priority'},
-  {key:'task_assigned',    label:'A task is assigned',      cond:null},
-  {key:'task_created',     label:'A task is created',       cond:null},
-  {key:'moved_to_group',   label:'A task moves to a group', cond:'group'},
-  {key:'field_changed',    label:'A column changes',        cond:'field'},
-  {key:'due_date_arrives', label:'The due date arrives',    cond:null},
+  {key:'status_changed',   label:'Status changes',           tc:'status',   timed:false},
+  {key:'priority_changed', label:'Priority changes',         tc:'priority', timed:false},
+  {key:'task_created',     label:'A task is created',        tc:null,       timed:false},
+  {key:'task_assigned',    label:'A task is assigned',       tc:'person',   timed:false},
+  {key:'task_unassigned',  label:'A task loses its assignee',tc:null,       timed:false},
+  {key:'moved_to_group',   label:'A task moves to a group',  tc:'group',    timed:false},
+  {key:'field_changed',    label:'A column changes',         tc:'field',    timed:false},
+  {key:'due_date_changed', label:'The due date is set or changed', tc:null, timed:false},
+  {key:'due_date_arrives', label:'The due date arrives',     tc:null,       timed:true},
+  {key:'due_date_passed',  label:'The due date has passed',  tc:'days',     timed:true},
 ];
 const CA_ACTIONS = [
-  {key:'notify_person',   label:'Notify a person',            cfg:'person'},
-  {key:'notify_assignee', label:'Notify the assignee',        cfg:null},
-  {key:'notify_creator',  label:'Notify whoever created it',  cfg:null},
-  {key:'notify_team',     label:'Notify the whole workspace', cfg:null},
-  {key:'set_status',      label:'Set status',                 cfg:'status'},
-  {key:'set_priority',    label:'Set priority',               cfg:'priority'},
-  {key:'assign_person',   label:'Assign it to someone',       cfg:'person'},
-  {key:'move_to_group',   label:'Move it to a group',         cfg:'group'},
-  {key:'set_field',       label:'Set a column value',         cfg:'field'},
-  {key:'set_due_in_days', label:'Set the due date',           cfg:'days'},
-  {key:'archive_task',    label:'Archive the task',           cfg:null},
+  {key:'notify_person',   label:'Notify a person',              cfg:'person', group:'Notify'},
+  {key:'notify_assignee', label:'Notify the assignee',          cfg:null,     group:'Notify'},
+  {key:'notify_creator',  label:'Notify whoever created it',    cfg:null,     group:'Notify'},
+  {key:'notify_owners',   label:'Notify the workspace owners',  cfg:null,     group:'Notify'},
+  {key:'notify_team',     label:'Notify the whole workspace',   cfg:null,     group:'Notify'},
+  {key:'add_comment',     label:'Add a comment',                cfg:'text',   group:'Notify'},
+  {key:'set_status',      label:'Set status',                   cfg:'status', group:'Change the task'},
+  {key:'set_priority',    label:'Set priority',                 cfg:'priority',group:'Change the task'},
+  {key:'assign_person',   label:'Assign it to someone',         cfg:'person', group:'Change the task'},
+  {key:'assign_creator',  label:'Assign it to whoever created it', cfg:null,  group:'Change the task'},
+  {key:'unassign',        label:'Clear the assignee',           cfg:null,     group:'Change the task'},
+  {key:'move_to_group',   label:'Move it to a group',           cfg:'group',  group:'Change the task'},
+  {key:'set_field',       label:'Set a column value',           cfg:'field',  group:'Change the task'},
+  {key:'clear_field',     label:'Clear a column',               cfg:'fieldonly', group:'Change the task'},
+  {key:'set_due_in_days', label:'Set the due date',             cfg:'days',   group:'Dates'},
+  {key:'push_due',        label:'Push the due date',            cfg:'pushdays',group:'Dates'},
+  {key:'clear_due',       label:'Clear the due date',           cfg:null,     group:'Dates'},
+  {key:'create_task',     label:'Create a follow-up task',      cfg:'newtask',group:'Create'},
+  {key:'archive_task',    label:'Archive the task',             cfg:null,     group:'Create'},
+];
+const CA_COND_KEYS = [
+  {key:'status',   label:'Status'},
+  {key:'priority', label:'Priority'},
+  {key:'assignee', label:'Assignee'},
+  {key:'group',    label:'Group'},
+  {key:'due',      label:'Due date'},
+  {key:'field',    label:'A column'},
+];
+const CA_OPS = [
+  {key:'is',        label:'is'},
+  {key:'is_not',    label:'is not'},
+  {key:'empty',     label:'is empty'},
+  {key:'not_empty', label:'is set'},
 ];
 function caScopeLabel(c){
   if(c.project_id){ const p=(S.projects||[]).find(x=>x.id===c.project_id); return p? esc(p.name):'One board'; }
@@ -5579,50 +5622,99 @@ function caGroupName(pid, gid){
   const g = ((window._caGroups||{})[pid]||[]).find(x=>x.id===gid);
   return g? g.name : 'a group';
 }
+function caFieldName(pid, fid){
+  const f = ((window._caFields||{})[pid]||[]).find(x=>x.id===fid); return f? f.label : 'a column';
+}
+/* Turn a draft into the sentence shown in the list and used as the rule's name. */
 function caSentence(d){
   const sL = k => (STATUSES.find(s=>s.k===k)||{}).label||k;
   const pL = k => (PRIORITIES.find(p=>p.k===k)||{}).label||k;
-  const uN = id => { const u=S.profiles.find(p=>p.id===id); return u? u.full_name : 'someone'; };
+  const uN = id => { const u=(S.profiles||[]).find(p=>p.id===id); return u? u.full_name : 'someone'; };
   const pid = d.scope.startsWith('p:')? d.scope.slice(2) : null;
+  const tc = d.tc||{};
   let when='';
   switch(d.trigger){
-    case 'status_changed':   when = 'When status changes' + (d.cond.to? ` to ${sL(d.cond.to)}`:''); break;
-    case 'priority_changed': when = 'When priority changes' + (d.cond.to? ` to ${pL(d.cond.to)}`:''); break;
-    case 'task_assigned':    when = 'When a task is assigned'; break;
+    case 'status_changed':   when = 'When status changes' + (tc.from? ` from ${sL(tc.from)}`:'') + (tc.to? ` to ${sL(tc.to)}`:''); break;
+    case 'priority_changed': when = 'When priority changes' + (tc.from? ` from ${pL(tc.from)}`:'') + (tc.to? ` to ${pL(tc.to)}`:''); break;
+    case 'task_assigned':    when = 'When a task is assigned' + (tc.user_id? ` to ${uN(tc.user_id)}`:''); break;
+    case 'task_unassigned':  when = 'When a task loses its assignee'; break;
     case 'task_created':     when = 'When a task is created'; break;
-    case 'moved_to_group':   when = 'When a task moves' + (d.cond.group_id? ` to ${caGroupName(pid,d.cond.group_id)}`:' to a new group'); break;
-    case 'field_changed':    when = 'When ' + (d.cond.field_id? caFieldName(pid,d.cond.field_id):'a column') + (d.cond.to? ` becomes ${d.cond.to}`:' changes'); break;
+    case 'moved_to_group':   when = 'When a task moves' + (tc.group_id? ` to ${caGroupName(pid,tc.group_id)}`:' to a new group'); break;
+    case 'field_changed':    when = 'When ' + (tc.field_id? caFieldName(pid,tc.field_id):'a column') + (tc.to? ` becomes ${tc.to}`:' changes'); break;
+    case 'due_date_changed': when = 'When the due date is set'; break;
     case 'due_date_arrives': when = 'When the due date arrives'; break;
+    case 'due_date_passed':  { const n=Math.max(1,parseInt(tc.days??1,10)||1); when = `When the due date is ${n} day${n===1?'':'s'} past`; break; }
   }
-  let then='';
-  switch(d.action){
-    case 'notify_person':   then = `notify ${uN(d.cfg.user_id)}`; break;
-    case 'notify_assignee': then = 'notify the assignee'; break;
-    case 'notify_creator':  then = 'notify whoever created it'; break;
-    case 'notify_team':     then = 'notify the whole workspace'; break;
-    case 'set_status':      then = `set status to ${sL(d.cfg.status)}`; break;
-    case 'set_priority':    then = `set priority to ${pL(d.cfg.priority)}`; break;
-    case 'assign_person':   then = `assign it to ${uN(d.cfg.user_id)}`; break;
-    case 'move_to_group':   then = `move it to ${caGroupName(pid,d.cfg.group_id)}`; break;
-    case 'set_field':       then = `set ${d.cfg.field_id? caFieldName(pid,d.cfg.field_id):'a column'}${d.cfg.value? ` to ${d.cfg.value}`:''}`; break;
-    case 'set_due_in_days': { const n=parseInt(d.cfg.days??1,10); then = `set the due date ${n} day${n===1?'':'s'} from now`; break; }
-    case 'archive_task':    then = 'archive it'; break;
-  }
-  return `${when}, ${then}`;
+  const condTxt = (d.conds||[]).map(c=>{
+    const what = c.k==='field'? (c.field_id? caFieldName(pid,c.field_id):'a column') : (CA_COND_KEYS.find(x=>x.key===c.k)||{}).label||c.k;
+    const opL = (CA_OPS.find(o=>o.key===c.op)||{}).label||'is';
+    let val='';
+    if(c.op==='is'||c.op==='is_not'){
+      val = c.k==='status'? sL(c.v) : c.k==='priority'? pL(c.v) : c.k==='assignee'? uN(c.v) : c.k==='group'? caGroupName(pid,c.v) : (c.v||'…');
+    }
+    return `${what.toLowerCase()} ${opL}${val? ' '+val:''}`;
+  });
+  const acts = (d.acts||[]).map(a=>{
+    const cfg=a.cfg||{};
+    switch(a.key){
+      case 'notify_person':   return `notify ${uN(cfg.user_id)}`;
+      case 'notify_assignee': return 'notify the assignee';
+      case 'notify_creator':  return 'notify whoever created it';
+      case 'notify_owners':   return 'notify the workspace owners';
+      case 'notify_team':     return 'notify the whole workspace';
+      case 'add_comment':     return 'add a comment';
+      case 'set_status':      return `set status to ${sL(cfg.status||'todo')}`;
+      case 'set_priority':    return `set priority to ${pL(cfg.priority||'urgent')}`;
+      case 'assign_person':   return `assign it to ${uN(cfg.user_id)}`;
+      case 'assign_creator':  return 'assign it to whoever created it';
+      case 'unassign':        return 'clear the assignee';
+      case 'move_to_group':   return `move it to ${caGroupName(pid,cfg.group_id)}`;
+      case 'set_field':       return `set ${cfg.field_id? caFieldName(pid,cfg.field_id):'a column'}${cfg.value? ` to ${cfg.value}`:''}`;
+      case 'clear_field':     return `clear ${cfg.field_id? caFieldName(pid,cfg.field_id):'a column'}`;
+      case 'set_due_in_days': { const n=parseInt(cfg.days??1,10); return `set the due date ${n} day${n===1?'':'s'} from now`; }
+      case 'push_due':        { const n=parseInt(cfg.days??1,10); return `push the due date ${Math.abs(n)} day${Math.abs(n)===1?'':'s'} ${n<0?'earlier':'later'}`; }
+      case 'clear_due':       return 'clear the due date';
+      case 'create_task':     return 'create a follow-up task';
+      case 'archive_task':    return 'archive it';
+      default: return a.key;
+    }
+  });
+  const thenTxt = acts.length<=1? (acts[0]||'do nothing') : acts.slice(0,-1).join(', ') + ' and ' + acts[acts.length-1];
+  return `${when}${condTxt.length? ', if '+condTxt.join(' and '):''}, ${thenTxt}`;
 }
+/* Editable draft: {id, trigger, tc, conds:[{k,op,v,field_id}], acts:[{key,cfg}], scope} */
 let _ca = null;
+function caDraft(rec, defScope){
+  if(!rec) return {id:null, trigger:'status_changed', tc:{}, conds:[], acts:[{key:'notify_assignee', cfg:{}}], scope:defScope||''};
+  const tc = (rec.trigger_config && Object.keys(rec.trigger_config).length)? {...rec.trigger_config} : {...(rec.condition||{})};
+  const conds = Array.isArray(rec.conditions)? rec.conditions.map(c=>{
+    const k = String(c.k||''); const isField = k.startsWith('field:');
+    return {k: isField? 'field' : k, field_id: isField? k.slice(6) : undefined, op: c.op||'is', v: Array.isArray(c.v)? c.v[0] : (c.v??'')};
+  }) : [];
+  const acts = (Array.isArray(rec.actions) && rec.actions.length)? rec.actions.map(a=>({key:a.key, cfg:{...(a.cfg||{})}}))
+             : [{key:rec.action_key, cfg:{...(rec.action_config||{})}}];
+  return {id:rec.id, trigger:rec.trigger_key, tc, conds, acts,
+          scope: rec.project_id? 'p:'+rec.project_id : (rec.workspace_id? 'w:'+rec.workspace_id : '')};
+}
 function caModal(id, defScope){
   const rec = id? (S._customAutos||[]).find(x=>x.id===id) : null;
-  _ca = rec? {id:rec.id, trigger:rec.trigger_key, cond:{...(rec.condition||{})}, action:rec.action_key,
-              cfg:{...(rec.action_config||{})},
-              scope: rec.project_id? 'p:'+rec.project_id : (rec.workspace_id? 'w:'+rec.workspace_id : '')}
-           : {id:null, trigger:'status_changed', cond:{}, action:'notify_assignee', cfg:{}, scope:defScope||''};
-  modal(`<div class="modal-head"><h2>${id? 'Edit automation':'Add automation'}</h2><button class="x" onclick="closeModals()">✕</button></div>
+  _ca = caDraft(rec, defScope);
+  const m = modal(`<div class="modal-head"><h2>${id? 'Edit automation':'Add automation'}</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body" id="ca-body"></div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
       <button class="btn btn-primary" id="ca-save" onclick="caSave()">${id? 'Save changes':'Add automation'}</button></div>`);
+  m.querySelector('.modal').classList.add('wide');
   const pid = _ca.scope.startsWith('p:')? _ca.scope.slice(2) : null;
   if(pid) caLoadGroups(pid); else caDraw();
+}
+function caDuplicate(id){
+  const rec = (S._customAutos||[]).find(x=>x.id===id); if(!rec) return;
+  const copy = {...rec, id:null, name:(rec.name||'Automation')+' (copy)'};
+  caModal(null, '');
+  _ca = caDraft(copy, ''); _ca.id = null;
+  const pid = _ca.scope.startsWith('p:')? _ca.scope.slice(2) : null;
+  if(pid) caLoadGroups(pid); else caDraw();
+  toast('Copied — change what you need and add it');
 }
 async function caLoadGroups(pid){
   window._caGroups = window._caGroups||{}; window._caFields = window._caFields||{};
@@ -5630,111 +5722,168 @@ async function caLoadGroups(pid){
   if(!window._caGroups[pid]) jobs.push(db.from('project_groups').select('id,name').eq('project_id',pid)
     .then(({data})=>{window._caGroups[pid]=data||[];}));
   if(!window._caFields[pid]) jobs.push(db.from('project_fields').select('id,label,ftype,options').eq('project_id',pid)
-    .then(({data})=>{window._caFields[pid]=(data||[]).filter(f=>f.ftype==='select');}));
+    .then(({data})=>{window._caFields[pid]=(data||[]).filter(f=>!['formula','mirror'].includes(f.ftype));}));
   if(jobs.length) await Promise.all(jobs);
   caDraw();
 }
-function caFieldName(pid, fid){
-  const f = ((window._caFields||{})[pid]||[]).find(x=>x.id===fid); return f? f.label : 'a column';
+/* --- builder mutations (called from the drawn controls) --- */
+function caSetTrigger(k){ _ca.trigger=k; _ca.tc={}; caDraw(); }
+function caTc(k, v){ if(v==='' || v==null) delete _ca.tc[k]; else _ca.tc[k]=v; caDraw(); }
+function caCondAdd(){ _ca.conds.push({k:'status', op:'is', v:''}); caDraw(); }
+function caCondDel(i){ _ca.conds.splice(i,1); caDraw(); }
+function caCondSet(i, k, v){ const c=_ca.conds[i]; if(!c) return; c[k]=v; if(k==='k'){ c.v=''; delete c.field_id; } if(k==='field_id') c.v=''; caDraw(); }
+function caActAdd(){ _ca.acts.push({key:'notify_assignee', cfg:{}}); caDraw(); }
+function caActDel(i){ if(_ca.acts.length<=1) return toast('A rule needs at least one action', true); _ca.acts.splice(i,1); caDraw(); }
+function caActMove(i, d){ const j=i+d; if(j<0||j>=_ca.acts.length) return; const t=_ca.acts[i]; _ca.acts[i]=_ca.acts[j]; _ca.acts[j]=t; caDraw(); }
+function caActKey(i, k){ _ca.acts[i]={key:k, cfg:{}}; caDraw(); }
+function caActCfg(i, k, v){ const a=_ca.acts[i]; if(!a) return; a.cfg[k]=v; if(k==='field_id') a.cfg.value=''; caDraw(); }
+function caScope(v){
+  _ca.scope=v;
+  delete _ca.tc.group_id; delete _ca.tc.field_id; delete _ca.tc.to;
+  _ca.conds = _ca.conds.filter(c=> c.k!=='group' && c.k!=='field');
+  _ca.acts.forEach(a=>{ delete a.cfg.group_id; delete a.cfg.field_id; });
+  const p = v.startsWith('p:')? v.slice(2) : null;
+  if(p) caLoadGroups(p); else caDraw();
 }
 function caDraw(){
   const B = document.getElementById('ca-body'); if(!B || !_ca) return;
   const trg = CA_TRIGGERS.find(t=>t.key===_ca.trigger)||CA_TRIGGERS[0];
-  const act = CA_ACTIONS.find(a=>a.key===_ca.action)||CA_ACTIONS[0];
   const pid = _ca.scope.startsWith('p:')? _ca.scope.slice(2) : null;
   const groups = pid? ((window._caGroups||{})[pid]||[]) : [];
   const people = (S.profiles||[]).filter(p=>p.active);
   const fields = pid? ((window._caFields||{})[pid]||[]) : [];
-  const groupCtl = (val, id, anyLabel)=> pid
-    ? `<select id="${id}" onchange="_ca.${id==='ca-cond'?'cond.group_id':'cfg.group_id'}=this.value;caDraw()">
-        ${anyLabel? `<option value="">${anyLabel}</option>`:''}
-        ${groups.map(g=>`<option value="${g.id}" ${val===g.id?'selected':''}>${esc(g.name)}</option>`).join('')}</select>`
-    : `<div style="font-size:12.5px;color:var(--ink3);padding:8px 2px">Choose a board below first — groups belong to a board.</div>`;
-  // A board's own status-type columns (select fields) — for "A column changes" / "Set a column value"
-  const fieldCtl = (where, anyValLabel)=>{  // where: 'cond' | 'cfg'
-    if(!pid) return `<div style="font-size:12.5px;color:var(--ink3);padding:8px 2px">Choose a board below first — columns belong to a board.</div>`;
-    if(!fields.length) return `<div style="font-size:12.5px;color:var(--ink3);padding:8px 2px">This board has no status-type (dropdown) columns yet.</div>`;
-    const st = _ca[where]; const fid = st.field_id;
-    const valKey = where==='cond'? 'to' : 'value';
-    const opts = fid? ((fields.find(f=>f.id===fid)||{}).options||[]) : [];
-    const idBase = where==='cond'? 'ca-cond':'ca-cfg';
-    return `<select id="${idBase}" onchange="_ca.${where}.field_id=this.value;_ca.${where}.${valKey}='';caDraw()">
-        <option value="">Pick a column…</option>
-        ${fields.map(f=>`<option value="${f.id}" ${fid===f.id?'selected':''}>${esc(f.label)}</option>`).join('')}</select>
-      ${fid? `<select id="${idBase}-v" style="margin-top:8px" onchange="_ca.${where}.${valKey}=this.value;caDraw()">
-        ${anyValLabel? `<option value="">${anyValLabel}</option>`:'<option value="">Pick a value…</option>'}
-        ${opts.map(o=>`<option value="${esc(o)}" ${st[valKey]===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`:''}`;
+  const selFields = fields.filter(f=>f.ftype==='select');
+  const needBoard = (what)=>`<div class="ca-hint">Choose a board under “Where it applies” first — ${what} belong to a board.</div>`;
+  const opt = (v, cur, label)=>`<option value="${esc(String(v))}" ${String(cur??'')===String(v)?'selected':''}>${esc(label)}</option>`;
+  const personSel = (cur, on, blank)=>`<select onchange="${on}"><option value="">${blank||'Pick a person…'}</option>${people.map(u=>opt(u.id,cur,u.full_name)).join('')}</select>`;
+  const groupSel  = (cur, on, blank)=> pid? `<select onchange="${on}">${blank? `<option value="">${blank}</option>`:'<option value="">Pick a group…</option>'}${groups.map(g=>opt(g.id,cur,g.name)).join('')}</select>` : needBoard('groups');
+  const fieldSel  = (cur, on, list)=> pid? (list.length? `<select onchange="${on}"><option value="">Pick a column…</option>${list.map(f=>opt(f.id,cur,f.label)).join('')}</select>` : '<div class="ca-hint">This board has no suitable columns yet.</div>') : needBoard('columns');
+  const fieldValSel = (fid, cur, on, blank)=>{ const f=fields.find(x=>x.id===fid); if(!f) return '';
+    if(f.ftype==='select') return `<select onchange="${on}">${blank? `<option value="">${blank}</option>`:'<option value="">Pick a value…</option>'}${(f.options||[]).map(o=>opt(o,cur,o)).join('')}</select>`;
+    return `<input value="${esc(cur||'')}" placeholder="value" onchange="${on}">`; };
+
+  // --- When ---
+  let tcCtl='';
+  if(trg.tc==='status') tcCtl = `<span class="ca-inline">from <select onchange="caTc('from',this.value)"><option value="">any status</option>${STATUSES.map(s=>opt(s.k,_ca.tc.from,s.label)).join('')}</select>
+      to <select onchange="caTc('to',this.value)"><option value="">any status</option>${STATUSES.map(s=>opt(s.k,_ca.tc.to,s.label)).join('')}</select></span>`;
+  if(trg.tc==='priority') tcCtl = `<span class="ca-inline">from <select onchange="caTc('from',this.value)"><option value="">any priority</option>${PRIORITIES.map(p=>opt(p.k,_ca.tc.from,p.label)).join('')}</select>
+      to <select onchange="caTc('to',this.value)"><option value="">any priority</option>${PRIORITIES.map(p=>opt(p.k,_ca.tc.to,p.label)).join('')}</select></span>`;
+  if(trg.tc==='person') tcCtl = `<span class="ca-inline">to ${personSel(_ca.tc.user_id, "caTc('user_id',this.value)", 'anyone')}</span>`;
+  if(trg.tc==='group')  tcCtl = `<span class="ca-inline">to ${groupSel(_ca.tc.group_id, "caTc('group_id',this.value)", 'any group')}</span>`;
+  if(trg.tc==='field')  tcCtl = `<span class="ca-inline">${fieldSel(_ca.tc.field_id, "caTc('field_id',this.value);caTc('to','')", selFields)}
+      ${_ca.tc.field_id? ' becomes '+fieldValSel(_ca.tc.field_id, _ca.tc.to, "caTc('to',this.value)", 'any value'):''}</span>`;
+  if(trg.tc==='days')   tcCtl = `<span class="ca-inline">by <input type="number" min="1" max="365" style="width:80px" value="${Math.max(1,parseInt(_ca.tc.days??1,10)||1)}" onchange="caTc('days',this.value)"> day(s)</span>`;
+
+  // --- Only if ---
+  const condRow = (c,i)=>{
+    const isField = c.k==='field';
+    const valueless = c.op==='empty'||c.op==='not_empty';
+    let valCtl='';
+    if(!valueless){
+      if(c.k==='status')   valCtl = `<select onchange="caCondSet(${i},'v',this.value)"><option value="">pick…</option>${STATUSES.map(s=>opt(s.k,c.v,s.label)).join('')}</select>`;
+      if(c.k==='priority') valCtl = `<select onchange="caCondSet(${i},'v',this.value)"><option value="">pick…</option>${PRIORITIES.map(p=>opt(p.k,c.v,p.label)).join('')}</select>`;
+      if(c.k==='assignee') valCtl = personSel(c.v, `caCondSet(${i},'v',this.value)`);
+      if(c.k==='group')    valCtl = groupSel(c.v, `caCondSet(${i},'v',this.value)`);
+      if(c.k==='due')      valCtl = `<input type="date" value="${esc(c.v||'')}" onchange="caCondSet(${i},'v',this.value)">`;
+      if(isField)          valCtl = c.field_id? fieldValSel(c.field_id, c.v, `caCondSet(${i},'v',this.value)`) : '';
+    }
+    return `<div class="ca-row" data-cond="${i}">
+      <select onchange="caCondSet(${i},'k',this.value)">${CA_COND_KEYS.map(k=>opt(k.key,c.k,k.label)).join('')}</select>
+      ${isField? fieldSel(c.field_id, `caCondSet(${i},'field_id',this.value)`, fields) : ''}
+      <select onchange="caCondSet(${i},'op',this.value)">${CA_OPS.map(o=>opt(o.key,c.op,o.label)).join('')}</select>
+      ${valCtl}
+      <button class="btn btn-ghost btn-sm ca-x" title="Remove condition" onclick="caCondDel(${i})">✕</button></div>`;
   };
-  let condCtl='';
-  if(trg.cond==='status') condCtl = `<select id="ca-cond" onchange="_ca.cond.to=this.value;caDraw()">
-      <option value="">to any status</option>
-      ${STATUSES.map(s=>`<option value="${s.k}" ${_ca.cond.to===s.k?'selected':''}>to ${s.label}</option>`).join('')}</select>`;
-  if(trg.cond==='priority') condCtl = `<select id="ca-cond" onchange="_ca.cond.to=this.value;caDraw()">
-      <option value="">to any priority</option>
-      ${PRIORITIES.map(p=>`<option value="${p.k}" ${_ca.cond.to===p.k?'selected':''}>to ${p.label}</option>`).join('')}</select>`;
-  if(trg.cond==='group') condCtl = groupCtl(_ca.cond.group_id, 'ca-cond', 'to any group');
-  if(trg.cond==='field') condCtl = fieldCtl('cond', 'to any value');
-  let cfgCtl='';
-  if(act.cfg==='person') cfgCtl = `<select id="ca-cfg" onchange="_ca.cfg.user_id=this.value;caDraw()">
-      <option value="">Pick a person…</option>
-      ${people.map(u=>`<option value="${u.id}" ${_ca.cfg.user_id===u.id?'selected':''}>${esc(u.full_name)}</option>`).join('')}</select>`;
-  if(act.cfg==='status') cfgCtl = `<select id="ca-cfg" onchange="_ca.cfg.status=this.value;caDraw()">
-      ${STATUSES.map(s=>`<option value="${s.k}" ${(_ca.cfg.status||'todo')===s.k?'selected':''}>${s.label}</option>`).join('')}</select>`;
-  if(act.cfg==='priority') cfgCtl = `<select id="ca-cfg" onchange="_ca.cfg.priority=this.value;caDraw()">
-      ${PRIORITIES.map(p=>`<option value="${p.k}" ${(_ca.cfg.priority||'urgent')===p.k?'selected':''}>${p.label}</option>`).join('')}</select>`;
-  if(act.cfg==='group') cfgCtl = groupCtl(_ca.cfg.group_id, 'ca-cfg', null);
-  if(act.cfg==='field') cfgCtl = fieldCtl('cfg', null);
-  if(act.cfg==='days') cfgCtl = `<div style="display:flex;align-items:center;gap:8px">
-      <input id="ca-cfg" type="number" min="0" max="365" style="width:90px" value="${parseInt(_ca.cfg.days??1,10)}" onchange="_ca.cfg.days=this.value">
-      <span style="color:var(--ink2);font-size:13px">days from the day it fires</span></div>`;
+
+  // --- Then ---
+  const actRow = (a,i)=>{
+    const act = CA_ACTIONS.find(x=>x.key===a.key)||CA_ACTIONS[0]; const cfg=a.cfg;
+    let cfgCtl='';
+    if(act.cfg==='person')   cfgCtl = personSel(cfg.user_id, `caActCfg(${i},'user_id',this.value)`);
+    if(act.cfg==='status')   cfgCtl = `<select onchange="caActCfg(${i},'status',this.value)">${STATUSES.map(s=>opt(s.k,cfg.status||'todo',s.label)).join('')}</select>`;
+    if(act.cfg==='priority') cfgCtl = `<select onchange="caActCfg(${i},'priority',this.value)">${PRIORITIES.map(p=>opt(p.k,cfg.priority||'urgent',p.label)).join('')}</select>`;
+    if(act.cfg==='group')    cfgCtl = groupSel(cfg.group_id, `caActCfg(${i},'group_id',this.value)`);
+    if(act.cfg==='field')    cfgCtl = fieldSel(cfg.field_id, `caActCfg(${i},'field_id',this.value)`, selFields) + (cfg.field_id? ' to '+fieldValSel(cfg.field_id, cfg.value, `caActCfg(${i},'value',this.value)`):'');
+    if(act.cfg==='fieldonly')cfgCtl = fieldSel(cfg.field_id, `caActCfg(${i},'field_id',this.value)`, fields);
+    if(act.cfg==='text')     cfgCtl = `<input style="min-width:260px" value="${esc(cfg.text||'')}" placeholder="Comment text — {title} and {status} are filled in" onchange="caActCfg(${i},'text',this.value)">`;
+    if(act.cfg==='days')     cfgCtl = `<span class="ca-inline"><input type="number" min="0" max="365" style="width:80px" value="${parseInt(cfg.days??1,10)}" onchange="caActCfg(${i},'days',this.value)"> days from the day it fires</span>`;
+    if(act.cfg==='pushdays') cfgCtl = `<span class="ca-inline">by <input type="number" min="-365" max="365" style="width:80px" value="${parseInt(cfg.days??1,10)}" onchange="caActCfg(${i},'days',this.value)"> days (negative = earlier)</span>`;
+    if(act.cfg==='newtask')  cfgCtl = `<div class="ca-sub">
+        <input value="${esc(cfg.title||'')}" placeholder="Title — {title} is the original task's name (default: Follow-up: {title})" onchange="caActCfg(${i},'title',this.value)">
+        <div class="ca-inline">on <select onchange="caActCfg(${i},'project_id',this.value)"><option value="">the same board</option>${(S.projects||[]).filter(p=>p.status!=='archived').map(p=>opt(p.id,cfg.project_id,p.name)).join('')}</select>
+        assigned to <select onchange="caActCfg(${i},'user_id',this.value);caActCfg(${i},'same_assignee', this.value==='__same'?'true':'false')"><option value="">nobody</option><option value="__same" ${cfg.same_assignee==='true'?'selected':''}>the same person</option>${people.map(u=>opt(u.id,cfg.user_id,u.full_name)).join('')}</select>
+        due in <input type="number" min="0" max="365" style="width:70px" value="${cfg.due_in_days??''}" placeholder="—" onchange="caActCfg(${i},'due_in_days',this.value)"> days</div></div>`;
+    return `<div class="ca-row ca-act" data-act="${i}">
+      <span class="ca-n">${i+1}</span>
+      <select onchange="caActKey(${i},this.value)">${['Notify','Change the task','Dates','Create'].map(g=>`<optgroup label="${g}">${CA_ACTIONS.filter(x=>x.group===g).map(x=>opt(x.key,a.key,x.label)).join('')}</optgroup>`).join('')}</select>
+      ${cfgCtl}
+      <span class="ca-tools"><button class="btn btn-ghost btn-sm" title="Move up" onclick="caActMove(${i},-1)" ${i===0?'disabled':''}>↑</button><button class="btn btn-ghost btn-sm" title="Move down" onclick="caActMove(${i},1)" ${i===_ca.acts.length-1?'disabled':''}>↓</button><button class="btn btn-ghost btn-sm ca-x" title="Remove action" onclick="caActDel(${i})">✕</button></span></div>`;
+  };
+
   B.innerHTML = `
-    <label>When</label>
-    <select onchange="_ca.trigger=this.value;_ca.cond={};caDraw()">
-      ${CA_TRIGGERS.map(t=>`<option value="${t.key}" ${_ca.trigger===t.key?'selected':''}>${t.label}</option>`).join('')}</select>
-    ${condCtl? `<div style="margin-top:8px">${condCtl}</div>`:''}
-    <label style="margin-top:16px">Then</label>
-    <select onchange="_ca.action=this.value;_ca.cfg={};caDraw()">
-      ${CA_ACTIONS.map(a=>`<option value="${a.key}" ${_ca.action===a.key?'selected':''}>${a.label}</option>`).join('')}</select>
-    ${cfgCtl? `<div style="margin-top:8px">${cfgCtl}</div>`:''}
-    <label style="margin-top:16px">Where it applies</label>
-    <select id="ca-scope" onchange="_ca.scope=this.value;delete _ca.cond.group_id;delete _ca.cond.field_id;delete _ca.cfg.group_id;delete _ca.cfg.field_id;const p=this.value.startsWith('p:')?this.value.slice(2):null;p?caLoadGroups(p):caDraw()">
+    <div class="ca-sec"><label>When</label>
+      <div class="ca-row"><select onchange="caSetTrigger(this.value)">${CA_TRIGGERS.map(t=>opt(t.key,_ca.trigger,t.label)).join('')}</select>${tcCtl}</div></div>
+    <div class="ca-sec"><label>Only if <span class="ca-opt">optional — every line must be true</span></label>
+      <div id="ca-conds">${_ca.conds.map(condRow).join('')}</div>
+      <button class="btn btn-ghost btn-sm" onclick="caCondAdd()">＋ Add a condition</button></div>
+    <div class="ca-sec"><label>Then <span class="ca-opt">in this order</span></label>
+      <div id="ca-acts">${_ca.acts.map(actRow).join('')}</div>
+      <button class="btn btn-ghost btn-sm" onclick="caActAdd()">＋ Add another action</button></div>
+    <div class="ca-sec"><label>Where it applies</label>
+    <select id="ca-scope" onchange="caScope(this.value)">
       <option value="">Everywhere</option>
       <optgroup label="Workspaces">
         ${(S.workspaces||[]).map(w=>`<option value="w:${w.id}" ${_ca.scope==='w:'+w.id?'selected':''}>${esc(w.name)}</option>`).join('')}</optgroup>
       <optgroup label="Boards">
         ${(S.projects||[]).filter(p=>p.status!=='archived').map(p=>{const w=wsById(p.workspace_id);
           return `<option value="p:${p.id}" ${_ca.scope==='p:'+p.id?'selected':''}>${esc(p.name)}${w?` — ${esc(w.name)}`:''}</option>`;}).join('')}</optgroup>
-    </select>
-    <div style="margin-top:18px;padding:12px 14px;background:var(--gray-soft);border-radius:10px;font-size:13.5px;color:var(--ink2)" id="ca-preview">
-      ${esc(caSentence(_ca))}<span style="color:var(--ink3)"> · ${_ca.trigger==='due_date_arrives'? 'checked every 15 minutes, fires once per task':'fires the moment it happens'}</span>
-    </div>`;
+    </select></div>
+    <div class="ca-preview" id="ca-preview">${esc(caSentence(_ca))}<span style="color:var(--ink3)"> · ${trg.timed? 'checked every 15 minutes, fires once per task':'fires the moment it happens'}</span></div>`;
+}
+/* Validate the draft and turn it into the row the engine expects. Returns {error} or {payload}. */
+function caPayload(d){
+  const pid = d.scope.startsWith('p:')? d.scope.slice(2) : null;
+  const wid = d.scope.startsWith('w:')? d.scope.slice(2) : null;
+  const trg = CA_TRIGGERS.find(t=>t.key===d.trigger)||{};
+  const tc = {};
+  if(trg.tc==='status' || trg.tc==='priority'){ if(d.tc.from) tc.from=d.tc.from; if(d.tc.to) tc.to=d.tc.to; if(tc.from && tc.from===tc.to) return {error:'“From” and “to” cannot be the same value'}; }
+  if(trg.tc==='person' && d.tc.user_id) tc.user_id = d.tc.user_id;
+  if(trg.tc==='group'){ if(!pid) return {error:'Choose a board — groups belong to a board'}; if(d.tc.group_id) tc.group_id=d.tc.group_id; }
+  if(trg.tc==='field'){ if(!pid) return {error:'Choose a board — columns belong to a board'}; if(!d.tc.field_id) return {error:'Pick which column to watch'}; tc.field_id=d.tc.field_id; if(d.tc.to) tc.to=d.tc.to; }
+  if(trg.tc==='days') tc.days = Math.max(1, parseInt(d.tc.days??1,10)||1);
+  const conditions = [];
+  for(const c of d.conds){
+    const valueless = c.op==='empty'||c.op==='not_empty';
+    if(c.k==='field'){ if(!pid) return {error:'Conditions on a column need a board — pick one under “Where it applies”'}; if(!c.field_id) return {error:'Pick which column the condition looks at'}; }
+    if(c.k==='group' && !pid) return {error:'Conditions on a group need a board — pick one under “Where it applies”'};
+    if(!valueless && !c.v) return {error:'Every “only if” line needs a value, or use “is empty” / “is set”'};
+    const row = {k: c.k==='field'? 'field:'+c.field_id : c.k, op:c.op};
+    if(!valueless) row.v = c.v;
+    conditions.push(row);
+  }
+  const actions = [];
+  for(const a of d.acts){
+    const act = CA_ACTIONS.find(x=>x.key===a.key); if(!act) return {error:'Unknown action'};
+    const cfg = {}; const c=a.cfg||{};
+    if(act.cfg==='person'){ if(!c.user_id) return {error:'Pick who to '+(a.key==='assign_person'?'assign':'notify')}; cfg.user_id=c.user_id; }
+    if(act.cfg==='status')   cfg.status = c.status||'todo';
+    if(act.cfg==='priority') cfg.priority = c.priority||'urgent';
+    if(act.cfg==='group'){ if(!pid) return {error:'Choose a board — groups belong to a board'}; if(!c.group_id) return {error:'Pick the group to move to'}; cfg.group_id=c.group_id; }
+    if(act.cfg==='field'){ if(!pid) return {error:'Choose a board — columns belong to a board'}; if(!c.field_id) return {error:'Pick which column to set'}; if(!c.value) return {error:'Pick the value to set'}; cfg.field_id=c.field_id; cfg.value=c.value; }
+    if(act.cfg==='fieldonly'){ if(!pid) return {error:'Choose a board — columns belong to a board'}; if(!c.field_id) return {error:'Pick which column to clear'}; cfg.field_id=c.field_id; }
+    if(act.cfg==='text'){ if(!(c.text||'').trim()) return {error:'Type the comment to add'}; cfg.text=c.text.trim(); }
+    if(act.cfg==='days')     cfg.days = Math.max(0, parseInt(c.days??1,10)||0);
+    if(act.cfg==='pushdays'){ const n=parseInt(c.days??1,10); if(!n) return {error:'Push the due date by at least one day'}; cfg.days=n; }
+    if(act.cfg==='newtask'){ if(c.title) cfg.title=c.title.trim(); if(c.project_id) cfg.project_id=c.project_id; if(c.user_id && c.user_id!=='__same') cfg.user_id=c.user_id; if(c.same_assignee==='true') cfg.same_assignee='true'; if(c.due_in_days!=='' && c.due_in_days!=null) cfg.due_in_days=Math.max(0,parseInt(c.due_in_days,10)||0); }
+    actions.push({key:a.key, cfg});
+  }
+  if(!actions.length) return {error:'Add at least one action'};
+  return {payload:{workspace_id:wid, project_id:pid, trigger_key:d.trigger, trigger_config:tc, conditions, actions,
+                   condition:tc, action_key:actions[0].key, action_config:actions[0].cfg, name:caSentence(d)}};
 }
 async function caSave(){
-  const act = CA_ACTIONS.find(a=>a.key===_ca.action)||{};
-  const trg = CA_TRIGGERS.find(t=>t.key===_ca.trigger)||{};
-  const pid = _ca.scope.startsWith('p:')? _ca.scope.slice(2) : null;
-  const wid = _ca.scope.startsWith('w:')? _ca.scope.slice(2) : null;
-  if(act.cfg==='person' && !_ca.cfg.user_id) return toast('Pick who to '+(_ca.action==='assign_person'?'assign':'notify'), true);
-  if(act.cfg==='group' && !pid) return toast('Choose a board — groups belong to a board', true);
-  if(act.cfg==='group' && !_ca.cfg.group_id) return toast('Pick the group to move to', true);
-  if(trg.cond==='field' && !pid) return toast('Choose a board — columns belong to a board', true);
-  if(trg.cond==='field' && !_ca.cond.field_id) return toast('Pick which column to watch', true);
-  if(act.cfg==='field' && !pid) return toast('Choose a board — columns belong to a board', true);
-  if(act.cfg==='field' && !_ca.cfg.field_id) return toast('Pick which column to set', true);
-  if(act.cfg==='field' && !_ca.cfg.value) return toast('Pick the value to set', true);
-  const condition = {};
-  if(trg.cond==='status' || trg.cond==='priority'){ if(_ca.cond.to) condition.to = _ca.cond.to; }
-  if(trg.cond==='group' && pid && _ca.cond.group_id) condition.group_id = _ca.cond.group_id;
-  if(trg.cond==='field'){ condition.field_id = _ca.cond.field_id; if(_ca.cond.to) condition.to = _ca.cond.to; }
-  const cfg = {};
-  if(act.cfg==='person') cfg.user_id = _ca.cfg.user_id;
-  if(act.cfg==='status') cfg.status = _ca.cfg.status||'todo';
-  if(act.cfg==='priority') cfg.priority = _ca.cfg.priority||'urgent';
-  if(act.cfg==='group') cfg.group_id = _ca.cfg.group_id;
-  if(act.cfg==='field'){ cfg.field_id = _ca.cfg.field_id; cfg.value = _ca.cfg.value; }
-  if(act.cfg==='days') cfg.days = Math.max(0, parseInt(_ca.cfg.days??1,10)||0);
-  const payload = {workspace_id:wid, project_id:pid, trigger_key:_ca.trigger, condition,
-                   action_key:_ca.action, action_config:cfg, name:caSentence(_ca)};
+  const {error:verr, payload} = caPayload(_ca);
+  if(verr) return toast(verr, true);
   const {error} = _ca.id
     ? await db.from('custom_automations').update(payload).eq('id',_ca.id)
     : await db.from('custom_automations').insert(payload);
@@ -5752,6 +5901,32 @@ async function caDelete(id){
   const {error} = await db.from('custom_automations').delete().eq('id',id);
   if(error) return toast(error.message, true);
   toast('Automation removed'); autoRerender();
+}
+/* One line per step of a run: "assign → ok · move → skipped (already there)" */
+function caStepsText(run){
+  const steps = run?.detail?.steps;
+  if(!Array.isArray(steps) || !steps.length) return run?.detail?.notified? `${run.detail.notified} notified` : '';
+  const lbl = k => (CA_ACTIONS.find(a=>a.key===k)||{}).label || k;
+  return steps.map(s=>`${lbl(s.action)} → ${s.result}${s.reason? ` (${esc(s.reason)})`:''}${s.notified!=null? ` (${s.notified})`:''}`).join(' · ');
+}
+/* Run history for one rule: the last 50 times it fired, what it did and what it couldn't do. */
+async function caRuns(id){
+  const c=(S._customAutos||[]).find(x=>x.id===id);
+  const m = modal(`<div class="modal-head"><h2>Run history</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body" id="ca-runs"><div class="empty">Loading…</div></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Close</button></div>`);
+  m.querySelector('.modal').classList.add('wide');
+  const {data, error} = await db.from('automation_runs').select('*').eq('rule_key','custom').eq('detail->>automation_id', id).order('created_at',{ascending:false}).limit(50);
+  const R = document.getElementById('ca-runs'); if(!R) return;
+  if(error){ R.innerHTML = `<div class="empty">${esc(error.message)}</div>`; return; }
+  const runs = data||[];
+  const blocked = runs.filter(x=>x.status==='blocked').length;
+  R.innerHTML = `<div style="font-size:13px;color:var(--ink2);margin-bottom:10px"><b>${esc(c?.name||'Automation')}</b><br>${runs.length? `${runs.length} recent run${runs.length===1?'':'s'}${blocked? ` · <span style="color:var(--red)">${blocked} with a blocked step</span>`:''}`:'Has not fired yet.'}</div>
+    ${runs.length? `<table class="tbl"><thead><tr><th style="width:110px">When</th><th>Task</th><th>What happened</th><th style="width:80px">Result</th></tr></thead><tbody>
+      ${runs.map(x=>`<tr><td style="white-space:nowrap;color:var(--ink2)">${timeAgo(x.created_at)}</td>
+        <td><a href="#/task/${x.entity_id}" onclick="closeModals()">${esc(x.detail?.task_title||'a task')}</a></td>
+        <td style="font-size:12.5px;color:var(--ink2)">${caStepsText(x)||'—'}</td>
+        <td><span class="chip" style="background:${x.status==='ok'?'var(--green-soft);color:var(--green)':'var(--red-soft);color:var(--red)'}">${esc(x.status)}</span></td></tr>`).join('')}</tbody></table>`:''}`;
 }
 function inviteUserModal(){
   const m = modal(`<div class="modal-head"><h2>Add user</h2><button class="x" onclick="closeModals()">✕</button></div>
