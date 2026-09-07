@@ -946,7 +946,15 @@ function caDraw(){
   const selFields = fields.filter(f=>f.ftype==='select');
   const needBoard = (what)=>`<div class="ca-hint">Choose a board under “Where it applies” first — ${what} belong to a board.</div>`;
   const opt = (v, cur, label)=>`<option value="${esc(String(v))}" ${String(cur??'')===String(v)?'selected':''}>${esc(label)}</option>`;
-  const personSel = (cur, on, blank)=>`<select onchange="${on}"><option value="">${blank||'Pick a person…'}</option>${people.map(u=>opt(u.id,cur,u.full_name)).join('')}</select>`;
+  // People and boards are long lists at CREA (30+ staff, 10 workspaces, dozens of boards) — searchable pickers.
+  let pickN = 0;
+  const personSel = (cur, on, blank)=>{
+    const id = 'ca-pick-'+(pickN++);
+    const items = people.map(u=>({v:u.id, l:u.full_name, sub:u.job_title||u.role||''}));
+    return pickerHTML({id, value:cur||'', placeholder:blank||'Pick a person…',
+      groups:[ ...(blank? [{label:'', items:[{v:'', l:blank}]}] : []), {label:'People', items}],
+      onpick:(v)=>{ const fn = new Function('value', on.replace(/this\.value/g,'value')); fn(v); }});
+  };
   const groupSel  = (cur, on, blank)=> pid? `<select onchange="${on}">${blank? `<option value="">${blank}</option>`:'<option value="">Pick a group…</option>'}${groups.map(g=>opt(g.id,cur,g.name)).join('')}</select>` : needBoard('groups');
   const fieldSel  = (cur, on, list)=> pid? (list.length? `<select onchange="${on}"><option value="">Pick a column…</option>${list.map(f=>opt(f.id,cur,f.label)).join('')}</select>` : '<div class="ca-hint">This board has no suitable columns yet.</div>') : needBoard('columns');
   const fieldValSel = (fid, cur, on, blank)=>{ const f=fields.find(x=>x.id===fid); if(!f) return '';
@@ -1021,14 +1029,10 @@ function caDraw(){
       <div id="ca-acts">${_ca.acts.map(actRow).join('')}</div>
       <button class="btn btn-ghost btn-sm" onclick="caActAdd()">＋ Add another action</button></div>
     <div class="ca-sec"><label>Where it applies</label>
-    <select id="ca-scope" onchange="caScope(this.value)">
-      <option value="">Everywhere</option>
-      <optgroup label="Workspaces">
-        ${(S.workspaces||[]).map(w=>`<option value="w:${w.id}" ${_ca.scope==='w:'+w.id?'selected':''}>${esc(w.name)}</option>`).join('')}</optgroup>
-      <optgroup label="Boards">
-        ${(S.projects||[]).filter(p=>p.status!=='archived').map(p=>{const w=wsById(p.workspace_id);
-          return `<option value="p:${p.id}" ${_ca.scope==='p:'+p.id?'selected':''}>${esc(p.name)}${w?` — ${esc(w.name)}`:''}</option>`;}).join('')}</optgroup>
-    </select></div>
+    ${pickerHTML({id:'ca-scope', value:_ca.scope||'', placeholder:'Everywhere', onpick:(v)=>caScope(v),
+      groups:[{label:'', items:[{v:'', l:'Everywhere'}]},
+              {label:'Workspaces', items:(S.workspaces||[]).map(w=>({v:'w:'+w.id, l:w.name}))},
+              {label:'Boards', items:(S.projects||[]).filter(p=>p.status!=='archived').map(p=>{const w=wsById(p.workspace_id); return {v:'p:'+p.id, l:p.name, sub:w? w.name:''};})}]})}</div>
     <div class="ca-preview" id="ca-preview">${esc(caSentence(_ca))}<span style="color:var(--ink3)"> · ${trg.timed? 'checked every 15 minutes, fires once per task':'fires the moment it happens'}</span></div>`;
 }
 /* Validate the draft and turn it into the row the engine expects. Returns {error} or {payload}. */

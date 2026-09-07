@@ -431,6 +431,17 @@ td.tv-name .tv-open{padding-left:20px}
 .modal-back{position:fixed;inset:0;background:rgba(15,16,26,.45);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow-y:auto}
 .modal{background:#fff;border-radius:14px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:pop .16s ease;margin-bottom:5vh}
 .modal.wide{max-width:820px}
+.pick{display:inline-flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:180px;max-width:100%;background:#fff;border:1px solid var(--line);border-radius:9px;padding:0 10px;height:36px;cursor:pointer;font:500 13.5px inherit;color:var(--ink);text-align:left}
+.pick:hover{border-color:var(--ink3)} .pick.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)} .pick.empty .pick-cur{color:var(--ink3)}
+.pick-cur{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .pick-chev{font-size:11px;color:var(--ink3);flex:none}
+.ca-row .pick{width:auto;min-width:200px}
+.pick-menu{position:fixed;z-index:1000;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(16,18,25,.14);padding:6px;animation:pop .12s ease;display:flex;flex-direction:column;max-height:340px}
+.pick-search{width:100%;margin:0 0 6px;height:34px;flex:none}
+.pick-list{overflow:auto;min-height:40px}
+.pick-group{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);padding:8px 10px 4px}
+.pick-opt{padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13.5px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.pick-opt.hl,.pick-opt:hover{background:var(--gray-soft)} .pick-opt.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.pick-sub{font-size:11.5px;color:var(--ink3);font-weight:400} .pick-none{padding:12px 10px;color:var(--ink3);font-size:13px}
 /* Automation builder rows */
 .ca-sec{margin-top:16px} .ca-sec:first-child{margin-top:0} .ca-sec>label{display:block;margin-bottom:6px}
 .ca-opt{font-weight:400;color:var(--ink3);font-size:12px;margin-left:6px}

@@ -356,6 +356,59 @@ function modal(html, wide=false){
   return back;
 }
 function closeModals(){ $('#modal-root').innerHTML=''; }
+/* Searchable picker — a drop-in replacement for a long <select>. Renders a button showing the
+   current choice; clicking it opens a popover with a search box and the (optionally grouped)
+   options. Type to filter, ↑↓ to move, Enter to choose, Esc to close.
+   pickerHTML({id, value, groups:[{label, items:[{v,l,sub}]}], placeholder, onpick}) — onpick is a
+   function (value)=>void kept in a registry so the markup stays inert HTML. */
+window._pickers = window._pickers || {};
+function pickerHTML(o){
+  window._pickers[o.id] = o;
+  const all = o.groups.flatMap(g=>g.items);
+  const cur = all.find(i=>String(i.v)===String(o.value??''));
+  return `<button type="button" class="pick ${cur?'':'empty'}" id="${o.id}" data-pick="${o.id}" onclick="pickOpen('${o.id}')" aria-haspopup="listbox">
+    <span class="pick-cur">${cur? esc(cur.l) : esc(o.placeholder||'Choose…')}</span><span class="pick-chev">▾</span></button>`;
+}
+function pickClose(){ const m=document.getElementById('pickmenu'); if(m){ m.remove(); } document.querySelectorAll('.pick.on').forEach(b=>b.classList.remove('on')); }
+function pickOpen(id){
+  const o = window._pickers[id]; const btn = document.getElementById(id); if(!o||!btn) return;
+  if(document.getElementById('pickmenu')){ pickClose(); return; }
+  const m = document.createElement('div'); m.id='pickmenu'; m.className='pick-menu'; m.setAttribute('role','listbox');
+  m.innerHTML = `<input class="pick-search" placeholder="Type to search…" autocomplete="off"><div class="pick-list"></div>`;
+  document.body.appendChild(m); btn.classList.add('on');
+  const inp = m.querySelector('.pick-search'), list = m.querySelector('.pick-list');
+  const draw = ()=>{
+    const q = inp.value.trim().toLowerCase(); let n=0;
+    list.innerHTML = o.groups.map(g=>{
+      const items = g.items.filter(i=> !q || (i.l+' '+(i.sub||'')).toLowerCase().includes(q));
+      if(!items.length) return '';
+      n += items.length;
+      return `${g.label? `<div class="pick-group">${esc(g.label)}</div>`:''}${items.map(i=>`<div class="pick-opt ${String(i.v)===String(o.value??'')?'on':''}" role="option" data-v="${esc(String(i.v))}">${esc(i.l)}${i.sub? `<span class="pick-sub">${esc(i.sub)}</span>`:''}</div>`).join('')}`;
+    }).join('') || `<div class="pick-none">Nothing matches “${esc(inp.value)}”</div>`;
+    const first = list.querySelector('.pick-opt.on') || list.querySelector('.pick-opt'); if(first) first.classList.add('hl');
+    return n;
+  };
+  const choose = (v)=>{ pickClose(); o.value = v; o.onpick && o.onpick(v); };
+  list.addEventListener('mousedown', e=>{ const op=e.target.closest('.pick-opt'); if(op){ e.preventDefault(); choose(op.dataset.v); } });
+  inp.addEventListener('input', draw);
+  const key = e=>{
+    if(e.key==='Escape'){ e.preventDefault(); pickClose(); return; }
+    const opts=[...list.querySelectorAll('.pick-opt')], i=opts.findIndex(x=>x.classList.contains('hl'));
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); if(!opts.length) return; opts.forEach(x=>x.classList.remove('hl'));
+      const j = e.key==='ArrowDown'? Math.min(opts.length-1, i+1) : Math.max(0, i-1); opts[j].classList.add('hl'); opts[j].scrollIntoView({block:'nearest'}); }
+    if(e.key==='Enter'){ e.preventDefault(); const hl=list.querySelector('.pick-opt.hl'); if(hl) choose(hl.dataset.v); }
+  };
+  inp.addEventListener('keydown', key);
+  const off = e=>{ if(!m.contains(e.target) && !btn.contains(e.target)) { pickClose(); document.removeEventListener('mousedown', off); } };
+  setTimeout(()=>document.addEventListener('mousedown', off), 0);
+  // position under the button, flipping above when there is no room; clamp inside the viewport
+  const r = btn.getBoundingClientRect();
+  m.style.minWidth = Math.max(260, r.width) + 'px';
+  m.style.left = Math.max(8, Math.min(r.left, innerWidth - Math.max(260, r.width) - 10)) + 'px';
+  const h = Math.min(m.offsetHeight||320, 340);
+  m.style.top = (r.bottom + h > innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6) + 'px';
+  draw(); inp.focus();
+}
 /* Generic little popover menu, anchored to an element. items:[{label,danger,fn}|'-'] */
 let _ctxItems = [];
 function ctxMenu(anchor, items){
