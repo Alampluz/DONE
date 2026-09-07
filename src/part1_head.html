@@ -447,6 +447,9 @@ td.tv-name .tv-open{padding-left:20px}
 .pick-opt .pick-dot{margin-right:6px} .pick-opt .pick-l{flex:1} .pick-opt.dis{opacity:.45;cursor:default}
 .sel-pick{height:38px;font-weight:500} .strow .sel-pick{height:32px;font-size:12.5px} .ca-row .sel-pick{width:auto;min-width:140px;height:36px}
 .pick[disabled]{opacity:.55;cursor:default}
+.ep-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:6px}
+.ep-field{display:flex;align-items:center;gap:10px} .ep-field .chk{min-width:110px} .ep-field input[type=text],.ep-field input:not([type]){flex:1}
+@media (max-width:700px){.ep-fields{grid-template-columns:1fr}}
 /* Automation builder rows */
 .ca-sec{margin-top:16px} .ca-sec:first-child{margin-top:0} .ca-sec>label{display:block;margin-bottom:6px}
 .ca-opt{font-weight:400;color:var(--ink3);font-size:12px;margin-left:6px}

@@ -7,10 +7,10 @@ function newTaskModal(projectId, status='todo', groupId=null){
       <label>Title <span class="req">*</span></label><input id="tk-title" placeholder="What needs to be done?">
       <label>Description</label><textarea id="tk-desc" rows="3"></textarea>
       <div class="field-grid">
-        <div><label>Status</label><select id="tk-status">${STATUSES.map(s=>`<option value="${s.k}" ${s.k===status?'selected':''}>${s.label}</option>`).join('')}</select></div>
-        <div><label>Priority</label><select id="tk-prio">${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k==='normal'?'selected':''}>${x.label}</option>`).join('')}</select></div>
-        <div><label>Assignee</label><select id="tk-assignee"><option value="">Unassigned</option>${assigneeOptions(projectId)}</select></div>
-        <div><label>Due date</label><input id="tk-due" type="date"></div>
+        <div><label>${esc(coreLabel(projectId,'status'))}</label><select id="tk-status">${STATUSES.map(s=>`<option value="${s.k}" ${s.k===status?'selected':''}>${s.label}</option>`).join('')}</select></div>
+        <div ${coreHidden(projectId,'priority')?'hidden':''}><label>${esc(coreLabel(projectId,'priority'))}</label><select id="tk-prio">${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k==='normal'?'selected':''}>${x.label}</option>`).join('')}</select></div>
+        <div ${coreHidden(projectId,'assignee')?'hidden':''}><label>${esc(coreLabel(projectId,'assignee'))}</label><select id="tk-assignee"><option value="">Unassigned</option>${assigneeOptions(projectId)}</select></div>
+        <div ${coreHidden(projectId,'due_date')?'hidden':''}><label>${esc(coreLabel(projectId,'due_date'))}</label><input id="tk-due" type="date"></div>
       </div>
       <label>Tags (comma separated)</label><input id="tk-tags" placeholder="e.g. 9.9, shopee">
     </div>
@@ -75,10 +75,10 @@ async function openTask(id){
       <button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <div class="field-grid">
-        <div><label>Status</label><select id="tv-status" ${canEdit()?'':'disabled'}>${STATUSES.map(s=>`<option value="${s.k}" ${s.k===t.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
-        <div><label>Priority</label><select id="tv-prio" ${canEdit()?'':'disabled'}>${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k===t.priority?'selected':''}>${x.label}</option>`).join('')}</select></div>
-        <div><label>Assignee</label><select id="tv-assignee" ${canEdit()?'':'disabled'}><option value="">Unassigned</option>${assigneeOptions(t.project_id, t.assignee_id)}</select></div>
-        <div><label>Due date</label><input id="tv-due" type="date" value="${t.due_date||''}" ${canEdit()?'':'disabled'}></div>
+        <div><label>${esc(coreLabel(t.project_id,'status'))}</label><select id="tv-status" ${canEdit()?'':'disabled'}>${STATUSES.map(s=>`<option value="${s.k}" ${s.k===t.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
+        <div ${coreHidden(t.project_id,'priority')?'hidden':''}><label>${esc(coreLabel(t.project_id,'priority'))}</label><select id="tv-prio" ${canEdit()?'':'disabled'}>${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k===t.priority?'selected':''}>${x.label}</option>`).join('')}</select></div>
+        <div ${coreHidden(t.project_id,'assignee')?'hidden':''}><label>${esc(coreLabel(t.project_id,'assignee'))}</label><select id="tv-assignee" ${canEdit()?'':'disabled'}><option value="">Unassigned</option>${assigneeOptions(t.project_id, t.assignee_id)}</select></div>
+        <div ${coreHidden(t.project_id,'due_date')?'hidden':''}><label>${esc(coreLabel(t.project_id,'due_date'))}</label><input id="tv-due" type="date" value="${t.due_date||''}" ${canEdit()?'':'disabled'}></div>
       </div>
       <label>Title</label><input id="tv-title" value="${esc(t.title)}" ${canEdit()?'':'disabled'}>
       <label>Description</label><textarea id="tv-desc" rows="3" ${canEdit()?'':'disabled'}>${esc(t.description)}</textarea>

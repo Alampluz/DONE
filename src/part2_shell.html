@@ -68,6 +68,18 @@ const PRIORITIES = [
   {k:'normal', label:'Normal', color:'var(--blue)', soft:'var(--blue-soft)'},
   {k:'low', label:'Low', color:'var(--ink3)', soft:'var(--gray-soft)'},
 ];
+/* The four standard task fields every board has. A board can rename them and hide the ones it does
+   not use (projects.field_config, 7 Sep) — an onboarding board has a "Store live" date, not a due date;
+   a CS board has an SLA, not a priority. Status can be renamed but never hidden. */
+const CORE_FIELDS = [
+  {k:'status',   label:'Status',   hideable:false},
+  {k:'priority', label:'Priority', hideable:true},
+  {k:'assignee', label:'Assignee', hideable:true},
+  {k:'due_date', label:'Due date', hideable:true},
+];
+function fieldConf(pid, k){ const p = (S.projects||[]).find(x=>x.id===pid); return ((p && p.field_config)||{})[k] || {}; }
+function coreLabel(pid, k){ const c = fieldConf(pid,k); return (c.label && String(c.label).trim()) || (CORE_FIELDS.find(f=>f.k===k)||{}).label || k; }
+function coreHidden(pid, k){ const f = CORE_FIELDS.find(x=>x.k===k); return !!(f && f.hideable && fieldConf(pid,k).hidden); }
 const PLATFORMS = [
   {k:'TikTok Shop', label:'TikTok Shop', color:'#111827'},
   {k:'Shopee',      label:'Shopee',      color:'#EE4D2D'},

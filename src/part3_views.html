@@ -379,6 +379,13 @@ function editProjectModal(pid){
       ${canManageBoard(pid)? `<label style="margin-top:14px">Who can change tasks</label>
       <select id="ep-preset">${BOARD_PRESETS.map(o=>`<option value="${o.k}" ${o.k===(p.edit_preset||'everything')?'selected':''}>${o.label}</option>`).join('')}</select>
       <div id="ep-preset-blurb" style="font-size:12px;color:var(--ink3);margin-top:4px">${BOARD_PRESETS.find(o=>o.k===(p.edit_preset||'everything')).blurb} Owners, admins and management are never restricted.</div>`:''}
+      <label style="margin-top:14px">Standard fields on this board <span style="font-weight:400;color:var(--ink3)">— rename to match the work, untick what this board doesn't use</span></label>
+      <div class="ep-fields">
+        ${CORE_FIELDS.map(f=>`<div class="ep-field">
+          <label class="chk" style="margin:0" title="${f.hideable?'Show this field on the board':'Status is always shown'}"><input type="checkbox" data-epf-show="${f.k}" ${coreHidden(pid,f.k)?'':'checked'} ${f.hideable?'':'disabled'}><span>${esc(f.label)}</span></label>
+          <input data-epf-label="${f.k}" value="${esc(fieldConf(pid,f.k).label||'')}" placeholder="${esc(f.label)}" maxlength="24">
+        </div>`).join('')}
+      </div>
       <label style="margin-top:14px">Who can open this board</label>
       ${visPickerHTML('ep-vis', p.visibility||'collaborate')}
       <label style="margin-top:14px">Colour</label>
@@ -411,6 +418,14 @@ function editProjectModal(pid){
       workspace_id:m.querySelector('#ep-ws').value, visibility:vis,
       status:m.querySelector('#ep-status').value, color:colour};
     if(presetSel) upd.edit_preset = presetSel.value;
+    const fc = {};
+    CORE_FIELDS.forEach(f=>{
+      const lab = (m.querySelector(`[data-epf-label="${f.k}"]`).value||'').trim();
+      const show = m.querySelector(`[data-epf-show="${f.k}"]`).checked;
+      const c = {}; if(lab && lab!==f.label) c.label = lab; if(f.hideable && !show) c.hidden = true;
+      if(Object.keys(c).length) fc[f.k] = c;
+    });
+    upd.field_config = fc;
     if(canGate) upd.approval_gate = {on: gateOn.checked,
       status: m.querySelector('#ep-gate-status').value,
       approvers: [...m.querySelectorAll('#ep-gate-appr input[data-gapp]:checked')].map(c=>c.dataset.gapp)};
@@ -1490,7 +1505,7 @@ function exportBoardCSV(pid){
     if(f.ftype==='file') return (v&&v.name)? v.name : '';
     return v==null? '' : v;
   };
-  const out = [['Task','Group','Status','Priority','Assignee','Due date', ...flds.map(f=>f.label), 'Created']];
+  const out = [['Task','Group',coreLabel(pid,'status'),coreLabel(pid,'priority'),coreLabel(pid,'assignee'),coreLabel(pid,'due_date'), ...flds.map(f=>f.label), 'Created']];
   rows.forEach(t=> out.push([
     t.title||'',
     (groups.find(g=>g.id===t.group_id)||{}).name||'',
@@ -1636,7 +1651,7 @@ async function restoreTask(logId, pid){
 }
 function tvHeadHTML(id, flds, showAddCol, gid){
   return `<tr>
-    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}<th>Task</th><th>Status</th><th>Assignee</th><th>Due date</th><th>Priority</th>
+    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}<th>Task</th><th>${esc(coreLabel(id,'status'))}</th>${coreHidden(id,'assignee')?'':`<th>${esc(coreLabel(id,'assignee'))}</th>`}${coreHidden(id,'due_date')?'':`<th>${esc(coreLabel(id,'due_date'))}</th>`}${coreHidden(id,'priority')?'':`<th>${esc(coreLabel(id,'priority'))}</th>`}
     ${flds.map(f=>`<th class="${canManageBoard(id)?'col-edit':''}" ${canManageBoard(id)?`onclick="editColumnModal('${f.id}','${id}')" title="Edit column"`:''}>${esc(f.label)}</th>`).join('')}
     ${isStaff()? (showAddCol&&canManageBoard(id)? `<th><span class="tv-addcol" onclick="addColumnModal('${id}')">＋ Column</span></th>`:'<th></th>'):''}
   </tr>`;
@@ -1658,9 +1673,9 @@ function tvRowHTML(t, flds, gc){
     ${canEdit()?`<td class="tv-check">${canEditTask(t)?`<input type="checkbox" ${tvSel.has(t.id)?'checked':''} onchange="tvSelToggle('${t.id}',this.checked)">`:''}</td>`:''}
     <td class="tv-name"><span class="tv-dots" title="Task options" onclick="event.stopPropagation();rowMenu(this,'${t.id}')">⋯</span><div class="tv-open" draggable="${canEditTask(t)&&!arch}" ondragstart="tvDragStart(event,'${t.id}')" ondragend="tvDragEnd(event)" onclick="openTask('${t.id}')">${dep}${esc(t.title)}${sc&&sc.total? `<span class="subchip">${sc.done}/${sc.total}</span>`:''}</div>${arch&&canEdit()?`<span class="tv-restore" onclick="event.stopPropagation();tvUnarchive('${t.id}')">Restore</span>`:''}</td>
     <td>${tvPickHTML('status', t.id, 'status', false, t.status, t)}</td>
-    <td>${tvPickHTML('people', t.id, 'assignee_id', false, t.assignee_id, t)}</td>
-    <td>${tvPickHTML('due', t.id, 'due_date', false, t.due_date, t)}</td>
-    <td>${tvPickHTML('priority', t.id, 'priority', false, t.priority, t)}</td>
+    ${coreHidden(t.project_id,'assignee')?'':`<td>${tvPickHTML('people', t.id, 'assignee_id', false, t.assignee_id, t)}</td>`}
+    ${coreHidden(t.project_id,'due_date')?'':`<td>${tvPickHTML('due', t.id, 'due_date', false, t.due_date, t)}</td>`}
+    ${coreHidden(t.project_id,'priority')?'':`<td>${tvPickHTML('priority', t.id, 'priority', false, t.priority, t)}</td>`}
     ${flds.map(f=>`<td>${tvCell(t,f)}</td>`).join('')}
     ${isStaff()? '<td></td>':''}
   </tr>`;
@@ -1684,7 +1699,7 @@ function renderProjectTableView(id, rowSet, host){
   const SRC = rowSet || S._tasks || [];
   const flds = S._fields||[], groups = S._groups||[];
   tvBuildOpts(flds);
-  const cols = 5+(canEdit()?1:0)+flds.length+(isStaff()?1:0);
+  const cols = 2+['assignee','due_date','priority'].filter(k=>!coreHidden(id,k)).length+(canEdit()?1:0)+flds.length+(isStaff()?1:0);
   const byPos = (a,b)=> (a.position||0)-(b.position||0);
   const tableFor = (rows, gid, first, gc)=>{
     const key = gid||'__all__', lim = tvShown[key] ?? TV_CHUNK;
