@@ -1,0 +1,270 @@
+{
+ "source": "monday Creative Queue board 5617471353, automations read 7 Sep 2026",
+ "note": "Each rule: when a brief is created with Brand in [brands] (and artwork type = Livestreaming Frame where given) -> assign designer. In DONE build as: trigger field_changed on Brand (or task_created + condition brand in), condition artwork-type is Livestreaming Frame for the override rules; live-frame rules must be created AFTER brand rules so they win (engine runs rules in created_at order).",
+ "rules": [
+  {
+   "designer": "Vee",
+   "email": "thitiphong.f@crea.asia",
+   "brands": [
+    "CREA",
+    "Hasbro"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Tysha",
+   "email": "tysha.r@crea.asia",
+   "brands": [
+    "Jungsaemmool (JSM)",
+    "Mega wecare",
+    "Tinder"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Peach",
+   "email": "pitchakorn.l@crea.asia",
+   "brands": [
+    "MLB",
+    "Nescafe Dolce Gusto (NDG)",
+    "Nestle Pet Care",
+    "Nestle Professional",
+    "Stiebel Eltron"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Nattanon",
+   "email": "nattanon.s@crea.asia",
+   "brands": [
+    "Acne-Aid and Spectraban (iNova)",
+    "Hush Puppies",
+    "Jockey",
+    "Mars",
+    "Rinbee"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Aiw",
+   "email": "onanong.c@crea.asia",
+   "brands": [
+    "Aestura",
+    "Innisfree"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Mark",
+   "email": "phuwadon.k@crea.asia",
+   "brands": [
+    "Decathlon",
+    "Etude",
+    "KIKO",
+    "Kiko Milano"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Best",
+   "email": "akkaradej.n@crea.asia",
+   "brands": [
+    "Armani Exchange",
+    "Balmuda",
+    "Nestle",
+    "Nestle Health Science",
+    "SharkNinja"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Yanee",
+   "email": "yanee.h@crea.asia",
+   "brands": [
+    "Enfagrow",
+    "Laneige"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Ittikom",
+   "email": "ittikom.t@crea.asia",
+   "brands": [
+    "Casio",
+    "Dyson",
+    "Fit Flop",
+    "G2000",
+    "JDE World Of Coffee",
+    "Mondelez",
+    "Outlet 24",
+    "RB Durex",
+    "RB Personal Wash",
+    "RB Wellness",
+    "Tommy Hilfiger"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Sorrakrai",
+   "email": "sorrakrai.s@crea.asia",
+   "brands": [
+    "111Skin",
+    "3M",
+    "Bose",
+    "Brandzale",
+    "Casio",
+    "Crocs",
+    "Decathlon",
+    "Fit Flop",
+    "G2000",
+    "GQ",
+    "Guess",
+    "Keds",
+    "LNL",
+    "Lee",
+    "LocknLock",
+    "MLB",
+    "Mega wecare",
+    "Mondelez",
+    "Mpro",
+    "Panasonic",
+    "SharkNinja",
+    "SleepHappy",
+    "Suntory",
+    "Tefal",
+    "Three",
+    "Wrangler"
+   ],
+   "only_if_artwork_type": "Livestreaming Frame"
+  },
+  {
+   "designer": "Unchaya",
+   "email": "unchaya.j@crea.asia",
+   "brands": [
+    "Hills' Pet",
+    "RB Dettol & Hygiene",
+    "RB Veet",
+    "Remington",
+    "Three",
+    "Ultima ll"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Pongsathon",
+   "email": "pongsathon.v@crea.asia",
+   "brands": [
+    "Acne-Aid and Spectraban (iNova)",
+    "Anessa",
+    "Mars",
+    "Moochie",
+    "Nescafe Dolce Gusto (NDG)",
+    "Nespresso",
+    "Oatside",
+    "Protex",
+    "RB Dettol & Hygiene",
+    "Remington",
+    "Vanish",
+    "d program"
+   ],
+   "only_if_artwork_type": "Livestreaming Frame"
+  },
+  {
+   "designer": "Weerapat",
+   "email": "weerapat.o@crea.asia",
+   "brands": [
+    "Clarins",
+    "Guess",
+    "Lee",
+    "Nespresso",
+    "sisley"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Munliga",
+   "email": "munliga.s@crea.asia",
+   "brands": [
+    "111Skin",
+    "Crocs",
+    "Organic ground",
+    "Polo Ralph Lauren"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Kultida",
+   "email": "kultida.j@crea.asia",
+   "brands": [
+    "Hera",
+    "Sulwhasoo"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Piumprom",
+   "email": "piumprom.c@crea.asia",
+   "brands": [
+    "Banila Co",
+    "Mustela",
+    "Revlon",
+    "Torriden"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Sun",
+   "email": "sun.k@crea.asia",
+   "brands": [
+    "Bose",
+    "Lacoste",
+    "PVH Calvin Klein",
+    "PVH Tommy Hilfiger",
+    "Paul Smith",
+    "Wrangler"
+   ],
+   "only_if_artwork_type": null
+  },
+  {
+   "designer": "Alisa",
+   "email": "alisa.d@crea.asia",
+   "brands": [
+    "Americaan Tourister",
+    "Nestle",
+    "Nestle Health Science",
+    "Nestle Pet Care",
+    "Nestle Professional",
+    "Organic ground",
+    "Sermsuk",
+    "Stiebel Eltron",
+    "Tenju",
+    "Torriden"
+   ],
+   "only_if_artwork_type": "Livestreaming Frame"
+  },
+  {
+   "designer": "Areelak",
+   "email": "areelak.s@crea.asia",
+   "brands": [
+    "B2S",
+    "Banila Co",
+    "Jungsaemmool (JSM)",
+    "Provamed",
+    "Revlon",
+    "TirTir",
+    "Ultima ll",
+    "Vistra",
+    "d'Alba"
+   ],
+   "only_if_artwork_type": "Livestreaming Frame"
+  },
+  {
+   "designer": "Areelak",
+   "email": "areelak.s@crea.asia",
+   "brands": [
+    "B2B Shopee"
+   ],
+   "only_if_artwork_type": null
+  }
+ ]
+}
