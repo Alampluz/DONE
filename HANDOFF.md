@@ -1,14 +1,31 @@
 # DONE — Project Handoff
 
-*Last updated: 6 Sep 2026 (DONE rebrand + repo renamed to `Alampluz/DONE` → live at alampluz.github.io/DONE/ (case-sensitive), Forgot password + scanner-proof reset link, second concurrent-edit incident, sign-ups no longer seeded with CREA forms, monday import — 3,040 CS inquiries, big-board paging/chunking, tasks_select policy; 4 Sep: edit presets, email delivery, My calendar, View dropdown, owner visibility fix, BD ownership; 2 Sep: Calendar views; 1 Sep: CI, sweep guard, SLA fix)*
+*Last updated: 7 Sep 2026 — automation engine v2, dropdown/UX pass, per-board standard fields, board sharing (no public link). Previous: 6 Sep 2026 (DONE rebrand + repo renamed to `Alampluz/DONE` → live at alampluz.github.io/DONE/ (case-sensitive), Forgot password + scanner-proof reset link, second concurrent-edit incident, sign-ups no longer seeded with CREA forms, monday import — 3,040 CS inquiries, big-board paging/chunking, tasks_select policy; 4 Sep: edit presets, email delivery, My calendar, View dropdown, owner visibility fix, BD ownership; 2 Sep: Calendar views; 1 Sep: CI, sweep guard, SLA fix)*
 
 > **Note:** this file was truncated to 0 bytes by something outside the app on 31 Aug 06:07 and rebuilt from the version pasted into the working session plus the changes made after it. The narrative sections are faithful; if a detail looks off against the code, trust the code.
+
+## Start here (7 Sep 2026)
+
+**State:** everything below in the inventory is live. 44 test suites gate every deploy; CI builds `index.html` from `src/` and the published bundle has matched the local build on every push today.
+
+**One session at a time on this folder.** Two Claude sessions editing `C:\Users\April\WorkOS` clobbered `src/` twice on 6 Sep. If you open a new chat to continue, stop asking the old one to touch files.
+
+**Waiting on April (nothing else is blocked on code):**
+1. Create the 7 CS logins in Admin → Users — jetnipit.o, areerat.s, kuntarakorn.k, thaninyapat.s, nanthanat.m, kornnasa.n, maytinee.s @crea.asia, role Internal, workspace Customer Service. Then run the assignee backfill in `tools/monday_import/README.md` (disable `auto_task_rules_trg` + `custom_autos_trg` first) so the 2,974 unassigned imported inquiries land on their owners.
+2. Create logins for Vee's 19 designers, then build the Creative brand→designer routing rules from `tools/creative_routing/monday_mapping.json` (20 rules, ~124 brands; live-frame rules must be created *after* the brand rules so they win — the engine runs rules in `created_at` order).
+3. Supabase → Authentication → URL Configuration → Site URL is still `https://alampluz.github.io/done/`; it must be `/DONE/` or password-reset links point at a dead address.
+4. Decisions still open: the CS due-date rule (proposed created + 2 days, urgent + 1, backfill 910 open rows); whether to archive the 117 seeded Creative Queue tasks (25–29 Aug, 106 already "overdue"); whether to switch on "overdue and unassigned → notify Vee" on Creative before the logins exist.
+5. Optional, offered and not yet taken: a Position column in Admin → Users (positions are blank for most accounts, and people lists now show position rather than role); applying the obvious per-board field labels (Brands Onboard: Due date → "Store live", Assignee → "Owner", Priority off).
+
+**Next build items, in the order I'd take them:** Creative routing rules → a Creative Report view for designer workload (what Vee reads each morning) → automation P1 from April's catalog that CREA would actually use (round-robin for live-frame briefs, a delay step) → a "Creative brief" request type that creates the task with Brand and Artwork type filled, replacing the monday intake. Step 2 and 3 of the "make the header honest" plan (per-board header columns, then board templates) sit alongside these.
+
+**Known gaps from today's work:** kanban card badges, the filter-bar chip labels, the built-in overdue nudge wording and the Calendar view still use the default field names, so a board that renamed or hid Due date/Priority is inconsistent there. IT still owes the five email secrets (`docs_email_setup.md`) before any mail leaves DONE.
 
 ## What this is
 DONE is a monday.com/ClickUp-style work-management app built for CREA (Thai e-commerce enabler). Single-page vanilla-JS app, no build step, backed by Supabase (Postgres + Auth + Storage + RLS).
 
-- **Live app:** https://alampluz.github.io/done/
-- **Repo:** https://github.com/Alampluz/done (GitHub Pages serves `index.html` from `main`)
+- **Live app:** https://alampluz.github.io/DONE/  ← case-sensitive; `/done/` returns "Site not found"
+- **Repo:** https://github.com/Alampluz/DONE (GitHub Pages serves `index.html` from `main`)
 - **Supabase project:** `sknspnorwpoayymvndaz` (https://sknspnorwpoayymvndaz.supabase.co)
 - **Roadmap artifact:** https://claude.ai/code/artifact/1add7b66-1a32-4ed5-84c7-507dca6ea4b2
 
@@ -163,7 +180,7 @@ The only `rpc()` calls in `src/` are `run_automation_sweep`, `restore_deleted_ta
 - **Three test rows** on CS Inquiries predate the import and point at monday items that were deleted from the board after 29 Aug (`not (custom ? '2ce465ec-…')`). Left alone; archive or delete at will.
 - **Boards removed by April, not by any probe:** `9.9 Mega Sale 2026` (2 Sep, 2 tasks), `Partner Onboarding Pipeline` and the `Commercial Team` workspace (1 Sep). Five boards / seven workspaces as of 4 Sep. Mentioned because a probe that names a board by title will now find nothing for those.
 - ~~No email delivery~~ — outbound built 4 Sep (see Email delivery above); goes live when IT sets the secrets. Email-to-task (inbound) still needs a provider + edge function.
-- **URL changed 6 Sep — repo renamed `crea-workos` → `done`; the app is now at https://alampluz.github.io/done/** (old address no longer serves; GitHub redirects the repo pages and git remotes, not the Pages site). Upload URL for manual pushes is now `github.com/Alampluz/done/upload/main/<dir>`. A custom domain `done.crea.asia` was tried first and **reverted**: while a custom domain is configured GitHub redirects the github.io address to it, so an unresolved DNS name took the app offline for ~10 minutes. If IT ever adds the DNS records in `docs_domain_setup.md`, set the custom domain only *after* `done.crea.asia` resolves. The verified-domain entry on the GitHub account is still pending and harmless.
+- **URL changed 6 Sep — repo renamed `crea-workos` → `done`; the app is now at https://alampluz.github.io/DONE/** (the repo was renamed again to `DONE`, and Pages paths are case-sensitive) (old address no longer serves; GitHub redirects the repo pages and git remotes, not the Pages site). Upload URL for manual pushes is now `github.com/Alampluz/done/upload/main/<dir>`. A custom domain `done.crea.asia` was tried first and **reverted**: while a custom domain is configured GitHub redirects the github.io address to it, so an unresolved DNS name took the app offline for ~10 minutes. If IT ever adds the DNS records in `docs_domain_setup.md`, set the custom domain only *after* `done.crea.asia` resolves. The verified-domain entry on the GitHub account is still pending and harmless.
 - `admin_fn_v5.ts` edge function not deployed; Stripe billing and the Supabase leaked-password-protection toggle are outstanding.
 - Team workflow: senior engineer plans (product-management:brainstorm), a coding agent implements, senior review with 9arm-skills:debug-mantra before deploy.
 
