@@ -430,7 +430,11 @@ function pickOpen(id, btnEl){
 function enhanceSelect(sel){
   if(sel.dataset.enh || sel.multiple || sel.size > 1 || sel.classList.contains('native')) return;
   sel.dataset.enh = '1'; sel.classList.add('sel-native'); sel.tabIndex = -1;
-  const btn = document.createElement('button'); btn.type='button'; btn.className='pick sel-pick'; btn.setAttribute('aria-haspopup','listbox');
+  const btn = document.createElement('button'); btn.type='button'; btn.setAttribute('aria-haspopup','listbox');
+  // Carry the select's own classes onto the button so the page's styling for that control still
+  // applies (the filter bar's .bf-sel chips, .strow rows, …) — otherwise every dropdown would
+  // fall back to the full-width modal shape.
+  btn.className = ('pick sel-pick ' + (sel.className||'').replace(/\bsel-native\b/g,'')).trim().replace(/\s+/g,' ');
   if(sel.style.cssText) btn.style.cssText = sel.style.cssText;
   if(sel.title) btn.title = sel.title;
   btn.innerHTML = '<span class="pick-cur"></span><span class="pick-chev">▾</span>';
@@ -447,7 +451,7 @@ function enhanceSelect(sel){
     const o = sel.selectedOptions[0];
     const c = o? colorFor(o.value) : null;
     btn.innerHTML = `${c? `<span class="pick-dot" style="background:${c}"></span>`:''}<span class="pick-cur">${esc(o? o.textContent.trim() : '')}</span><span class="pick-chev">▾</span>`;
-    btn.disabled = sel.disabled; btn.classList.toggle('empty', !o || o.value==='');
+    btn.disabled = sel.disabled;   // no "empty" greying: a select's first option is a real label, not a placeholder
   };
   const open = ()=>{
     sync();
@@ -618,7 +622,7 @@ db.auth.onAuthStateChange(async (event, session)=>{
   if(event==='PASSWORD_RECOVERY') S._recovery = true;    // arrived through a reset link
   if(session && !S.me){ await boot(); }
   if(S._recovery && S.me){ S._recovery=false; changePasswordModal(true); }
-  if(!session){ S.me=null; $('#app').classList.add('hidden'); $('#login-screen').classList.remove('hidden'); }
+  if(!session){ S.me=null; $('#app').classList.add('hidden'); if(!location.hash.startsWith('#/share/')) $('#login-screen').classList.remove('hidden'); }
 });
 
 let _booting=false;
@@ -638,6 +642,7 @@ async function _boot(){
     return;
   }
   $('#login-screen').classList.add('hidden');
+  if(location.hash.startsWith('#/share/')){ renderShareView(location.hash.slice(8).split('/')[0]); renderSidebar(); startNotifPolling(); return; }
   $('#app').classList.remove('hidden');
   const b = $('#ten-banner');
   if(S.company && S.company.status==='trial' && S.company.trial_ends_at){
@@ -770,7 +775,14 @@ function wireAttachZone(root, zoneId, entity_type, entity_id, listEl, onDone){
 }
 
 /* ================= ROUTER ================= */
-window.addEventListener('hashchange', ()=>{ if(S.me) navigate(location.hash); });
+window.addEventListener('hashchange', ()=>{
+  if(location.hash.startsWith('#/share/')) return renderShareView(location.hash.slice(8).split('/')[0]);
+  leaveShareView();
+  if(S.me){ navigate(location.hash); }
+  else document.getElementById('login-screen')?.classList.remove('hidden');
+});
+// A public share link works before (and without) signing in. Deferred a tick: renderShareView lives in a later script block.
+setTimeout(()=>{ if(location.hash.startsWith('#/share/')) renderShareView(location.hash.slice(8).split('/')[0]); }, 0);
 function navigate(hash){
   if(location.hash !== hash) { location.hash = hash; return; }
   closeModals();
@@ -1161,6 +1173,7 @@ function notifLine(n, who){
     case 'overdue':     return `${t} is overdue`;
     case 'automation':  return n.body? `${t} — ${esc(n.body)}` : `An automation flagged ${t}`;
     case 'approval':    return `${name} asked you to sign off on ${t}`;
+    case 'share':       return `${name} shared the board ${t} with you${n.body? ` <span style="color:var(--ink3)">· ${esc(n.body)}</span>`:''}`;
     case 'approval_decided': {
       // body = 'approved' or 'rejected — note'
       const ok = (n.body||'').startsWith('approved');
@@ -1234,6 +1247,7 @@ async function openNotif(id){
   await refreshNotifs();
   if(n.entity_type==='task') openTask(n.entity_id);
   else if(n.entity_type==='request') openRequest(n.entity_id);
+  else if(n.entity_type==='project') location.hash = '#/project/'+n.entity_id;
 }
 
 /* ================= PUBLIC FORM (no login) ================= */
