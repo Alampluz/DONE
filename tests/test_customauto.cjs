@@ -75,11 +75,29 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  // E. inactive people are not offered
  caModal();
  caActKey(0,'assign_person');
- r.noInactive = ![...document.querySelectorAll('#ca-acts option')].some(o=>/Gone P/.test(o.textContent));
+ const pbtn=document.querySelector('#ca-acts .pick'); r.personIsPicker = !!pbtn && /Pick a person/.test(pbtn.textContent);
+ pickOpen(pbtn.id);
+ r.noInactive = document.querySelectorAll('#pickmenu .pick-opt').length===2 && ![...document.querySelectorAll('#pickmenu .pick-opt')].some(o=>/Gone P/.test(o.textContent));
+ // type to filter, Enter picks the highlighted match and writes the config
+ const ps=document.querySelector('#pickmenu .pick-search'); ps.value='prim'; ps.dispatchEvent(new window.Event('input'));
+ r.personFiltered = [...document.querySelectorAll('#pickmenu .pick-opt')].map(o=>o.textContent.trim()).join('|');
+ ps.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Enter'}));
+ r.personPicked = _ca.acts[0].cfg.user_id==='u2' && !document.getElementById('pickmenu') && /Prim V/.test(document.querySelector('#ca-acts .pick').textContent);
+ // scope is a searchable picker too: search narrows workspaces and boards, choosing switches scope
+ pickOpen('ca-scope');
+ r.scopeGroups = [...document.querySelectorAll('#pickmenu .pick-group')].map(g=>g.textContent).join(',');
+ const ss=document.querySelector('#pickmenu .pick-search'); ss.value='cs inq'; ss.dispatchEvent(new window.Event('input'));
+ r.scopeFiltered = [...document.querySelectorAll('#pickmenu .pick-opt')].map(o=>o.textContent.trim());
+ ss.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Enter'}));
+ await new Promise(x=>setTimeout(x,20));
+ r.scopePicked = _ca.scope==='p:p1' && /CS Inquiries/.test(document.getElementById('ca-scope').textContent);
+ pickOpen('ca-scope'); const ss2=document.querySelector('#pickmenu .pick-search'); ss2.value='zzz'; ss2.dispatchEvent(new window.Event('input'));
+ r.scopeNone = /Nothing matches/.test(document.getElementById('pickmenu').textContent);
+ ss2.dispatchEvent(new window.KeyboardEvent('keydown',{key:'Escape'})); r.escClosesPick = !document.getElementById('pickmenu');
  closeModals();
 
  // F. board scope: groups load from the board, save stamps project_id
- window.__sel.project_groups=[{id:'g1',name:'Case Open'},{id:'g2',name:'Solved'}];
+ window.__sel.project_groups=[{id:'g1',name:'Case Open'},{id:'g2',name:'Solved'}]; window._caGroups={}; window._caFields={};
  caModal();
  caSetTrigger('moved_to_group'); caActKey(0,'move_to_group');
  r.needsBoard = /Choose a board under/.test(document.querySelector('#ca-body').textContent);
@@ -253,7 +271,8 @@ try{w.eval(scripts.join('\n')+'\n'+driver);}catch(e){console.log('EVAL ERROR:',e
  check('builder opens with a one-action draft; preview follows to/from', r.modalWhen && r.draftDefaults && r.previewCond && r.previewFromTo && r.sameFromToRefused);
  check('person action refuses to save without a person', r.blockedNoPerson);
  check('insert writes v2 columns and legacy mirror', r.insert && r.insertName);
- check('inactive people not offered', r.noInactive);
+ check('people are a searchable picker: inactive hidden, filter + Enter picks', r.personIsPicker && r.noInactive && /^Prim V/.test(r.personFiltered) && !/April/.test(r.personFiltered) && r.personPicked);
+ check('scope is a searchable picker: groups, filter, pick, empty state, Esc', /Workspaces/.test(r.scopeGroups) && /Boards/.test(r.scopeGroups) && r.scopeFiltered.length===1 && /CS Inquiries/.test(r.scopeFiltered[0]) && r.scopePicked && r.scopeNone && r.escClosesPick);
  check('board scope: needs board, loads groups, stamps project_id', r.needsBoard && r.groupOpts.length===2 && r.boardInsert && r.boardName);
  check('legacy row prefills into the v2 draft and updates in place', r.prefill && r.update);
  check('v2 row prefills 3 conditions + 3 actions; sentence reads naturally', r.v2prefill && r.v2rows && r.v2sentenceOk);
