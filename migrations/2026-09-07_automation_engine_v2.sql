@@ -1,0 +1,18 @@
+-- Applied 7 Sep 2026 as two Supabase migrations: automation_engine_v2, automation_engine_v2_keys.
+-- Full function bodies live in the Supabase migration history; this file records the schema change
+-- and the contract so the app code can be read against it.
+--
+-- custom_automations gains three columns (legacy columns kept and backfilled):
+--   trigger_config jsonb  – transition filter: status/priority {from,to}; moved_to_group {group_id};
+--                           field_changed {field_id,to}; task_assigned {user_id}; due_date_passed {days}
+--   conditions     jsonb  – AND list of {k, op, v}; k = status|priority|group|assignee|due|field:<field_id>,
+--                           op = is|is_not|in|empty|not_empty
+--   actions        jsonb  – ordered list of {key, cfg}
+-- New trigger keys: task_unassigned, due_date_changed, due_date_passed
+-- New action keys:  notify_owners, assign_creator, unassign, clear_field, push_due, clear_due, add_comment, create_task
+-- Functions: ca_conditions_met(jsonb, tasks) -> bool; ca_apply_one(custom_automations, text, jsonb, uuid) -> jsonb (per-step result);
+--            apply_custom_action(custom_automations, uuid) now runs every action in order and writes ONE automation_runs row
+--            with detail.steps = [{action,result:ok|skipped|blocked,reason}], status = ok|blocked;
+--            run_custom_task_autos() honours trigger_config + conditions; run_custom_date_sweep() also handles due_date_passed.
+-- Index: automation_runs_custom_idx on (detail->>'automation_id', created_at desc) where rule_key='custom'.
+-- Check constraints custom_automations_trigger_key_check / _action_key_check widened to the new keys.
