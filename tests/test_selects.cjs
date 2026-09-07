@@ -16,7 +16,14 @@ const driver=String.raw`window.__run=async function(){const r={}; const tick=()=
  +'<select id="raw" class="native"><option>x</option></select>'
  +'<select id="dis" disabled><option>Locked</option></select>';
  document.body.appendChild(host); await tick();
- const st=document.getElementById('st'), btn=st.nextElementSibling; st.addEventListener('change',()=>{window.__changed=st.value;});   // inline onchange does not run in jsdom outside-only mode
+ const st=document.getElementById('st'), btn=st.nextElementSibling;
+ // a select's own classes ride along so page styling (filter-bar chips etc.) still applies
+ const bfHost=document.createElement('div'); bfHost.className='bfbar';
+ bfHost.innerHTML='<select class="bf-sel on" id="bf1"><option value="">Status</option><option value="todo">To Do</option></select>';
+ document.body.appendChild(bfHost); await tick();
+ const bfBtn=document.getElementById('bf1').nextElementSibling;
+ r.classesCarried = bfBtn.className.split(' ').sort().join(',');
+ r.labelNotGreyed = !bfBtn.classList.contains('empty') && bfBtn.querySelector('.pick-cur').textContent==='Status'; st.addEventListener('change',()=>{window.__changed=st.value;});   // inline onchange does not run in jsdom outside-only mode
  r.enhanced = st.classList.contains('sel-native') && st.tabIndex===-1 && btn && btn.classList.contains('sel-pick');
  r.label = btn.querySelector('.pick-cur').textContent;
  r.dot = (btn.querySelector('.pick-dot')||{}).style?.background || '';
@@ -52,6 +59,7 @@ w.eval(scripts.join('\n')+'\n'+driver);
 w.eval('window.__run()').then(r=>{ let ok=true;
  const check=(n,c)=>{ console.log((c?'PASS':'FAIL')+' '+n+(c?'':' -> '+JSON.stringify(r))); if(!c) ok=false; };
  check('select is hidden and replaced by a styled button showing the current label', r.enhanced && r.label==='In Progress');
+ check('the select\'s own classes ride onto the button; first option is not greyed as a placeholder', r.classesCarried==='bf-sel,on,pick,sel-pick' && r.labelNotGreyed);
  check('status list shows colour dots on button and options', r.dot && r.dots===5);
  check('short list opens without a search box, current option marked', r.shortNoSearch && r.current==='In Progress');
  check('choosing sets the value, fires change (inline handler ran), closes, relabels', r.picked && r.synced);
