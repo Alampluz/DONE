@@ -431,6 +431,17 @@ td.tv-name .tv-open{padding-left:20px}
 .modal-back{position:fixed;inset:0;background:rgba(15,16,26,.45);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow-y:auto}
 .modal{background:#fff;border-radius:14px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:pop .16s ease;margin-bottom:5vh}
 .modal.wide{max-width:820px}
+.pick{display:inline-flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:180px;max-width:100%;background:#fff;border:1px solid var(--line);border-radius:9px;padding:0 10px;height:36px;cursor:pointer;font:500 13.5px inherit;color:var(--ink);text-align:left}
+.pick:hover{border-color:var(--ink3)} .pick.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)} .pick.empty .pick-cur{color:var(--ink3)}
+.pick-cur{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .pick-chev{font-size:11px;color:var(--ink3);flex:none}
+.ca-row .pick{width:auto;min-width:200px}
+.pick-menu{position:fixed;z-index:1000;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px rgba(16,18,25,.14);padding:6px;animation:pop .12s ease;display:flex;flex-direction:column;max-height:340px}
+.pick-search{width:100%;margin:0 0 6px;height:34px;flex:none}
+.pick-list{overflow:auto;min-height:40px}
+.pick-group{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);padding:8px 10px 4px}
+.pick-opt{padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13.5px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.pick-opt.hl,.pick-opt:hover{background:var(--gray-soft)} .pick-opt.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.pick-sub{font-size:11.5px;color:var(--ink3);font-weight:400} .pick-none{padding:12px 10px;color:var(--ink3);font-size:13px}
 /* Automation builder rows */
 .ca-sec{margin-top:16px} .ca-sec:first-child{margin-top:0} .ca-sec>label{display:block;margin-bottom:6px}
 .ca-opt{font-weight:400;color:var(--ink3);font-size:12px;margin-left:6px}
@@ -998,6 +1009,59 @@ function modal(html, wide=false){
   return back;
 }
 function closeModals(){ $('#modal-root').innerHTML=''; }
+/* Searchable picker — a drop-in replacement for a long <select>. Renders a button showing the
+   current choice; clicking it opens a popover with a search box and the (optionally grouped)
+   options. Type to filter, ↑↓ to move, Enter to choose, Esc to close.
+   pickerHTML({id, value, groups:[{label, items:[{v,l,sub}]}], placeholder, onpick}) — onpick is a
+   function (value)=>void kept in a registry so the markup stays inert HTML. */
+window._pickers = window._pickers || {};
+function pickerHTML(o){
+  window._pickers[o.id] = o;
+  const all = o.groups.flatMap(g=>g.items);
+  const cur = all.find(i=>String(i.v)===String(o.value??''));
+  return `<button type="button" class="pick ${cur?'':'empty'}" id="${o.id}" data-pick="${o.id}" onclick="pickOpen('${o.id}')" aria-haspopup="listbox">
+    <span class="pick-cur">${cur? esc(cur.l) : esc(o.placeholder||'Choose…')}</span><span class="pick-chev">▾</span></button>`;
+}
+function pickClose(){ const m=document.getElementById('pickmenu'); if(m){ m.remove(); } document.querySelectorAll('.pick.on').forEach(b=>b.classList.remove('on')); }
+function pickOpen(id){
+  const o = window._pickers[id]; const btn = document.getElementById(id); if(!o||!btn) return;
+  if(document.getElementById('pickmenu')){ pickClose(); return; }
+  const m = document.createElement('div'); m.id='pickmenu'; m.className='pick-menu'; m.setAttribute('role','listbox');
+  m.innerHTML = `<input class="pick-search" placeholder="Type to search…" autocomplete="off"><div class="pick-list"></div>`;
+  document.body.appendChild(m); btn.classList.add('on');
+  const inp = m.querySelector('.pick-search'), list = m.querySelector('.pick-list');
+  const draw = ()=>{
+    const q = inp.value.trim().toLowerCase(); let n=0;
+    list.innerHTML = o.groups.map(g=>{
+      const items = g.items.filter(i=> !q || (i.l+' '+(i.sub||'')).toLowerCase().includes(q));
+      if(!items.length) return '';
+      n += items.length;
+      return `${g.label? `<div class="pick-group">${esc(g.label)}</div>`:''}${items.map(i=>`<div class="pick-opt ${String(i.v)===String(o.value??'')?'on':''}" role="option" data-v="${esc(String(i.v))}">${esc(i.l)}${i.sub? `<span class="pick-sub">${esc(i.sub)}</span>`:''}</div>`).join('')}`;
+    }).join('') || `<div class="pick-none">Nothing matches “${esc(inp.value)}”</div>`;
+    const first = list.querySelector('.pick-opt.on') || list.querySelector('.pick-opt'); if(first) first.classList.add('hl');
+    return n;
+  };
+  const choose = (v)=>{ pickClose(); o.value = v; o.onpick && o.onpick(v); };
+  list.addEventListener('mousedown', e=>{ const op=e.target.closest('.pick-opt'); if(op){ e.preventDefault(); choose(op.dataset.v); } });
+  inp.addEventListener('input', draw);
+  const key = e=>{
+    if(e.key==='Escape'){ e.preventDefault(); pickClose(); return; }
+    const opts=[...list.querySelectorAll('.pick-opt')], i=opts.findIndex(x=>x.classList.contains('hl'));
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); if(!opts.length) return; opts.forEach(x=>x.classList.remove('hl'));
+      const j = e.key==='ArrowDown'? Math.min(opts.length-1, i+1) : Math.max(0, i-1); opts[j].classList.add('hl'); opts[j].scrollIntoView({block:'nearest'}); }
+    if(e.key==='Enter'){ e.preventDefault(); const hl=list.querySelector('.pick-opt.hl'); if(hl) choose(hl.dataset.v); }
+  };
+  inp.addEventListener('keydown', key);
+  const off = e=>{ if(!m.contains(e.target) && !btn.contains(e.target)) { pickClose(); document.removeEventListener('mousedown', off); } };
+  setTimeout(()=>document.addEventListener('mousedown', off), 0);
+  // position under the button, flipping above when there is no room; clamp inside the viewport
+  const r = btn.getBoundingClientRect();
+  m.style.minWidth = Math.max(260, r.width) + 'px';
+  m.style.left = Math.max(8, Math.min(r.left, innerWidth - Math.max(260, r.width) - 10)) + 'px';
+  const h = Math.min(m.offsetHeight||320, 340);
+  m.style.top = (r.bottom + h > innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6) + 'px';
+  draw(); inp.focus();
+}
 /* Generic little popover menu, anchored to an element. items:[{label,danger,fn}|'-'] */
 let _ctxItems = [];
 function ctxMenu(anchor, items){
@@ -5755,7 +5819,15 @@ function caDraw(){
   const selFields = fields.filter(f=>f.ftype==='select');
   const needBoard = (what)=>`<div class="ca-hint">Choose a board under “Where it applies” first — ${what} belong to a board.</div>`;
   const opt = (v, cur, label)=>`<option value="${esc(String(v))}" ${String(cur??'')===String(v)?'selected':''}>${esc(label)}</option>`;
-  const personSel = (cur, on, blank)=>`<select onchange="${on}"><option value="">${blank||'Pick a person…'}</option>${people.map(u=>opt(u.id,cur,u.full_name)).join('')}</select>`;
+  // People and boards are long lists at CREA (30+ staff, 10 workspaces, dozens of boards) — searchable pickers.
+  let pickN = 0;
+  const personSel = (cur, on, blank)=>{
+    const id = 'ca-pick-'+(pickN++);
+    const items = people.map(u=>({v:u.id, l:u.full_name, sub:u.job_title||u.role||''}));
+    return pickerHTML({id, value:cur||'', placeholder:blank||'Pick a person…',
+      groups:[ ...(blank? [{label:'', items:[{v:'', l:blank}]}] : []), {label:'People', items}],
+      onpick:(v)=>{ const fn = new Function('value', on.replace(/this\.value/g,'value')); fn(v); }});
+  };
   const groupSel  = (cur, on, blank)=> pid? `<select onchange="${on}">${blank? `<option value="">${blank}</option>`:'<option value="">Pick a group…</option>'}${groups.map(g=>opt(g.id,cur,g.name)).join('')}</select>` : needBoard('groups');
   const fieldSel  = (cur, on, list)=> pid? (list.length? `<select onchange="${on}"><option value="">Pick a column…</option>${list.map(f=>opt(f.id,cur,f.label)).join('')}</select>` : '<div class="ca-hint">This board has no suitable columns yet.</div>') : needBoard('columns');
   const fieldValSel = (fid, cur, on, blank)=>{ const f=fields.find(x=>x.id===fid); if(!f) return '';
@@ -5830,14 +5902,10 @@ function caDraw(){
       <div id="ca-acts">${_ca.acts.map(actRow).join('')}</div>
       <button class="btn btn-ghost btn-sm" onclick="caActAdd()">＋ Add another action</button></div>
     <div class="ca-sec"><label>Where it applies</label>
-    <select id="ca-scope" onchange="caScope(this.value)">
-      <option value="">Everywhere</option>
-      <optgroup label="Workspaces">
-        ${(S.workspaces||[]).map(w=>`<option value="w:${w.id}" ${_ca.scope==='w:'+w.id?'selected':''}>${esc(w.name)}</option>`).join('')}</optgroup>
-      <optgroup label="Boards">
-        ${(S.projects||[]).filter(p=>p.status!=='archived').map(p=>{const w=wsById(p.workspace_id);
-          return `<option value="p:${p.id}" ${_ca.scope==='p:'+p.id?'selected':''}>${esc(p.name)}${w?` — ${esc(w.name)}`:''}</option>`;}).join('')}</optgroup>
-    </select></div>
+    ${pickerHTML({id:'ca-scope', value:_ca.scope||'', placeholder:'Everywhere', onpick:(v)=>caScope(v),
+      groups:[{label:'', items:[{v:'', l:'Everywhere'}]},
+              {label:'Workspaces', items:(S.workspaces||[]).map(w=>({v:'w:'+w.id, l:w.name}))},
+              {label:'Boards', items:(S.projects||[]).filter(p=>p.status!=='archived').map(p=>{const w=wsById(p.workspace_id); return {v:'p:'+p.id, l:p.name, sub:w? w.name:''};})}]})}</div>
     <div class="ca-preview" id="ca-preview">${esc(caSentence(_ca))}<span style="color:var(--ink3)"> · ${trg.timed? 'checked every 15 minutes, fires once per task':'fires the moment it happens'}</span></div>`;
 }
 /* Validate the draft and turn it into the row the engine expects. Returns {error} or {payload}. */
