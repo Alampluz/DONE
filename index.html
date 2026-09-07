@@ -445,11 +445,30 @@ td.tv-name .tv-open{padding-left:20px}
 .sel-native{position:absolute!important;width:1px!important;height:1px!important;min-width:0!important;padding:0!important;margin:0!important;border:0!important;opacity:0;pointer-events:none;overflow:hidden}
 .pick-dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none;margin-right:2px}
 .pick-opt .pick-dot{margin-right:6px} .pick-opt .pick-l{flex:1} .pick-opt.dis{opacity:.45;cursor:default}
-.sel-pick{height:38px;font-weight:500} .strow .sel-pick{height:32px;font-size:12.5px} .ca-row .sel-pick{width:auto;min-width:140px;height:36px}
+.sel-pick{height:38px;font-weight:500}
+.bfbar .sel-pick,.bfbar .pick{height:auto;width:auto;min-width:0;gap:6px} .bfbar .sel-pick .pick-cur{overflow:visible}
+.bfbar .sel-pick .pick-chev{font-size:10px} .strow .sel-pick{height:32px;font-size:12.5px} .ca-row .sel-pick{width:auto;min-width:140px;height:36px}
 .pick[disabled]{opacity:.55;cursor:default}
 .ep-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:6px}
 .ep-field{display:flex;align-items:center;gap:10px} .ep-field .chk{min-width:110px} .ep-field input[type=text],.ep-field input:not([type]){flex:1}
 @media (max-width:700px){.ep-fields{grid-template-columns:1fr}}
+/* Board sharing */
+.share-sec{margin-top:18px} .share-sec:first-child{margin-top:0} .share-sec>label{display:block;margin-bottom:6px}
+.share-row{display:flex;gap:8px;align-items:center;margin-top:6px} .share-row input[readonly]{flex:1;font-size:12.5px;color:var(--ink2);background:var(--gray-soft)}
+.share-people{max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px;margin:8px 0}
+.share-person{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;margin:0} .share-person:hover{background:var(--gray-soft)} .share-person .pick-sub{margin-left:auto}
+.share-banner{background:#EAF2FB;color:#1E4E8C;border:1px solid #CFE0F5;border-radius:10px;padding:8px 14px;font-size:13px;margin-bottom:12px} .share-banner a{font-weight:600;margin-left:6px}
+#share-screen{position:fixed;inset:0;overflow:auto;background:var(--bg,#F6F5F1);z-index:150}
+.share-page{max-width:1240px;margin:0 auto;padding:28px 24px 60px}
+.share-top{display:flex;align-items:flex-start;gap:18px;margin-bottom:22px} .share-top h1{margin:2px 0 4px;font-size:22px} .share-top .sub{color:var(--ink2);font-size:13.5px}
+.share-crumb{font-size:12px;color:var(--ink3);text-transform:uppercase;letter-spacing:.6px}
+.share-meta{margin-left:auto;text-align:right;font-size:12.5px;font-weight:600;color:var(--ink2)} .share-meta span{font-weight:400;color:var(--ink3)}
+.share-group{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.share-gh{display:flex;align-items:center;gap:8px;padding:10px 14px;font-weight:700;font-size:13.5px;border-bottom:1px solid var(--line)}
+.share-tv td{padding:8px 14px;font-size:13px;border-bottom:1px solid var(--line);vertical-align:middle} .share-tv tr:last-child td{border-bottom:0}
+.share-title{font-weight:600;min-width:220px} .share-late{color:var(--red);font-weight:600}
+.share-foot{margin-top:24px;text-align:center;font-size:12px;color:var(--ink3)}
+.share-card{max-width:440px;margin:12vh auto;background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px;text-align:center} .share-card h2{margin:14px 0 6px} .share-card p{color:var(--ink2);font-size:13.5px}
 /* Automation builder rows */
 .ca-sec{margin-top:16px} .ca-sec:first-child{margin-top:0} .ca-sec>label{display:block;margin-bottom:6px}
 .ca-opt{font-weight:400;color:var(--ink3);font-size:12px;margin-left:6px}
@@ -1091,7 +1110,11 @@ function pickOpen(id, btnEl){
 function enhanceSelect(sel){
   if(sel.dataset.enh || sel.multiple || sel.size > 1 || sel.classList.contains('native')) return;
   sel.dataset.enh = '1'; sel.classList.add('sel-native'); sel.tabIndex = -1;
-  const btn = document.createElement('button'); btn.type='button'; btn.className='pick sel-pick'; btn.setAttribute('aria-haspopup','listbox');
+  const btn = document.createElement('button'); btn.type='button'; btn.setAttribute('aria-haspopup','listbox');
+  // Carry the select's own classes onto the button so the page's styling for that control still
+  // applies (the filter bar's .bf-sel chips, .strow rows, …) — otherwise every dropdown would
+  // fall back to the full-width modal shape.
+  btn.className = ('pick sel-pick ' + (sel.className||'').replace(/\bsel-native\b/g,'')).trim().replace(/\s+/g,' ');
   if(sel.style.cssText) btn.style.cssText = sel.style.cssText;
   if(sel.title) btn.title = sel.title;
   btn.innerHTML = '<span class="pick-cur"></span><span class="pick-chev">▾</span>';
@@ -1108,7 +1131,7 @@ function enhanceSelect(sel){
     const o = sel.selectedOptions[0];
     const c = o? colorFor(o.value) : null;
     btn.innerHTML = `${c? `<span class="pick-dot" style="background:${c}"></span>`:''}<span class="pick-cur">${esc(o? o.textContent.trim() : '')}</span><span class="pick-chev">▾</span>`;
-    btn.disabled = sel.disabled; btn.classList.toggle('empty', !o || o.value==='');
+    btn.disabled = sel.disabled;   // no "empty" greying: a select's first option is a real label, not a placeholder
   };
   const open = ()=>{
     sync();
@@ -1279,7 +1302,7 @@ db.auth.onAuthStateChange(async (event, session)=>{
   if(event==='PASSWORD_RECOVERY') S._recovery = true;    // arrived through a reset link
   if(session && !S.me){ await boot(); }
   if(S._recovery && S.me){ S._recovery=false; changePasswordModal(true); }
-  if(!session){ S.me=null; $('#app').classList.add('hidden'); $('#login-screen').classList.remove('hidden'); }
+  if(!session){ S.me=null; $('#app').classList.add('hidden'); if(!location.hash.startsWith('#/share/')) $('#login-screen').classList.remove('hidden'); }
 });
 
 let _booting=false;
@@ -1299,6 +1322,7 @@ async function _boot(){
     return;
   }
   $('#login-screen').classList.add('hidden');
+  if(location.hash.startsWith('#/share/')){ renderShareView(location.hash.slice(8).split('/')[0]); renderSidebar(); startNotifPolling(); return; }
   $('#app').classList.remove('hidden');
   const b = $('#ten-banner');
   if(S.company && S.company.status==='trial' && S.company.trial_ends_at){
@@ -1431,7 +1455,14 @@ function wireAttachZone(root, zoneId, entity_type, entity_id, listEl, onDone){
 }
 
 /* ================= ROUTER ================= */
-window.addEventListener('hashchange', ()=>{ if(S.me) navigate(location.hash); });
+window.addEventListener('hashchange', ()=>{
+  if(location.hash.startsWith('#/share/')) return renderShareView(location.hash.slice(8).split('/')[0]);
+  leaveShareView();
+  if(S.me){ navigate(location.hash); }
+  else document.getElementById('login-screen')?.classList.remove('hidden');
+});
+// A public share link works before (and without) signing in. Deferred a tick: renderShareView lives in a later script block.
+setTimeout(()=>{ if(location.hash.startsWith('#/share/')) renderShareView(location.hash.slice(8).split('/')[0]); }, 0);
 function navigate(hash){
   if(location.hash !== hash) { location.hash = hash; return; }
   closeModals();
@@ -1822,6 +1853,7 @@ function notifLine(n, who){
     case 'overdue':     return `${t} is overdue`;
     case 'automation':  return n.body? `${t} — ${esc(n.body)}` : `An automation flagged ${t}`;
     case 'approval':    return `${name} asked you to sign off on ${t}`;
+    case 'share':       return `${name} shared the board ${t} with you${n.body? ` <span style="color:var(--ink3)">· ${esc(n.body)}</span>`:''}`;
     case 'approval_decided': {
       // body = 'approved' or 'rejected — note'
       const ok = (n.body||'').startsWith('approved');
@@ -1895,6 +1927,7 @@ async function openNotif(id){
   await refreshNotifs();
   if(n.entity_type==='task') openTask(n.entity_id);
   else if(n.entity_type==='request') openRequest(n.entity_id);
+  else if(n.entity_type==='project') location.hash = '#/project/'+n.entity_id;
 }
 
 /* ================= PUBLIC FORM (no login) ================= */
@@ -2692,6 +2725,116 @@ function viewMenu(anchor, pid){
   };
   setTimeout(()=>{ document.addEventListener('mousedown', off); document.addEventListener('keydown', key); (m.querySelector('.vm-opt.on')||m.querySelector('.vm-opt')).focus(); }, 0);
 }
+/* ================= SHARE A BOARD =================
+   Three ways out of a board: copy the normal link (for people who can already open it), send it to
+   colleagues (a notification + email each), and — for owners/admins — a secret public link that
+   shows a read-only snapshot to anyone, no login (projects.share_token / share_enabled, RPC
+   public_board). The public view is rendered by renderShareView() below. */
+const boardLink = pid => location.origin + location.pathname + '#/project/' + pid;
+const shareLink = tok => location.origin + location.pathname + '#/share/' + tok;
+function newShareToken(){ const a=new Uint8Array(24); crypto.getRandomValues(a); return [...a].map(b=>b.toString(16).padStart(2,'0')).join(''); }
+async function copyText(t){ try{ await navigator.clipboard.writeText(t); toast('Link copied'); }catch(e){ toast('Copy failed — select the link and copy it', true); } }
+let _shareSel = new Set();
+function shareBoardModal(pid){
+  const p = projById(pid); if(!p) return;
+  _shareSel = new Set();
+  const m = modal(`<div class="modal-head"><h2>Share “${esc(p.name)}”</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body" id="share-body"></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Close</button></div>`);
+  m.querySelector('.modal').classList.add('wide');
+  shareDraw(pid);
+}
+function shareDraw(pid){
+  const B = document.getElementById('share-body'); const p = projById(pid); if(!B||!p) return;
+  const q = (document.getElementById('share-q')||{}).value || '';
+  const people = (S.profiles||[]).filter(u=>u.active && u.id!==(S.me||{}).id && !(u.email||'').startsWith('forms+'))
+    .filter(u=> !q || (u.full_name+' '+(u.job_title||'')+' '+(u.email||'')).toLowerCase().includes(q.toLowerCase()))
+    .sort((a,b)=>a.full_name.localeCompare(b.full_name));
+  const canPublic = canManageBoard(pid);
+  B.innerHTML = `
+    <div class="share-sec"><label>Board link <span class="ca-opt">for colleagues who already have access</span></label>
+      <div class="share-row"><input readonly value="${esc(boardLink(pid))}" onclick="this.select()"><button class="btn btn-primary btn-sm" onclick="copyText('${boardLink(pid)}')">Copy</button></div></div>
+    <div class="share-sec"><label>Send to colleagues <span class="ca-opt">they get a notification and an email with the link</span></label>
+      <input id="share-q" placeholder="Search people…" value="${esc(q)}" oninput="shareDraw('${pid}')">
+      <div class="share-people">${people.length? people.map(u=>`<label class="chk share-person"><input type="checkbox" data-uid="${u.id}" ${_shareSel.has(u.id)?'checked':''} onchange="this.checked? _shareSel.add('${u.id}') : _shareSel.delete('${u.id}'); shareCount()">${avatar(u,true)}<span>${esc(u.full_name)}</span><span class="pick-sub">${esc(u.job_title||u.role||'')}</span></label>`).join('') : '<div class="ca-hint">Nobody matches.</div>'}</div>
+      <textarea id="share-note" rows="2" placeholder="Optional note — e.g. “Please review the September briefs by Friday”"></textarea>
+      <div class="share-row" style="justify-content:flex-end"><span id="share-count" class="ca-opt">${_shareSel.size? _shareSel.size+' selected':''}</span><button class="btn btn-primary btn-sm" id="share-send" onclick="shareSend('${pid}')" ${_shareSel.size?'':'disabled'}>Send</button></div></div>
+    <div class="share-sec"><label>Public link <span class="ca-opt">anyone with the link can view — read-only, no login</span></label>
+      ${canPublic? `<label class="sw" style="display:inline-flex;align-items:center;gap:10px;margin:6px 0"><input type="checkbox" ${p.share_enabled?'checked':''} onchange="shareToggle('${pid}', this.checked)"><span></span><span style="font-size:13px;color:var(--ink2)">${p.share_enabled? 'On — this board is visible to anyone who has the link':'Off'}</span></label>
+        ${p.share_enabled && p.share_token? `<div class="share-row"><input readonly value="${esc(shareLink(p.share_token))}" onclick="this.select()"><button class="btn btn-primary btn-sm" onclick="copyText('${shareLink(p.share_token)}')">Copy</button><button class="btn btn-ghost btn-sm" title="Make a new link; the old one stops working" onclick="shareRotate('${pid}')">Reset link</button></div>
+        <div class="ca-hint">Viewers see task names, status, people’s names and the board columns. They cannot see comments, files, archived tasks or anything outside this board.</div>`:''}`
+      : `<div class="ca-hint">Only a board owner or an admin can turn the public link on.${p.share_enabled? ' It is currently <b>on</b>.':''}</div>`}
+    </div>`;
+}
+function shareCount(){ const c=document.getElementById('share-count'), b=document.getElementById('share-send'); if(c) c.textContent = _shareSel.size? _shareSel.size+' selected':''; if(b) b.disabled = !_shareSel.size; }
+async function shareSend(pid){
+  if(!_shareSel.size) return;
+  const note = (document.getElementById('share-note')||{}).value || '';
+  const {data, error} = await db.rpc('share_board_with', {pid, uids:[..._shareSel], note});
+  if(error) return toast(error.message, true);
+  toast(`Sent to ${data} ${data===1?'person':'people'}`);
+  _shareSel = new Set(); const n=document.getElementById('share-note'); if(n) n.value='';
+  shareDraw(pid);
+}
+async function shareToggle(pid, on){
+  const p = projById(pid); if(!p) return;
+  const upd = {share_enabled:on};
+  if(on && !p.share_token) upd.share_token = newShareToken();
+  if(on) upd.shared_at = new Date().toISOString();
+  const {error} = await db.from('projects').update(upd).eq('id',pid);
+  if(error){ toast(error.message, true); return shareDraw(pid); }
+  Object.assign(p, upd);
+  toast(on? 'Public link is on':'Public link is off — the old link no longer works');
+  shareDraw(pid);
+  if(S.route.view==='project' && S.route.id===pid) renderProject(pid);
+}
+async function shareRotate(pid){
+  const p = projById(pid); if(!p) return;
+  const tok = newShareToken();
+  const {error} = await db.from('projects').update({share_token:tok}).eq('id',pid);
+  if(error) return toast(error.message, true);
+  p.share_token = tok; toast('New link made — the old one has stopped working'); shareDraw(pid);
+}
+/* The read-only page behind a public link. Works with or without a login. */
+async function renderShareView(tok){
+  let host = document.getElementById('share-screen');
+  if(!host){ host = document.createElement('div'); host.id='share-screen'; document.body.appendChild(host); }
+  document.getElementById('login-screen')?.classList.add('hidden');
+  document.getElementById('app')?.classList.add('hidden');
+  host.hidden = false;
+  host.innerHTML = '<div class="share-page"><div class="empty">Loading…</div></div>';
+  const {data, error} = await db.rpc('public_board', {tok});
+  if(error || !data){
+    host.innerHTML = `<div class="share-page"><div class="share-card share-gone"><img class="login-logo" src="${document.querySelector('.login-logo')?.src||''}" alt="DONE"><h2>This link doesn’t work any more</h2><p>The board’s owner may have turned sharing off or made a new link. Ask them for the current one.</p>${S.me? `<a class="btn btn-primary" href="#/home">Back to DONE</a>`:''}</div></div>`;
+    return;
+  }
+  const b = data.board, groups = data.groups||[], fields = data.fields||[], tasks = data.tasks||[];
+  const fc = b.field_config||{};
+  const lab = (k, d)=> ((fc[k]||{}).label || d), hid = k => !!((fc[k]||{}).hidden);
+  const sL = k => (STATUSES.find(s=>s.k===k)||{}); const pL = k => (PRIORITIES.find(p=>p.k===k)||{});
+  const cell = (t,f)=>{ const v = (t.custom||{})[f.id]; if(v==null||v==='') return ''; if(f.ftype==='checkbox') return v? '✓':''; if(f.ftype==='date') return fmtDate(v); return esc(String(v)); };
+  const cols = ['status', ...(hid('assignee')?[]:['assignee']), ...(hid('due_date')?[]:['due_date']), ...(hid('priority')?[]:['priority'])];
+  const head = `<tr><th>Task</th>${cols.map(k=>`<th>${esc(lab(k, k==='status'?'Status':k==='assignee'?'Assignee':k==='due_date'?'Due date':'Priority'))}</th>`).join('')}${fields.map(f=>`<th>${esc(f.label)}</th>`).join('')}</tr>`;
+  const row = t=>`<tr><td class="share-title">${esc(t.title)}</td>
+      <td><span class="chip" style="background:${sL(t.status).color||'#999'}22;color:${sL(t.status).color||'#555'}">${esc(sL(t.status).label||t.status)}</span></td>
+      ${hid('assignee')?'':`<td>${esc(t.assignee||'—')}</td>`}
+      ${hid('due_date')?'':`<td class="${t.due_date && t.status!=='done' && t.due_date<new Date().toISOString().slice(0,10)?'share-late':''}">${t.due_date? fmtDate(t.due_date):'—'}</td>`}
+      ${hid('priority')?'':`<td>${esc(pL(t.priority).label||t.priority||'')}</td>`}
+      ${fields.map(f=>`<td>${cell(t,f)}</td>`).join('')}</tr>`;
+  const byGroup = gid => tasks.filter(t=> (t.group_id||null)===gid);
+  const sections = [...groups.map(g=>({g, rows:byGroup(g.id)})), {g:null, rows:tasks.filter(t=>!t.group_id || !groups.some(g=>g.id===t.group_id))}].filter(s=>s.rows.length || s.g);
+  const open = tasks.filter(t=>t.status!=='done').length;
+  host.innerHTML = `<div class="share-page">
+    <div class="share-top"><img class="logo-img" src="${document.querySelector('.login-logo')?.src||''}" alt="DONE" style="height:26px">
+      <div><div class="share-crumb">${esc(b.company||'')}${b.workspace? ' · '+esc(b.workspace):''}</div><h1>${esc(b.name)}</h1>${b.description? `<div class="sub">${esc(b.description)}</div>`:''}</div>
+      <div class="share-meta">Shared view · read-only<br><span>${tasks.length} task${tasks.length===1?'':'s'} · ${open} open · updated ${timeAgo(data.generated_at)}</span></div></div>
+    ${sections.map(({g,rows})=>`<div class="share-group"><div class="share-gh"><span class="ws-dot" style="display:inline-block;background:${g? (g.color||'#5C6470'):'#5C6470'}"></span>${esc(g? g.name : 'Other')}<span class="ca-opt">${rows.length}</span></div>
+      ${rows.length? `<div class="tv-wrap"><table class="tv share-tv"><thead>${head}</thead><tbody>${rows.map(row).join('')}</tbody></table></div>` : '<div class="ca-hint">No tasks here.</div>'}</div>`).join('')}
+    <div class="share-foot">Made with DONE${S.me? ` · <a href="#/project/${b.id}">Open in DONE</a>`:''}</div>
+  </div>`;
+}
+function leaveShareView(){ const h=document.getElementById('share-screen'); if(h) h.hidden = true; }
+
 async function renderProject(id){
   if(S._viewPid!==id){ boardMode = viewLoad(id) || 'table'; S._viewPid = id; }   // land on the view last used here
   const p = projById(id);
@@ -2704,6 +2847,7 @@ async function renderProject(id){
   const gateChip = p.approval_gate?.on? `<span class="chip" style="background:var(--gray-soft);color:var(--ink3)" title="Tasks need an approved sign-off before they can be marked ${esc((STATUSES.find(s=>s.k===p.approval_gate.status)||{}).label||'Done')}">Sign-off required</span>` : '';
   setTopbar(`<span onclick="location.hash='#/ws/${p.workspace_id}'" style="cursor:pointer">${w? esc(w.name):''}</span> <span>/</span> ${esc(p.name)} ${visChip(p.visibility)}${gateChip}`,
     `${viewPickerHTML(id)}
+     <button class="btn btn-ghost btn-sm" onclick="shareBoardModal('${id}')" title="Copy the link, send it to colleagues, or make a public read-only link">Share</button>
      ${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="projectMembersModal('${id}')">Partner access</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" onclick="editProjectModal('${id}')">Edit board</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteProjectModal('${id}')">Delete board</button>`:''}
@@ -2734,7 +2878,7 @@ async function renderProject(id){
     return;
   }
   widgetProjScope = null;
-  C.innerHTML = presetNoticeHTML(id) + filterBarHTML(id) + '<div id="board-body"></div>';
+  C.innerHTML = (p.share_enabled? `<div class="share-banner">This board is visible to anyone on the web who has its public link.${canManageBoard(id)? ` <a href="javascript:void 0" onclick="shareBoardModal('${id}')">Manage</a>`:''}</div>`:'') + presetNoticeHTML(id) + filterBarHTML(id) + '<div id="board-body"></div>';
   renderBoardBody(id);
 }
 /* Re-renders only the content below the filter bar, so typing in the search
