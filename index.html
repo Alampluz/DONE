@@ -447,6 +447,9 @@ td.tv-name .tv-open{padding-left:20px}
 .pick-opt .pick-dot{margin-right:6px} .pick-opt .pick-l{flex:1} .pick-opt.dis{opacity:.45;cursor:default}
 .sel-pick{height:38px;font-weight:500} .strow .sel-pick{height:32px;font-size:12.5px} .ca-row .sel-pick{width:auto;min-width:140px;height:36px}
 .pick[disabled]{opacity:.55;cursor:default}
+.ep-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:6px}
+.ep-field{display:flex;align-items:center;gap:10px} .ep-field .chk{min-width:110px} .ep-field input[type=text],.ep-field input:not([type]){flex:1}
+@media (max-width:700px){.ep-fields{grid-template-columns:1fr}}
 /* Automation builder rows */
 .ca-sec{margin-top:16px} .ca-sec:first-child{margin-top:0} .ca-sec>label{display:block;margin-bottom:6px}
 .ca-opt{font-weight:400;color:var(--ink3);font-size:12px;margin-left:6px}
@@ -726,6 +729,18 @@ const PRIORITIES = [
   {k:'normal', label:'Normal', color:'var(--blue)', soft:'var(--blue-soft)'},
   {k:'low', label:'Low', color:'var(--ink3)', soft:'var(--gray-soft)'},
 ];
+/* The four standard task fields every board has. A board can rename them and hide the ones it does
+   not use (projects.field_config, 7 Sep) — an onboarding board has a "Store live" date, not a due date;
+   a CS board has an SLA, not a priority. Status can be renamed but never hidden. */
+const CORE_FIELDS = [
+  {k:'status',   label:'Status',   hideable:false},
+  {k:'priority', label:'Priority', hideable:true},
+  {k:'assignee', label:'Assignee', hideable:true},
+  {k:'due_date', label:'Due date', hideable:true},
+];
+function fieldConf(pid, k){ const p = (S.projects||[]).find(x=>x.id===pid); return ((p && p.field_config)||{})[k] || {}; }
+function coreLabel(pid, k){ const c = fieldConf(pid,k); return (c.label && String(c.label).trim()) || (CORE_FIELDS.find(f=>f.k===k)||{}).label || k; }
+function coreHidden(pid, k){ const f = CORE_FIELDS.find(x=>x.k===k); return !!(f && f.hideable && fieldConf(pid,k).hidden); }
 const PLATFORMS = [
   {k:'TikTok Shop', label:'TikTok Shop', color:'#111827'},
   {k:'Shopee',      label:'Shopee',      color:'#EE4D2D'},
@@ -2308,6 +2323,13 @@ function editProjectModal(pid){
       ${canManageBoard(pid)? `<label style="margin-top:14px">Who can change tasks</label>
       <select id="ep-preset">${BOARD_PRESETS.map(o=>`<option value="${o.k}" ${o.k===(p.edit_preset||'everything')?'selected':''}>${o.label}</option>`).join('')}</select>
       <div id="ep-preset-blurb" style="font-size:12px;color:var(--ink3);margin-top:4px">${BOARD_PRESETS.find(o=>o.k===(p.edit_preset||'everything')).blurb} Owners, admins and management are never restricted.</div>`:''}
+      <label style="margin-top:14px">Standard fields on this board <span style="font-weight:400;color:var(--ink3)">— rename to match the work, untick what this board doesn't use</span></label>
+      <div class="ep-fields">
+        ${CORE_FIELDS.map(f=>`<div class="ep-field">
+          <label class="chk" style="margin:0" title="${f.hideable?'Show this field on the board':'Status is always shown'}"><input type="checkbox" data-epf-show="${f.k}" ${coreHidden(pid,f.k)?'':'checked'} ${f.hideable?'':'disabled'}><span>${esc(f.label)}</span></label>
+          <input data-epf-label="${f.k}" value="${esc(fieldConf(pid,f.k).label||'')}" placeholder="${esc(f.label)}" maxlength="24">
+        </div>`).join('')}
+      </div>
       <label style="margin-top:14px">Who can open this board</label>
       ${visPickerHTML('ep-vis', p.visibility||'collaborate')}
       <label style="margin-top:14px">Colour</label>
@@ -2340,6 +2362,14 @@ function editProjectModal(pid){
       workspace_id:m.querySelector('#ep-ws').value, visibility:vis,
       status:m.querySelector('#ep-status').value, color:colour};
     if(presetSel) upd.edit_preset = presetSel.value;
+    const fc = {};
+    CORE_FIELDS.forEach(f=>{
+      const lab = (m.querySelector(`[data-epf-label="${f.k}"]`).value||'').trim();
+      const show = m.querySelector(`[data-epf-show="${f.k}"]`).checked;
+      const c = {}; if(lab && lab!==f.label) c.label = lab; if(f.hideable && !show) c.hidden = true;
+      if(Object.keys(c).length) fc[f.k] = c;
+    });
+    upd.field_config = fc;
     if(canGate) upd.approval_gate = {on: gateOn.checked,
       status: m.querySelector('#ep-gate-status').value,
       approvers: [...m.querySelectorAll('#ep-gate-appr input[data-gapp]:checked')].map(c=>c.dataset.gapp)};
@@ -3419,7 +3449,7 @@ function exportBoardCSV(pid){
     if(f.ftype==='file') return (v&&v.name)? v.name : '';
     return v==null? '' : v;
   };
-  const out = [['Task','Group','Status','Priority','Assignee','Due date', ...flds.map(f=>f.label), 'Created']];
+  const out = [['Task','Group',coreLabel(pid,'status'),coreLabel(pid,'priority'),coreLabel(pid,'assignee'),coreLabel(pid,'due_date'), ...flds.map(f=>f.label), 'Created']];
   rows.forEach(t=> out.push([
     t.title||'',
     (groups.find(g=>g.id===t.group_id)||{}).name||'',
@@ -3565,7 +3595,7 @@ async function restoreTask(logId, pid){
 }
 function tvHeadHTML(id, flds, showAddCol, gid){
   return `<tr>
-    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}<th>Task</th><th>Status</th><th>Assignee</th><th>Due date</th><th>Priority</th>
+    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}<th>Task</th><th>${esc(coreLabel(id,'status'))}</th>${coreHidden(id,'assignee')?'':`<th>${esc(coreLabel(id,'assignee'))}</th>`}${coreHidden(id,'due_date')?'':`<th>${esc(coreLabel(id,'due_date'))}</th>`}${coreHidden(id,'priority')?'':`<th>${esc(coreLabel(id,'priority'))}</th>`}
     ${flds.map(f=>`<th class="${canManageBoard(id)?'col-edit':''}" ${canManageBoard(id)?`onclick="editColumnModal('${f.id}','${id}')" title="Edit column"`:''}>${esc(f.label)}</th>`).join('')}
     ${isStaff()? (showAddCol&&canManageBoard(id)? `<th><span class="tv-addcol" onclick="addColumnModal('${id}')">＋ Column</span></th>`:'<th></th>'):''}
   </tr>`;
@@ -3587,9 +3617,9 @@ function tvRowHTML(t, flds, gc){
     ${canEdit()?`<td class="tv-check">${canEditTask(t)?`<input type="checkbox" ${tvSel.has(t.id)?'checked':''} onchange="tvSelToggle('${t.id}',this.checked)">`:''}</td>`:''}
     <td class="tv-name"><span class="tv-dots" title="Task options" onclick="event.stopPropagation();rowMenu(this,'${t.id}')">⋯</span><div class="tv-open" draggable="${canEditTask(t)&&!arch}" ondragstart="tvDragStart(event,'${t.id}')" ondragend="tvDragEnd(event)" onclick="openTask('${t.id}')">${dep}${esc(t.title)}${sc&&sc.total? `<span class="subchip">${sc.done}/${sc.total}</span>`:''}</div>${arch&&canEdit()?`<span class="tv-restore" onclick="event.stopPropagation();tvUnarchive('${t.id}')">Restore</span>`:''}</td>
     <td>${tvPickHTML('status', t.id, 'status', false, t.status, t)}</td>
-    <td>${tvPickHTML('people', t.id, 'assignee_id', false, t.assignee_id, t)}</td>
-    <td>${tvPickHTML('due', t.id, 'due_date', false, t.due_date, t)}</td>
-    <td>${tvPickHTML('priority', t.id, 'priority', false, t.priority, t)}</td>
+    ${coreHidden(t.project_id,'assignee')?'':`<td>${tvPickHTML('people', t.id, 'assignee_id', false, t.assignee_id, t)}</td>`}
+    ${coreHidden(t.project_id,'due_date')?'':`<td>${tvPickHTML('due', t.id, 'due_date', false, t.due_date, t)}</td>`}
+    ${coreHidden(t.project_id,'priority')?'':`<td>${tvPickHTML('priority', t.id, 'priority', false, t.priority, t)}</td>`}
     ${flds.map(f=>`<td>${tvCell(t,f)}</td>`).join('')}
     ${isStaff()? '<td></td>':''}
   </tr>`;
@@ -3613,7 +3643,7 @@ function renderProjectTableView(id, rowSet, host){
   const SRC = rowSet || S._tasks || [];
   const flds = S._fields||[], groups = S._groups||[];
   tvBuildOpts(flds);
-  const cols = 5+(canEdit()?1:0)+flds.length+(isStaff()?1:0);
+  const cols = 2+['assignee','due_date','priority'].filter(k=>!coreHidden(id,k)).length+(canEdit()?1:0)+flds.length+(isStaff()?1:0);
   const byPos = (a,b)=> (a.position||0)-(b.position||0);
   const tableFor = (rows, gid, first, gc)=>{
     const key = gid||'__all__', lim = tvShown[key] ?? TV_CHUNK;
@@ -4133,10 +4163,10 @@ function newTaskModal(projectId, status='todo', groupId=null){
       <label>Title <span class="req">*</span></label><input id="tk-title" placeholder="What needs to be done?">
       <label>Description</label><textarea id="tk-desc" rows="3"></textarea>
       <div class="field-grid">
-        <div><label>Status</label><select id="tk-status">${STATUSES.map(s=>`<option value="${s.k}" ${s.k===status?'selected':''}>${s.label}</option>`).join('')}</select></div>
-        <div><label>Priority</label><select id="tk-prio">${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k==='normal'?'selected':''}>${x.label}</option>`).join('')}</select></div>
-        <div><label>Assignee</label><select id="tk-assignee"><option value="">Unassigned</option>${assigneeOptions(projectId)}</select></div>
-        <div><label>Due date</label><input id="tk-due" type="date"></div>
+        <div><label>${esc(coreLabel(projectId,'status'))}</label><select id="tk-status">${STATUSES.map(s=>`<option value="${s.k}" ${s.k===status?'selected':''}>${s.label}</option>`).join('')}</select></div>
+        <div ${coreHidden(projectId,'priority')?'hidden':''}><label>${esc(coreLabel(projectId,'priority'))}</label><select id="tk-prio">${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k==='normal'?'selected':''}>${x.label}</option>`).join('')}</select></div>
+        <div ${coreHidden(projectId,'assignee')?'hidden':''}><label>${esc(coreLabel(projectId,'assignee'))}</label><select id="tk-assignee"><option value="">Unassigned</option>${assigneeOptions(projectId)}</select></div>
+        <div ${coreHidden(projectId,'due_date')?'hidden':''}><label>${esc(coreLabel(projectId,'due_date'))}</label><input id="tk-due" type="date"></div>
       </div>
       <label>Tags (comma separated)</label><input id="tk-tags" placeholder="e.g. 9.9, shopee">
     </div>
@@ -4201,10 +4231,10 @@ async function openTask(id){
       <button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <div class="field-grid">
-        <div><label>Status</label><select id="tv-status" ${canEdit()?'':'disabled'}>${STATUSES.map(s=>`<option value="${s.k}" ${s.k===t.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
-        <div><label>Priority</label><select id="tv-prio" ${canEdit()?'':'disabled'}>${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k===t.priority?'selected':''}>${x.label}</option>`).join('')}</select></div>
-        <div><label>Assignee</label><select id="tv-assignee" ${canEdit()?'':'disabled'}><option value="">Unassigned</option>${assigneeOptions(t.project_id, t.assignee_id)}</select></div>
-        <div><label>Due date</label><input id="tv-due" type="date" value="${t.due_date||''}" ${canEdit()?'':'disabled'}></div>
+        <div><label>${esc(coreLabel(t.project_id,'status'))}</label><select id="tv-status" ${canEdit()?'':'disabled'}>${STATUSES.map(s=>`<option value="${s.k}" ${s.k===t.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
+        <div ${coreHidden(t.project_id,'priority')?'hidden':''}><label>${esc(coreLabel(t.project_id,'priority'))}</label><select id="tv-prio" ${canEdit()?'':'disabled'}>${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k===t.priority?'selected':''}>${x.label}</option>`).join('')}</select></div>
+        <div ${coreHidden(t.project_id,'assignee')?'hidden':''}><label>${esc(coreLabel(t.project_id,'assignee'))}</label><select id="tv-assignee" ${canEdit()?'':'disabled'}><option value="">Unassigned</option>${assigneeOptions(t.project_id, t.assignee_id)}</select></div>
+        <div ${coreHidden(t.project_id,'due_date')?'hidden':''}><label>${esc(coreLabel(t.project_id,'due_date'))}</label><input id="tv-due" type="date" value="${t.due_date||''}" ${canEdit()?'':'disabled'}></div>
       </div>
       <label>Title</label><input id="tv-title" value="${esc(t.title)}" ${canEdit()?'':'disabled'}>
       <label>Description</label><textarea id="tv-desc" rows="3" ${canEdit()?'':'disabled'}>${esc(t.description)}</textarea>
