@@ -1032,7 +1032,7 @@ function caDraw(){
     ${pickerHTML({id:'ca-scope', value:_ca.scope||'', placeholder:'Everywhere', onpick:(v)=>caScope(v),
       groups:[{label:'', items:[{v:'', l:'Everywhere'}]},
               {label:'Workspaces', items:(S.workspaces||[]).map(w=>({v:'w:'+w.id, l:w.name}))},
-              {label:'Boards', items:(S.projects||[]).filter(p=>p.status!=='archived').map(p=>{const w=wsById(p.workspace_id); return {v:'p:'+p.id, l:p.name, sub:w? w.name:''};})}]})}</div>
+              {label:'Boards', items:(S.projects||[]).filter(p=>p.status!=='archived').slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'})).map(p=>{const w=wsById(p.workspace_id); return {v:'p:'+p.id, l:p.name, sub:w? w.name:''};})}]})}</div>
     <div class="ca-preview" id="ca-preview">${esc(caSentence(_ca))}<span style="color:var(--ink3)"> · ${trg.timed? 'checked every 15 minutes, fires once per task':'fires the moment it happens'}</span></div>`;
 }
 /* Validate the draft and turn it into the row the engine expects. Returns {error} or {payload}. */

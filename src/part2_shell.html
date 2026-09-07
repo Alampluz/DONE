@@ -370,11 +370,13 @@ function pickerHTML(o){
     <span class="pick-cur">${cur? esc(cur.l) : esc(o.placeholder||'Choose…')}</span><span class="pick-chev">▾</span></button>`;
 }
 function pickClose(){ const m=document.getElementById('pickmenu'); if(m){ m.remove(); } document.querySelectorAll('.pick.on').forEach(b=>b.classList.remove('on')); }
-function pickOpen(id){
-  const o = window._pickers[id]; const btn = document.getElementById(id); if(!o||!btn) return;
+function pickOpen(id, btnEl){
+  const o = window._pickers[id]; const btn = btnEl || document.getElementById(id); if(!o||!btn) return;
   if(document.getElementById('pickmenu')){ pickClose(); return; }
+  const total = o.groups.reduce((n,g)=>n+g.items.length, 0);
+  const searchable = o.search!=null? o.search : total > 7;      // short lists open as a plain menu
   const m = document.createElement('div'); m.id='pickmenu'; m.className='pick-menu'; m.setAttribute('role','listbox');
-  m.innerHTML = `<input class="pick-search" placeholder="Type to search…" autocomplete="off"><div class="pick-list"></div>`;
+  m.innerHTML = `<input class="pick-search" placeholder="Type to search…" autocomplete="off" ${searchable?'':'hidden'}><div class="pick-list"></div>`;
   document.body.appendChild(m); btn.classList.add('on');
   const inp = m.querySelector('.pick-search'), list = m.querySelector('.pick-list');
   const draw = ()=>{
@@ -383,13 +385,13 @@ function pickOpen(id){
       const items = g.items.filter(i=> !q || (i.l+' '+(i.sub||'')).toLowerCase().includes(q));
       if(!items.length) return '';
       n += items.length;
-      return `${g.label? `<div class="pick-group">${esc(g.label)}</div>`:''}${items.map(i=>`<div class="pick-opt ${String(i.v)===String(o.value??'')?'on':''}" role="option" data-v="${esc(String(i.v))}">${esc(i.l)}${i.sub? `<span class="pick-sub">${esc(i.sub)}</span>`:''}</div>`).join('')}`;
+      return `${g.label? `<div class="pick-group">${esc(g.label)}</div>`:''}${items.map(i=>`<div class="pick-opt ${String(i.v)===String(o.value??'')?'on':''} ${i.disabled?'dis':''}" role="option" data-v="${esc(String(i.v))}">${i.color? `<span class="pick-dot" style="background:${esc(i.color)}"></span>`:''}<span class="pick-l">${esc(i.l)}</span>${i.sub? `<span class="pick-sub">${esc(i.sub)}</span>`:''}</div>`).join('')}`;
     }).join('') || `<div class="pick-none">Nothing matches “${esc(inp.value)}”</div>`;
     const first = list.querySelector('.pick-opt.on') || list.querySelector('.pick-opt'); if(first) first.classList.add('hl');
     return n;
   };
   const choose = (v)=>{ pickClose(); o.value = v; o.onpick && o.onpick(v); };
-  list.addEventListener('mousedown', e=>{ const op=e.target.closest('.pick-opt'); if(op){ e.preventDefault(); choose(op.dataset.v); } });
+  list.addEventListener('mousedown', e=>{ const op=e.target.closest('.pick-opt'); if(op && !op.classList.contains('dis')){ e.preventDefault(); choose(op.dataset.v); } });
   inp.addEventListener('input', draw);
   const key = e=>{
     if(e.key==='Escape'){ e.preventDefault(); pickClose(); return; }
@@ -398,7 +400,7 @@ function pickOpen(id){
       const j = e.key==='ArrowDown'? Math.min(opts.length-1, i+1) : Math.max(0, i-1); opts[j].classList.add('hl'); opts[j].scrollIntoView({block:'nearest'}); }
     if(e.key==='Enter'){ e.preventDefault(); const hl=list.querySelector('.pick-opt.hl'); if(hl) choose(hl.dataset.v); }
   };
-  inp.addEventListener('keydown', key);
+  inp.addEventListener('keydown', key); m.addEventListener('keydown', e=>{ if(e.target!==inp) key(e); }); m.tabIndex=-1;
   const off = e=>{ if(!m.contains(e.target) && !btn.contains(e.target)) { pickClose(); document.removeEventListener('mousedown', off); } };
   setTimeout(()=>document.addEventListener('mousedown', off), 0);
   // position under the button, flipping above when there is no room; clamp inside the viewport
@@ -407,7 +409,58 @@ function pickOpen(id){
   m.style.left = Math.max(8, Math.min(r.left, innerWidth - Math.max(260, r.width) - 10)) + 'px';
   const h = Math.min(m.offsetHeight||320, 340);
   m.style.top = (r.bottom + h > innerHeight ? Math.max(8, r.top - h - 6) : r.bottom + 6) + 'px';
-  draw(); inp.focus();
+  draw(); if(searchable) inp.focus(); else m.focus();
+}
+/* Every plain <select> in the app is upgraded to the same menu: the native control stays in the
+   DOM (value, onchange and form semantics untouched) but is hidden, and a styled button opens the
+   picker. Status and priority lists get their colour dots; lists longer than 7 get the search box.
+   Add class "native" to a select to opt out. */
+function enhanceSelect(sel){
+  if(sel.dataset.enh || sel.multiple || sel.size > 1 || sel.classList.contains('native')) return;
+  sel.dataset.enh = '1'; sel.classList.add('sel-native'); sel.tabIndex = -1;
+  const btn = document.createElement('button'); btn.type='button'; btn.className='pick sel-pick'; btn.setAttribute('aria-haspopup','listbox');
+  if(sel.style.cssText) btn.style.cssText = sel.style.cssText;
+  if(sel.title) btn.title = sel.title;
+  btn.innerHTML = '<span class="pick-cur"></span><span class="pick-chev">▾</span>';
+  sel.insertAdjacentElement('afterend', btn);
+  const colorFor = (v)=>{
+    const vals = [...sel.options].map(x=>x.value).filter(Boolean);
+    const isStatus = vals.length && vals.every(x=>STATUSES.some(st=>st.k===x));
+    const isPrio   = vals.length && vals.every(x=>PRIORITIES.some(pr=>pr.k===x));
+    if(isStatus) return (STATUSES.find(st=>st.k===v)||{}).color;
+    if(isPrio)   return (PRIORITIES.find(pr=>pr.k===v)||{}).color;
+    return null;
+  };
+  const sync = ()=>{
+    const o = sel.selectedOptions[0];
+    const c = o? colorFor(o.value) : null;
+    btn.innerHTML = `${c? `<span class="pick-dot" style="background:${c}"></span>`:''}<span class="pick-cur">${esc(o? o.textContent.trim() : '')}</span><span class="pick-chev">▾</span>`;
+    btn.disabled = sel.disabled; btn.classList.toggle('empty', !o || o.value==='');
+  };
+  const open = ()=>{
+    sync();
+    const groups = [];
+    let cur = {label:'', items:[]};
+    for(const node of sel.children){
+      if(node.tagName==='OPTGROUP'){ if(cur.items.length) groups.push(cur); cur={label:node.label, items:[]};
+        for(const op of node.children){ if(!op.hidden) cur.items.push({v:op.value, l:op.textContent.trim(), disabled:op.disabled, color:colorFor(op.value)}); }
+        groups.push(cur); cur={label:'', items:[]};
+      } else if(node.tagName==='OPTION' && !node.hidden){ cur.items.push({v:node.value, l:node.textContent.trim(), disabled:node.disabled, color:colorFor(node.value)}); }
+    }
+    if(cur.items.length) groups.push(cur);
+    const id = 'sel-'+(sel.id||Math.random().toString(36).slice(2));
+    window._pickers[id] = {id, value:sel.value, groups, onpick:(v)=>{ if(sel.value!==v){ sel.value=v; sel.dispatchEvent(new Event('change',{bubbles:true})); } sync(); }};
+    pickOpen(id, btn);
+  };
+  btn.addEventListener('click', open);
+  btn.addEventListener('keydown', e=>{ if(e.key==='ArrowDown'||e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } });
+  sel.addEventListener('change', sync);
+  sync();
+}
+function enhanceSelects(root){ (root||document).querySelectorAll('select').forEach(enhanceSelect); }
+if(typeof MutationObserver!=='undefined'){
+  new MutationObserver(muts=>{ for(const mu of muts) for(const n of mu.addedNodes){ if(n.nodeType!==1) continue; if(n.tagName==='SELECT') enhanceSelect(n); else if(n.querySelectorAll) n.querySelectorAll('select').forEach(enhanceSelect); } })
+    .observe(document.documentElement, {childList:true, subtree:true});
 }
 /* Generic little popover menu, anchored to an element. items:[{label,danger,fn}|'-'] */
 let _ctxItems = [];
@@ -602,7 +655,9 @@ async function refreshCore(){
   ]);
   S.boardOwners = bo.data||[]; S.wsOwners = wo.data||[];
   S.teams = tm.data||[]; S.teamMembers = tmm.data||[];
-  S.profiles = pr.data||[]; S.workspaces = ws.data||[]; S.projects = pj.data||[]; S.requestTypes = rt.data||[];
+  S.profiles = pr.data||[]; S.projects = pj.data||[]; S.requestTypes = rt.data||[];
+  // Workspaces are listed A→Z everywhere (sidebar, pickers, admin) — April's call, 7 Sep; there is no manual ordering UI.
+  S.workspaces = (ws.data||[]).slice().sort((a,b)=> (a.name||'').localeCompare(b.name||'', undefined, {sensitivity:'base'}));
   S.brandsList = br.data||[];
   S.allCompanies = co.data||[];
   S.company = S.allCompanies.find(c=>c.id===S.me?.company_id) || null;
