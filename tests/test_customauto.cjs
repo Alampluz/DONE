@@ -40,59 +40,113 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  r.addBtn = /Add automation/.test(B.textContent);
  r.runShowsName = (B.textContent.match(/When status changes to Done, notify the assignee/g)||[]).length >= 2;
 
- // B. builder: defaults, sentence preview, condition picker
+ // B. builder v2: draft model, sentence preview, from→to
  caModal();                                     // JSDOM outside-only mode doesn't run inline onclick
  r.modalWhen = !!document.querySelector('#ca-body select');
- r.preview = document.querySelector('#ca-preview').textContent;
- _ca.cond.to='done'; caDraw();
+ r.draftDefaults = _ca.trigger==='status_changed' && Array.isArray(_ca.conds) && _ca.conds.length===0 && _ca.acts.length===1 && _ca.acts[0].key==='notify_assignee';
+ caTc('to','done');
  r.previewCond = /When status changes to Done, notify the assignee/.test(document.querySelector('#ca-preview').textContent);
+ caTc('from','review');
+ r.previewFromTo = /When status changes from Review to Done, notify the assignee/.test(document.querySelector('#ca-preview').textContent);
+ // same from/to is refused
+ caTc('from','done'); window.__calls.length=0; await caSave();
+ r.sameFromToRefused = !window.__calls.some(c=>c.table==='custom_automations');
+ caTc('from','');
 
  // C. validation: person actions refuse to save without a person
- _ca.action='notify_person'; _ca.cfg={}; caDraw();
+ caActKey(0,'notify_person');
  window.__calls.length=0;
  await caSave();
  r.blockedNoPerson = !window.__calls.some(c=>c.table==='custom_automations');
 
- // D. save inserts the full recipe
- _ca.cfg.user_id='u2'; caDraw();
+ // D. save inserts the full v2 recipe AND the legacy mirror columns
+ caActCfg(0,'user_id','u2');
  window.__calls.length=0;
  await caSave();
  await new Promise(x=>setTimeout(x,40));
  const ins = window.__calls.find(c=>c.table==='custom_automations'&&c.op==='insert');
- r.insert = ins && ins.payload.trigger_key==='status_changed' && ins.payload.condition.to==='done'
+ r.insert = ins && ins.payload.trigger_key==='status_changed' && ins.payload.trigger_config.to==='done' && ins.payload.condition.to==='done'
+   && ins.payload.actions.length===1 && ins.payload.actions[0].key==='notify_person' && ins.payload.actions[0].cfg.user_id==='u2'
    && ins.payload.action_key==='notify_person' && ins.payload.action_config.user_id==='u2'
+   && Array.isArray(ins.payload.conditions) && ins.payload.conditions.length===0
    && ins.payload.workspace_id===null && ins.payload.project_id===null;
  r.insertName = ins && ins.payload.name==='When status changes to Done, notify Prim V';
 
  // E. inactive people are not offered
  caModal();
- _ca.action='assign_person'; _ca.cfg={}; caDraw();
- r.noInactive = ![...document.querySelectorAll('#ca-cfg option')].some(o=>/Gone P/.test(o.textContent));
+ caActKey(0,'assign_person');
+ r.noInactive = ![...document.querySelectorAll('#ca-acts option')].some(o=>/Gone P/.test(o.textContent));
  closeModals();
 
  // F. board scope: groups load from the board, save stamps project_id
  window.__sel.project_groups=[{id:'g1',name:'Case Open'},{id:'g2',name:'Solved'}];
  caModal();
- _ca.trigger='moved_to_group'; _ca.cond={}; _ca.action='move_to_group'; _ca.cfg={};
- r.needsBoard = (caDraw(), /Choose a board/.test(document.querySelector('#ca-body').textContent));
+ caSetTrigger('moved_to_group'); caActKey(0,'move_to_group');
+ r.needsBoard = /Choose a board under/.test(document.querySelector('#ca-body').textContent);
  _ca.scope='p:p1'; await caLoadGroups('p1');
- r.groupOpts = [...document.querySelectorAll('#ca-cfg option')].map(o=>o.textContent);
- _ca.cfg.group_id='g2'; _ca.cond.group_id='g1'; caDraw();
+ r.groupOpts = [...document.querySelectorAll('#ca-acts option')].map(o=>o.textContent).filter(x=>/Case Open|Solved/.test(x));
+ caActCfg(0,'group_id','g2'); caTc('group_id','g1');
  window.__calls.length=0;
  await caSave();
  const ins2 = window.__calls.find(c=>c.table==='custom_automations'&&c.op==='insert');
  r.boardInsert = ins2 && ins2.payload.project_id==='p1' && ins2.payload.workspace_id===null
-   && ins2.payload.condition.group_id==='g1' && ins2.payload.action_config.group_id==='g2';
+   && ins2.payload.trigger_config.group_id==='g1' && ins2.payload.actions[0].cfg.group_id==='g2';
  r.boardName = ins2 && ins2.payload.name==='When a task moves to Case Open, move it to Solved';
 
- // G. edit prefills and updates in place
+ // G. edit prefills (legacy row → v2 draft) and updates in place
  S._customAutos = window.__sel.custom_automations;
  caModal('c1');
- r.prefill = _ca.trigger==='status_changed' && _ca.cond.to==='done' && _ca.id==='c1';
+ r.prefill = _ca.trigger==='status_changed' && _ca.tc.to==='done' && _ca.id==='c1' && _ca.acts[0].key==='notify_assignee';
  window.__calls.length=0;
  await caSave();
  const upd = window.__calls.find(c=>c.table==='custom_automations'&&c.op==='update');
- r.update = upd && upd.eq.id==='c1' && upd.payload.action_key==='notify_assignee';
+ r.update = upd && upd.eq.id==='c1' && upd.payload.action_key==='notify_assignee' && upd.payload.actions[0].key==='notify_assignee';
+
+ // G2. a v2 row prefills conditions and several actions; duplicate opens a fresh copy
+ window.__sel.custom_automations.push({id:'c9',workspace_id:null,project_id:'p1',name:'v2 rule',trigger_key:'field_changed',
+   trigger_config:{field_id:'sf1',to:'Mars'},conditions:[{k:'priority',op:'is',v:'urgent'},{k:'assignee',op:'empty'},{k:'field:sf2',op:'is_not',v:'X'}],
+   actions:[{key:'assign_person',cfg:{user_id:'u2'}},{key:'move_to_group',cfg:{group_id:'g2'}},{key:'add_comment',cfg:{text:'hi {title}'}}],
+   condition:{field_id:'sf1',to:'Mars'},action_key:'assign_person',action_config:{user_id:'u2'},enabled:true,created_at:'2026-09-07'});
+ S._customAutos = window.__sel.custom_automations;
+ window.__sel.project_fields=[{id:'sf1',label:'Brand',ftype:'select',options:['Mars','Hera']},{id:'sf2',label:'Market',ftype:'select',options:['X','Y']},{id:'nf1',label:'GMV',ftype:'number',options:null}];
+ window._caFields={}; window._caGroups={};
+ caModal('c9'); await caLoadGroups('p1');
+ r.v2prefill = _ca.conds.length===3 && _ca.conds[2].k==='field' && _ca.conds[2].field_id==='sf2' && _ca.conds[2].op==='is_not' && _ca.acts.length===3 && _ca.acts[2].cfg.text==='hi {title}';
+ r.v2rows = document.querySelectorAll('#ca-conds .ca-row').length===3 && document.querySelectorAll('#ca-acts .ca-act').length===3;
+ r.v2sentence = document.querySelector('#ca-preview').textContent;
+ r.v2sentenceOk = /When Brand becomes Mars, if priority is Urgent and assignee is empty and market is not X, assign it to Prim V, move it to Solved and add a comment/.test(r.v2sentence);
+ // reorder + remove + add
+ caActMove(2,-1); r.reordered = _ca.acts[1].key==='add_comment' && _ca.acts[2].key==='move_to_group';
+ caActDel(0); r.removed = _ca.acts.length===2 && _ca.acts[0].key==='add_comment';
+ caActAdd(); r.added = _ca.acts.length===3 && _ca.acts[2].key==='notify_assignee';
+ caCondDel(1); r.condRemoved = _ca.conds.length===2;
+ window.__calls.length=0; await caSave();
+ const upd9 = window.__calls.find(c=>c.table==='custom_automations'&&c.op==='update');
+ r.v2update = upd9 && upd9.eq.id==='c9' && upd9.payload.actions.map(a=>a.key).join(',')==='add_comment,move_to_group,notify_assignee'
+   && upd9.payload.conditions.length===2 && upd9.payload.conditions[1].k==='field:sf2' && upd9.payload.conditions[1].v==='X'
+   && upd9.payload.action_key==='add_comment' && upd9.payload.action_config.text==='hi {title}';
+ caDuplicate('c9'); await new Promise(x=>setTimeout(x,20));
+ r.dupFresh = _ca.id===null && _ca.acts.length===3 && _ca.conds.length===3 && /Add automation/.test(document.querySelector('#ca-save').textContent);
+ closeModals();
+
+ // G3. conditions demand a value unless empty/set; field conditions need a board
+ caModal(); caCondAdd();
+ window.__calls.length=0; await caSave(); r.condNeedsValue = !window.__calls.some(c=>c.table==='custom_automations');
+ caCondSet(0,'op','empty'); window.__calls.length=0; await caSave();
+ const insC = window.__calls.find(c=>c.table==='custom_automations'&&c.op==='insert');
+ r.condEmptySaves = insC && insC.payload.conditions.length===1 && insC.payload.conditions[0].op==='empty' && !('v' in insC.payload.conditions[0]);
+ caModal(); caCondAdd(); caCondSet(0,'k','field'); window.__calls.length=0; await caSave();
+ r.fieldCondNeedsBoard = !window.__calls.some(c=>c.table==='custom_automations');
+ closeModals();
+
+ // G4. due-date-passed trigger carries days; create_task carries its config
+ caModal(); caSetTrigger('due_date_passed'); caTc('days','3'); caActKey(0,'create_task'); caActCfg(0,'title','QA: {title}'); caActCfg(0,'same_assignee','true'); caActCfg(0,'due_in_days','2');
+ r.dueSentence = /When the due date is 3 days past, create a follow-up task/.test(document.querySelector('#ca-preview').textContent);
+ r.timedNote = /checked every 15 minutes/.test(document.querySelector('#ca-preview').textContent);
+ window.__calls.length=0; await caSave();
+ const insD = window.__calls.find(c=>c.table==='custom_automations'&&c.op==='insert');
+ r.dueInsert = insD && insD.payload.trigger_key==='due_date_passed' && insD.payload.trigger_config.days===3
+   && insD.payload.actions[0].cfg.title==='QA: {title}' && insD.payload.actions[0].cfg.same_assignee==='true' && insD.payload.actions[0].cfg.due_in_days===2;
 
  // H. toggle + delete
  window.__calls.length=0;
@@ -100,6 +154,16 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  await caDelete('c1');
  r.toggle = window.__calls.some(c=>c.table==='custom_automations'&&c.op==='update'&&c.payload.enabled===false&&c.eq.id==='c1');
  r.del = window.__calls.some(c=>c.table==='custom_automations'&&c.op==='delete'&&c.eq.id==='c1');
+
+ // H2. run history modal reads the rule's runs and shows each step
+ window.__sel.automation_runs=[{id:5,rule_key:'custom',entity_type:'task',entity_id:'t1',status:'blocked',created_at:new Date().toISOString(),
+   detail:{automation_id:'c9',name:'v2 rule',task_title:'Brief A',steps:[{action:'assign_person',result:'ok'},{action:'set_status',result:'blocked',reason:'waiting on a dependency'}]}}];
+ window.__calls.length=0; await caRuns('c9'); await new Promise(x=>setTimeout(x,20));
+ const rq = window.__calls.find(c=>c.table==='automation_runs');
+ r.runsQuery = rq && rq.eq['detail->>automation_id']==='c9' && rq.eq.rule_key==='custom';
+ const RT=document.getElementById('ca-runs').textContent;
+ r.runsShown = /Brief A/.test(RT) && /Assign it to someone → ok/.test(RT) && /Set status → blocked \(waiting on a dependency\)/.test(RT) && /1 with a blocked step/.test(RT);
+ closeModals();
 
  // J. each workspace hosts the same tab, pinned to itself
  S.me={id:'me',role:'admin',full_name:'April'};
@@ -109,6 +173,7 @@ const driver=String.raw`window.__run=async function(){const r={};try{
   {id:'c2',workspace_id:'w1',project_id:null,name:'CS rule',trigger_key:'task_created',condition:{},action_key:'notify_team',action_config:{},enabled:true,created_at:'2026-08-02'},
   {id:'c3',workspace_id:'w2',project_id:null,name:'Other ws rule',trigger_key:'task_created',condition:{},action_key:'notify_team',action_config:{},enabled:true,created_at:'2026-08-03'},
   {id:'c4',workspace_id:null,project_id:'p1',name:'Board rule',trigger_key:'task_created',condition:{},action_key:'notify_team',action_config:{},enabled:true,created_at:'2026-08-04'}];
+ window.__sel.automation_runs=[];
  S.route={view:'ws',id:'w1',tab:'automations'};
  await renderWorkspaceAutomations('w1');
  const CT=document.getElementById('content');
@@ -139,36 +204,34 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  r.requesterBounced = location.hash==='#/ws/w1';
  S.me={id:'me',role:'admin',full_name:'April'};
 
- // K. per-board status columns: "A column changes" trigger + "Set a column value" action
- S.me={id:'me',role:'admin',full_name:'April'};
+ // K. per-board columns: "A column changes" trigger + "Set a column value" action
  window._caFields={}; window._caGroups={};
  window.__sel.project_fields=[
    {id:'sf1',label:'Production Status',ftype:'select',options:['Pending','In-Progress','Resolved']},
-   {id:'nf1',label:'GMV',ftype:'number',options:null}];    // number field must be filtered out
+   {id:'nf1',label:'GMV',ftype:'number',options:null}];    // number field: allowed for empty/set conditions, not as a value picker
  caModal(null,'w:w1');
- _ca.trigger='field_changed'; _ca.cond={}; caDraw();
- r.fieldNeedsBoard = /Choose a board below first/.test(document.querySelector('#ca-body').textContent);
+ caSetTrigger('field_changed');
+ r.fieldNeedsBoard = /Choose a board under/.test(document.querySelector('#ca-body').textContent);
  _ca.scope='p:p1'; await caLoadGroups('p1');
- r.fieldColOnlySelect = [...document.querySelectorAll('#ca-cond option')].map(o=>o.textContent).filter(x=>x!=='Pick a column…');
- _ca.cond.field_id='sf1'; caDraw();
- r.fieldValueOpts = [...document.querySelectorAll('#ca-cond-v option')].map(o=>o.textContent);
- _ca.cond.to='Resolved';
- _ca.action='set_status'; _ca.cfg={status:'done'}; caDraw();
+ r.fieldColOnlySelect = [...document.querySelectorAll('#ca-body .ca-sec:first-child option')].map(o=>o.textContent).filter(x=>/Production Status|GMV/.test(x));
+ caTc('field_id','sf1');
+ r.fieldValueOpts = [...document.querySelectorAll('#ca-body .ca-sec:first-child option')].map(o=>o.textContent).filter(x=>/Pending|In-Progress|Resolved/.test(x));
+ caTc('to','Resolved');
+ caActKey(0,'set_status'); caActCfg(0,'status','done');
  r.fieldSentence = /When Production Status becomes Resolved, set status to Done/.test(document.querySelector('#ca-preview').textContent);
  window.__calls.length=0;
  await caSave();
  const insF = window.__calls.find(c=>c.table==='custom_automations'&&c.op==='insert');
  r.fieldInsert = insF && insF.payload.trigger_key==='field_changed'
-   && insF.payload.condition.field_id==='sf1' && insF.payload.condition.to==='Resolved'
+   && insF.payload.trigger_config.field_id==='sf1' && insF.payload.trigger_config.to==='Resolved'
    && insF.payload.project_id==='p1';
 
  // set_field action mirrors a value onto a board column
  caModal(null,'p:p1'); await caLoadGroups('p1');
- _ca.trigger='status_changed'; _ca.cond={to:'done'};
- _ca.action='set_field'; _ca.cfg={}; caDraw();
+ caTc('to','done'); caActKey(0,'set_field');
  window.__calls.length=0; await caSave();
  r.setFieldNeedsValue = !window.__calls.some(c=>c.table==='custom_automations');
- _ca.cfg.field_id='sf1'; _ca.cfg.value='Resolved'; caDraw();
+ caActCfg(0,'field_id','sf1'); caActCfg(0,'value','Resolved');
  window.__calls.length=0;
  await caSave();
  const insSF = window.__calls.find(c=>c.table==='custom_automations'&&c.op==='insert');
@@ -182,5 +245,26 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  r.notifOk = /Banner set/.test(r.notif) && /notify the assignee/.test(r.notif);
  r.notifNoBody = /An automation flagged/.test(notifLine({kind:'automation',title:'X'},null));
 }catch(e){r.error=e.message+' | '+(e.stack||'').split('\n').slice(0,4).join(' / ');}return r;};`;
-try{w.eval(scripts.join('\n')+'\n'+driver);}catch(e){console.log('EVAL ERROR:',e.message);}
-(async()=>{try{console.log(JSON.stringify(await w.eval('window.__run()'),null,2));}catch(e){console.log('RUN ERROR:',e.message);}process.exit(0);})();
+try{w.eval(scripts.join('\n')+'\n'+driver);}catch(e){console.log('EVAL ERROR:',e.message);process.exit(1);}
+(async()=>{ const r=await w.eval('window.__run()'); let ok=true;
+ const check=(n,c)=>{ console.log((c?'PASS':'FAIL')+' '+n+(c?'':' -> '+JSON.stringify(r))); if(!c) ok=false; };
+ check('no runtime error in driver', !r.error);
+ check('tab renders custom + built-in sections, sentence, scope, add button, run log name', r.section && r.sentence && r.scopeChip && r.addBtn && r.runShowsName);
+ check('builder opens with a one-action draft; preview follows to/from', r.modalWhen && r.draftDefaults && r.previewCond && r.previewFromTo && r.sameFromToRefused);
+ check('person action refuses to save without a person', r.blockedNoPerson);
+ check('insert writes v2 columns and legacy mirror', r.insert && r.insertName);
+ check('inactive people not offered', r.noInactive);
+ check('board scope: needs board, loads groups, stamps project_id', r.needsBoard && r.groupOpts.length===2 && r.boardInsert && r.boardName);
+ check('legacy row prefills into the v2 draft and updates in place', r.prefill && r.update);
+ check('v2 row prefills 3 conditions + 3 actions; sentence reads naturally', r.v2prefill && r.v2rows && r.v2sentenceOk);
+ check('reorder / remove / add actions and conditions, saved in order', r.reordered && r.removed && r.added && r.condRemoved && r.v2update);
+ check('duplicate opens an unsaved copy', r.dupFresh);
+ check('conditions need a value unless empty/set; column conditions need a board', r.condNeedsValue && r.condEmptySaves && r.fieldCondNeedsBoard);
+ check('due-date-passed trigger with days + follow-up task config', r.dueSentence && r.timedNote && r.dueInsert);
+ check('toggle + delete', r.toggle && r.del);
+ check('run history reads the rule runs and lists each step', r.runsQuery && r.runsShown);
+ check('workspace tab: pinned, filtered, scoped inserts, read-only for management, requesters bounced', r.wsTabShown && r.wsNoScopeSelector && r.wsCustomsFiltered && r.wsPinnedRule && r.wsDefaultScope && r.wsInsertScoped && r.mgmtNoAdd && r.mgmtSwitchesOff && r.requesterBounced);
+ check('column trigger: select columns only, value options, sentence, insert', r.fieldNeedsBoard && r.fieldColOnlySelect.join()==='Production Status' && r.fieldValueOpts.length===3 && r.fieldSentence && r.fieldInsert);
+ check('set-column action needs a value and saves it', r.setFieldNeedsValue && r.setFieldInsert && r.setFieldName);
+ check('bell knows the automation kind', r.notifOk && r.notifNoBody);
+ if(!ok){ console.log(JSON.stringify(r,null,1).slice(0,3000)); process.exit(1);} })();
