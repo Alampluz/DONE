@@ -204,14 +204,14 @@ function wireVisPicker(root, id){
 /* monday-style "Add to workspace": everything you can create here, one menu. */
 function wsAddMenu(anchor, wid){
   const items = [
-    {label:'Board — tasks in groups and columns', fn:()=>newProjectModal(wid)},
-    {label:'Report widget — chart on this workspace', fn:()=>{
+    {label:'Board', fn:()=>newProjectModal(wid)},
+    {label:'Report widget', fn:()=>{
       const go=()=>widgetModal(null, wid);
       if(S.route.view==='ws' && S.route.id===wid && S.route.tab==='report') go();
       else { location.hash = '#/ws/'+wid+'/report'; setTimeout(go, 600); }
     }},
   ];
-  if(isAdmin()) items.push({label:'Form — public request form routed here', fn:()=>editTypeModal(null, wid)});
+  if(isAdmin()) items.push({label:'Form', fn:()=>editTypeModal(null, wid)});
   ctxMenu(anchor, items);
 }
 /* ---- Boards (projects): rename, recolour, delete ---- */
