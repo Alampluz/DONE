@@ -950,7 +950,7 @@ function caDraw(){
   let pickN = 0;
   const personSel = (cur, on, blank)=>{
     const id = 'ca-pick-'+(pickN++);
-    const items = people.map(u=>({v:u.id, l:u.full_name, sub:u.job_title||u.role||''}));
+    const items = people.map(u=>({v:u.id, l:u.full_name, sub:u.job_title||''}));
     return pickerHTML({id, value:cur||'', placeholder:blank||'Pick a person…',
       groups:[ ...(blank? [{label:'', items:[{v:'', l:blank}]}] : []), {label:'People', items}],
       onpick:(v)=>{ const fn = new Function('value', on.replace(/this\.value/g,'value')); fn(v); }});
