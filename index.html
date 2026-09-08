@@ -558,6 +558,10 @@ td.tv-name .tv-open{padding-left:20px}
 .tcard .tkt{font-size:10px;margin-right:0;margin-bottom:5px;display:block;width:fit-content}
 .modal-head .tkt{font-size:12px;vertical-align:2px}
 .tv-arch .tkt{opacity:.6}
+/* Task-window section toggles in Edit board - two columns of checkboxes. */
+.ep-secs{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px 14px;margin-top:6px}
+.ep-sec{display:flex;align-items:center;gap:7px;font-size:13px}
+.ep-sec span{color:var(--ink)}
 /* email settings */
 .es-master{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;margin:6px 0 12px}
 .es-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink)}
@@ -761,6 +765,24 @@ const CORE_FIELDS = [
 function fieldConf(pid, k){ const p = (S.projects||[]).find(x=>x.id===pid); return ((p && p.field_config)||{})[k] || {}; }
 function coreLabel(pid, k){ const c = fieldConf(pid,k); return (c.label && String(c.label).trim()) || (CORE_FIELDS.find(f=>f.k===k)||{}).label || k; }
 function coreHidden(pid, k){ const f = CORE_FIELDS.find(x=>x.k===k); return !!(f && f.hideable && fieldConf(pid,k).hidden); }
+/* Which sections of the task window a board shows. A CS inquiry is one touch - it has no
+   subtasks, no checklist, nothing to wait on - and every empty section is noise the agent
+   scrolls past. Stored alongside the standard-field settings in projects.field_config under
+   the reserved `sections` key, and on by default so an untouched board looks as it always did. */
+const TASK_SECTIONS = [
+  {k:'description', label:'Description', help:'The body of the task. On a CS board this is the inquiry itself.'},
+  {k:'subtasks',    label:'Subtasks',    help:'Smaller pieces of work under the task, each with its own status.'},
+  {k:'checklist',   label:'Checklist',   help:'A simple list of things to tick off. Overlaps with subtasks - most boards want one or the other.'},
+  {k:'attachments', label:'Attachments', help:'Files dropped on the task. Screenshots of a customer chat live here.'},
+  {k:'deps',        label:'Waiting on',  help:'Marks this task as blocked by another. Useful on a pipeline, rarely on a queue.'},
+  {k:'comments',    label:'Comments',    help:'The discussion thread, with @mentions.'},
+];
+function sectionOn(pid, k){
+  const p = (S.projects||[]).find(x=>x.id===pid);
+  const sec = ((p && p.field_config)||{}).sections;
+  if(!sec || !Object.prototype.hasOwnProperty.call(sec, k)) return true;   // default: shown
+  return sec[k] !== false;
+}
 const PLATFORMS = [
   {k:'TikTok Shop', label:'TikTok Shop', color:'#111827'},
   {k:'Shopee',      label:'Shopee',      color:'#EE4D2D'},
@@ -2461,6 +2483,12 @@ function editProjectModal(pid){
           <input data-epf-label="${f.k}" value="${esc(fieldConf(pid,f.k).label||'')}" placeholder="${esc(f.label)}" maxlength="24">
         </div>`).join('')}
       </div>
+      <label style="margin-top:14px">Sections in the task window ${helpIcon('What a person sees when they open a task on this board. Untick anything the team doesn\'t use \u2014 a one-touch CS inquiry has no subtasks or checklist, and an empty section is just something to scroll past. Existing content is kept, only hidden.')}</label>
+      <div class="ep-secs">
+        ${TASK_SECTIONS.map(x=>`<label class="chk ep-sec" style="margin:0">
+          <input type="checkbox" data-eps="${x.k}" ${sectionOn(pid,x.k)?'checked':''}>
+          <span>${esc(x.label)}</span>${helpIcon(x.help)}</label>`).join('')}
+      </div>
       <label style="margin-top:14px">Who can open this board</label>
       ${visPickerHTML('ep-vis', p.visibility||'collaborate')}
       <label style="margin-top:14px">Colour</label>
@@ -2501,6 +2529,14 @@ function editProjectModal(pid){
       const c = {}; if(lab && lab!==f.label) c.label = lab; if(f.hideable && !show) c.hidden = true;
       if(Object.keys(c).length) fc[f.k] = c;
     });
+    // `sections` sits beside the per-field entries in the same JSON; only the ones that are
+    // off are written, so an untouched board keeps an empty config rather than six `true`s.
+    const secs = {};
+    TASK_SECTIONS.forEach(x=>{
+      const el = m.querySelector(`[data-eps="${x.k}"]`);
+      if(el && !el.checked) secs[x.k] = false;
+    });
+    if(Object.keys(secs).length) fc.sections = secs;
     upd.field_config = fc;
     if(canGate) upd.approval_gate = {on: gateOn.checked,
       status: m.querySelector('#ep-gate-status').value,
@@ -4433,33 +4469,34 @@ async function openTask(id){
         <div ${coreHidden(t.project_id,'due_date')?'hidden':''}><label>${esc(coreLabel(t.project_id,'due_date'))}</label><input id="tv-due" type="date" value="${t.due_date||''}" ${canEdit()?'':'disabled'}></div>
       </div>
       <label>Title</label><input id="tv-title" value="${esc(t.title)}" ${canEdit()?'':'disabled'}>
-      <label>Description</label><textarea id="tv-desc" rows="3" ${canEdit()?'':'disabled'}>${esc(t.description)}</textarea>
-      <label>Subtasks</label>
+      ${sectionOn(t.project_id,'description')? `<label>Description</label><textarea id="tv-desc" rows="3" ${canEdit()?'':'disabled'}>${esc(t.description)}</textarea>`:''}
+      ${sectionOn(t.project_id,'subtasks')? `<label>Subtasks</label>
       <div id="tv-subprog">${subProgressBar(subs||[])}</div>
       <div id="tv-subs">${(subs||[]).map(stRow).join('')}</div>
       ${canCreate()? `<div style="display:flex;gap:8px;margin-top:6px"><input id="tv-sub-new" placeholder="Add a subtask…" style="flex:1">
-        <button class="btn btn-ghost btn-sm" id="tv-sub-add">Add</button></div>`:''}
-      <label>Checklist</label>
+        <button class="btn btn-ghost btn-sm" id="tv-sub-add">Add</button></div>`:''}`:''}
+      ${sectionOn(t.project_id,'checklist')? `<label>Checklist</label>
       <div id="tv-chk">${(chk||[]).map(c=>chkRow(c)).join('')}</div>
       ${canEdit()? `<div style="display:flex;gap:8px;margin-top:6px"><input id="tv-chk-new" placeholder="Add checklist item…" style="flex:1">
-        <button class="btn btn-ghost btn-sm" id="tv-chk-add">Add</button></div>`:''}
-      <label>Attachments</label>
+        <button class="btn btn-ghost btn-sm" id="tv-chk-add">Add</button></div>`:''}`:''}
+      ${sectionOn(t.project_id,'attachments')? `<label>Attachments</label>
       <div id="tv-atts">${attListHTML(atts, canEdit())}</div>
-      ${canCreate()? attachZoneHTML('tv-drop') : ''}
+      ${canCreate()? attachZoneHTML('tv-drop') : ''}`:''}
       ${(p?.approval_gate?.on || (apprs||[]).length)? signoffSectionHTML(t, apprs||[], p?.approval_gate||{}) : ''}
-      ${(isStaff() || (depsOn||[]).length || (depsBy||[]).length)? depsSectionHTML(t, depsOn||[], depsBy||[], depTasks) : ''}
-      <label>Comments</label>
+      ${sectionOn(t.project_id,'deps') && (isStaff() || (depsOn||[]).length || (depsBy||[]).length)? depsSectionHTML(t, depsOn||[], depsBy||[], depTasks) : ''}
+      ${sectionOn(t.project_id,'comments')? `<label>Comments</label>
       <div id="tv-comments">${(comments||[]).map(commentRow).join('')||'<div style="color:var(--ink3);font-size:13px">No comments yet</div>'}</div>
-      ${canCreate()? commentComposerHTML('tv') : ''}
+      ${canCreate()? commentComposerHTML('tv') : ''}`:''}
       ${historySectionHTML()}
       <div style="margin-top:14px;font-size:11.5px;color:var(--ink3)">Created ${fmtDateTime(t.created_at)} by ${esc(prof(t.created_by)?.full_name||'—')} · in ${esc(p?.name||'')}</div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Close</button>${canEdit()? `<button class="btn btn-primary" id="tv-save">Save changes</button>`:''}</div>`, true);
 
   if(m.querySelector('#tv-save')) m.querySelector('#tv-save').onclick = async ()=>{
+    const desc = m.querySelector('#tv-desc');
     const upd = {
       title:m.querySelector('#tv-title').value.trim()||t.title,
-      description:m.querySelector('#tv-desc').value,
+      ...(desc? {description:desc.value} : {}),      // Description may be switched off on this board
       status:m.querySelector('#tv-status').value, priority:m.querySelector('#tv-prio').value,
       assignee_id:m.querySelector('#tv-assignee').value||null, due_date:m.querySelector('#tv-due').value||null,
     };
