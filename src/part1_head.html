@@ -543,8 +543,15 @@ td.tv-name .tv-open{padding-left:20px}
 .view-menu .vm-head{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);padding:6px 10px 4px}
 .vm-opt{display:grid;grid-template-columns:18px 1fr 16px;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:8px;color:var(--ink);cursor:pointer;background:none;border:0}
 .vm-opt:hover,.vm-opt:focus{background:var(--gray-soft);outline:none} .vm-opt.on{background:var(--accent-soft)} .vm-opt.on .vp-ico{color:var(--accent-ink)}
-.vm-txt{display:flex;flex-direction:column;line-height:1.2} .vm-txt b{font-size:13px;font-weight:600} .vm-txt span{font-size:11.5px;color:var(--ink3);margin-top:1px}
+.vm-txt{display:flex;align-items:center;line-height:1.2} .vm-txt b{font-size:13px;font-weight:600}
 .vm-check{font-size:13px;font-weight:700;color:var(--accent-ink);text-align:right}
+/* ⓘ help — the app used to spell every option out inline ("Board — tasks in groups and
+   columns"). April asked for the labels to stand on their own, so the note now sits behind
+   this icon, one click away. One component, used everywhere an explanation used to be. */
+.ihelp{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;flex:0 0 15px;padding:0;margin-left:5px;border:1px solid var(--ink3);border-radius:50%;background:none;color:var(--ink3);font-family:inherit;font-size:10px;font-weight:700;font-style:normal;line-height:1;letter-spacing:0;cursor:pointer;vertical-align:middle;transition:color .12s,background .12s,border-color .12s}
+.ihelp:hover,.ihelp:focus-visible,.ihelp.on{background:var(--accent);border-color:var(--accent);color:#fff;outline:none}
+.ihelp-pop{position:fixed;z-index:1200;max-width:290px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 34px rgba(16,18,25,.16);font-size:12.5px;font-weight:400;font-style:normal;line-height:1.55;letter-spacing:.1px;color:var(--ink2);text-align:left;text-transform:none;animation:pop .12s ease}
+.ihelp-pop b{color:var(--ink);font-weight:600}
 /* email settings */
 .es-master{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;margin:6px 0 12px}
 .es-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink)}

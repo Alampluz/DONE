@@ -315,7 +315,7 @@ function widgetModal(id, wsId, projId){
   const m = modal(`<div class="modal-head"><h2>${w?'Edit widget':'Add widget'}</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <label>Widget type</label>
-      <div class="type-pick" id="wm-type">${types.map(([k,l,d])=>`<div class="tp ${ (w?w.wtype:'bar')===k?'sel':''}" data-k="${k}" onclick="[...this.parentNode.children].forEach(x=>x.classList.remove('sel'));this.classList.add('sel');wmRefresh()"><b>${l}</b><span>${d}</span></div>`).join('')}</div>
+      <div class="type-pick" id="wm-type">${types.map(([k,l,d])=>`<div class="tp ${ (w?w.wtype:'bar')===k?'sel':''}" data-k="${k}" onclick="[...this.parentNode.children].forEach(x=>x.classList.remove('sel'));this.classList.add('sel');wmRefresh()"><b>${l}</b>${helpIcon(d)}</div>`).join('')}</div>
       <label>Title</label><input id="wm-title" value="${w? esc(w.title):''}" placeholder="e.g. Creative workload">
       <div class="field-grid">
         <div><label>Source</label><select id="wm-entity" onchange="wmRefresh()">
@@ -324,7 +324,7 @@ function widgetModal(id, wsId, projId){
         <div id="wm-dim"></div>
       </div>
       <div class="chk" id="wm-mine-wrap" style="margin-top:6px"><input type="checkbox" id="wm-mine" ${cfg.mine?'checked':''}> <span>Only items assigned to me</span></div>
-      <p style="color:var(--ink3);font-size:12.5px;margin-top:10px">${pScope? 'This widget lives on this board\'s report — everyone who can open the board sees it.' : scope? 'This widget lives on the workspace report — everyone on the team sees it.' : 'Widgets follow the workspace selector at the top of the dashboard, and only you see them.'}</p>
+      <div style="margin-top:12px;font-size:12.5px;color:var(--ink3)">${pScope? 'On this board\'s report' : scope? 'On the workspace report' : 'On your dashboard'}${helpIcon(pScope? 'Everyone who can open the board sees this widget.' : scope? 'Everyone on the team sees this widget.' : 'Widgets follow the workspace selector at the top of the dashboard, and only you see them.')}</div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="wm-save">${w?'Save':'Add widget'}</button></div>`);
   window.wmRefresh = ()=>{
@@ -368,6 +368,17 @@ function hbars(rows){
     <div class="hbar-val">${r.n}</div></div>`).join('');
 }
 /* ================= ADMIN ================= */
+/* Each tab used to end in a muted paragraph explaining itself. Those now sit behind the ⓘ
+   next to the Admin heading, which follows whichever tab is open. */
+const ADMIN_HELP = {
+  users:'<b>admin</b>: everything · <b>management</b>: sees all workspaces · <b>internal</b>: only the workspaces they are members of · <b>requester</b>: read-only in their workspaces, can raise tasks and tickets and comment but not edit · <b>partner / freelancer</b>: only boards they are added to, plus their own requests.',
+  workspaces:'Internal staff only see workspaces they are members of; admin and management see everything. Deleting a workspace also deletes its boards and tasks, so you will be asked to type the name to confirm.',
+  teams:'A team is a saved group of people, a shortcut when picking workspace or board members. <b>Being in a team grants no access on its own</b>: adding someone here does not put them on any workspace, and removing them takes nothing away.',
+  brands:'Seeded from the CS brand master list. Only active brands appear in request forms.',
+  types:'Turn on “Public form link” to get a shareable URL — anyone can submit a ticket through it without an account. Submissions land in the Requests queue with a WO number and SLA timer.',
+  sla:'These settings decide how every ticket deadline is counted. “Apply to open tickets” recalculates the ones already running.',
+  automations:'Switching a built-in rule off stops it for the scope shown above. Timed rules run every 15 minutes on their own.',
+};
 let adminTab='users';
 async function renderAdmin(){
   if(!isAdmin()){ location.hash='#/home'; return; }
@@ -375,7 +386,7 @@ async function renderAdmin(){
   const C=$('#content'); C.innerHTML='<div class="empty">Loading…</div>';
   await refreshCore();
   C.innerHTML = `
-    <div class="page-head"><h1>Admin</h1>
+    <div class="page-head"><h1>Admin ${helpIcon(ADMIN_HELP[adminTab]||'')}</h1>
       <div class="tabs">
         <button class="tab ${adminTab==='users'?'active':''}" onclick="adminTab='users';renderAdmin()">Users</button>
         <button class="tab ${adminTab==='workspaces'?'active':''}" onclick="adminTab='workspaces';renderAdmin()">Workspaces</button>
@@ -421,7 +432,7 @@ async function renderAdmin(){
           <button class="btn btn-ghost btn-sm" onclick="resetPassword('${p.id}','${esc(p.full_name).replace(/'/g,"\\'")}')">Reset password</button>
           ${p.id!==S.me.id? `<button class="btn btn-ghost btn-sm" onclick="toggleActive('${p.id}', ${!p.active})">${p.active?'Deactivate':'Activate'}</button>`:''}</td>
       </tr>`).join('')}</tbody></table></div>
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">Roles — <b>admin</b>: everything · <b>management</b>: sees all workspaces · <b>internal</b>: only the workspaces they are members of · <b>requester</b>: read-only in their workspaces — can raise tasks &amp; tickets and comment, but cannot edit anything · <b>partner / freelancer</b>: only boards they're added to + their own requests.</p>`;
+      `;
   }
   if(adminTab==='teams'){
     B.innerHTML = (S.teams||[]).length
@@ -437,8 +448,7 @@ async function renderAdmin(){
               <button class="btn btn-ghost btn-sm" onclick="teamMembersEditModal('${t.id}')">People</button>
               <button class="btn btn-ghost btn-sm" onclick="editTeamModal('${t.id}')">Rename</button>
               <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteTeamModal('${t.id}')">Delete</button></td>
-          </tr>`;}).join('')}</tbody></table></div>
-        <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">A team is a saved group of people — a shortcut when picking workspace or board members. <b>Being in a team grants no access on its own</b>: adding someone to a team here does not put them on any workspace, and removing them takes nothing away.</p>`
+          </tr>`;}).join('')}</tbody></table></div>`
       : `<div class="empty">No teams yet. Create one to bulk-add people to workspaces and boards.</div>`;
   }
   if(adminTab==='workspaces'){
@@ -450,8 +460,7 @@ async function renderAdmin(){
         <td style="text-align:right;white-space:nowrap">
           <button class="btn btn-ghost btn-sm" onclick="editWorkspaceModal('${w.id}')">Edit</button>
           <button class="btn btn-ghost btn-sm" onclick="teamMembersModal('${w.id}')">Members</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteWorkspaceModal('${w.id}')">Delete</button></td></tr>`).join('')}</tbody></table></div>
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">Internal staff only see workspaces they are members of. Admin and Management see everything. Deleting a workspace also deletes its boards and tasks — you'll be asked to type the name to confirm.</p>`;
+          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteWorkspaceModal('${w.id}')">Delete</button></td></tr>`).join('')}</tbody></table></div>`;
   }
   if(adminTab==='brands'){
     const brs = S.brandsList||[];
@@ -467,7 +476,7 @@ async function renderAdmin(){
         <td><span class="chip" style="background:${b.active?'var(--green-soft);color:var(--green)':'var(--gray-soft);color:var(--ink3)'}">${b.active?'active':'offboarded'}</span></td>
         <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="toggleBrand('${b.id}', ${!b.active})">${b.active?'Offboard':'Reactivate'}</button></td>
       </tr>`).join('')}</tbody></table></div>
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">${brs.filter(b=>b.active).length} active · ${brs.filter(b=>!b.active).length} offboarded. Seeded from the CS brand master list. Only active brands appear in request forms.</p>`;
+      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">${brs.filter(b=>b.active).length} active · ${brs.filter(b=>!b.active).length} offboarded</p>`;
     B.querySelector('#nb-add').onclick = async ()=>{
       const name = B.querySelector('#nb-name').value.trim(); if(!name) return toast('Brand name required', true);
       const {error} = await db.from('brands').insert({name, brand_group:B.querySelector('#nb-group').value.trim()});
@@ -490,8 +499,7 @@ async function renderAdmin(){
         <td style="color:var(--ink2)">${w? esc(w.name):'All staff'}</td>
         <td>${rt.public_enabled? `<button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Form link copied'))">Copy link</button>`:'<span style="color:var(--ink3)">Off</span>'}</td>
         <td><span class="chip" style="background:${rt.active?'var(--green-soft);color:var(--green)':'var(--gray-soft);color:var(--ink3)'}">${rt.active?'active':'inactive'}</span></td>
-        <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="editTypeModal('${rt.id}')">Edit</button></td></tr>`;}).join('')}</tbody></table></div>
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">Turn on “Public form link” to get a shareable URL — anyone can submit a ticket through it without an account. Submissions land in the Requests queue with a WO number and SLA timer.</p>`;
+        <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="editTypeModal('${rt.id}')">Edit</button></td></tr>`;}).join('')}</tbody></table></div>`;
   }
 }
 /* ================= AUTOMATIONS (editable in-app) ================= */
@@ -536,7 +544,7 @@ async function renderAutomationsTab(B, pinnedWs){
   B.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       ${pinnedWs
-        ? `<span style="font-size:12.5px;color:var(--ink2)">Rules for this workspace — anything you don't change here follows the Everywhere setting.</span>`
+        ? `<span style="font-size:12.5px;color:var(--ink2)">Rules for this workspace ${helpIcon('Anything you don\'t change here follows the Everywhere setting.')}</span>`
         : `<label style="margin:0">Rules apply to</label>
       <select style="width:auto;min-width:200px" onchange="autoWs=this.value;renderAdmin()">
         <option value="">Everywhere</option>
@@ -574,7 +582,6 @@ async function renderAutomationsTab(B, pinnedWs){
               : '<span style="font-size:11px;color:var(--ink3)">inherited</span>') : ''}</td>
         </tr>`;}).join('')}
     </tbody></table></div>
-    <p style="margin-top:10px;font-size:12.5px;color:var(--ink2)">Switching a rule off here stops it ${effWs? 'for this workspace only — everywhere else follows the global setting':'everywhere, unless a workspace has its own setting'}. Timed rules run every 15 minutes on their own.</p>
     <div class="section-title" style="margin-top:24px">Recent runs</div>
     <div class="card"><table class="tbl"><thead><tr><th>When</th><th>Rule</th><th>On</th><th>Result</th></tr></thead><tbody>
       ${(runs||[]).length? runs.map(x=>`<tr>
@@ -636,7 +643,7 @@ async function renderSlaTab(B){
       <div class="section-title" style="margin-top:0">How the clock runs</div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
         <label class="sw"><input type="checkbox" id="sla-wt" ${_sla.use_working_time?'checked':''} ${dis}><span></span></label>
-        <span>Count <b>working hours only</b> — evenings, non-working days and holidays don't burn the SLA</span>
+        <span>Count <b>working hours only</b>${helpIcon('Evenings, non-working days and holidays don\'t burn the SLA.')}</span>
       </div>
       <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end">
         <div><label>Work starts</label><input type="time" id="sla-ws" value="${_sla.work_start.slice(0,5)}" ${dis} style="width:110px"></div>
@@ -647,24 +654,22 @@ async function renderSlaTab(B){
         <div><label>Warn at</label><div style="display:flex;align-items:center;gap:6px">
           <input type="number" id="sla-warn" min="10" max="95" value="${_sla.warn_pct}" ${dis} style="width:76px"><span>% of the SLA used</span></div></div>
       </div>
-      <div style="margin-top:14px"><label>Pause the clock while a ticket is</label>
+      <div style="margin-top:14px"><label>Pause the clock while a ticket is ${helpIcon('While paused a ticket sends no warnings, and the time it spends paused is added back to its deadline.')}</label>
         <div style="display:flex;gap:14px;flex-wrap:wrap;padding-top:4px">
           ${SLA_PAUSABLE.map(k=>`<label style="display:flex;gap:5px;align-items:center;font-size:13px;margin:0">
             <input type="checkbox" class="sla-pause" data-s="${k}" ${(_sla.pause_statuses||[]).includes(k)?'checked':''} ${dis}>${esc(reqLabel(k))}</label>`).join('')}
         </div>
-        <div style="font-size:12px;color:var(--ink3);margin-top:4px">While paused a ticket sends no warnings, and the time it spends paused is added back to its deadline.</div></div>
+        </div>
     </div>
     <div class="card" style="padding:18px;margin-bottom:16px">
-      <div class="section-title" style="margin-top:0">Speed by priority</div>
-      <div style="font-size:12.5px;color:var(--ink2);margin-bottom:10px">Each priority gets this share of the request type's SLA time — 50% means an urgent ticket must be handled twice as fast.</div>
+      <div class="section-title" style="margin-top:0">Speed by priority ${helpIcon('Each priority gets this share of the request type\'s SLA time. 50% means an urgent ticket must be handled twice as fast.')}</div>
       <div style="display:flex;gap:22px;flex-wrap:wrap">
         ${PRIORITIES.map(p=>`<div><label>${p.label}</label><div style="display:flex;align-items:center;gap:6px">
           <input type="number" class="sla-prio" data-p="${p.k}" min="10" max="500" value="${_sla.prio_pct[p.k]??100}" ${dis} style="width:80px"><span>%</span></div></div>`).join('')}
       </div>
     </div>
     <div class="card" style="padding:18px;margin-bottom:16px">
-      <div class="section-title" style="margin-top:0">Holidays</div>
-      <div style="font-size:12.5px;color:var(--ink2);margin-bottom:10px">Skipped entirely when counting working hours. Fixed-date Thai public holidays for 2026 are pre-loaded — lunar ones (Makha Bucha, Visakha Bucha, Asarnha Bucha, Khao Phansa) move every year, so add them here.</div>
+      <div class="section-title" style="margin-top:0">Holidays ${helpIcon('Skipped entirely when counting working hours. Fixed-date Thai public holidays for 2026 are pre-loaded; lunar ones (Makha Bucha, Visakha Bucha, Asarnha Bucha, Khao Phansa) move every year, so add them here.')}</div>
       ${S._slaHolidays.length? `<table class="tbl"><tbody>
         ${S._slaHolidays.map(h=>`<tr><td style="width:130px;white-space:nowrap">${h.day}</td>
           <td>${esc(h.name)}</td>
@@ -1022,7 +1027,7 @@ function caDraw(){
   B.innerHTML = `
     <div class="ca-sec"><label>When</label>
       <div class="ca-row"><select onchange="caSetTrigger(this.value)">${CA_TRIGGERS.map(t=>opt(t.key,_ca.trigger,t.label)).join('')}</select>${tcCtl}</div></div>
-    <div class="ca-sec"><label>Only if <span class="ca-opt">optional — every line must be true</span></label>
+    <div class="ca-sec"><label>Only if <span class="ca-opt">optional</span>${helpIcon('Every line must be true for the rule to fire.')}</label>
       <div id="ca-conds">${_ca.conds.map(condRow).join('')}</div>
       <button class="btn btn-ghost btn-sm" onclick="caCondAdd()">＋ Add a condition</button></div>
     <div class="ca-sec"><label>Then <span class="ca-opt">in this order</span></label>
@@ -1130,18 +1135,17 @@ function inviteUserModal(){
       <label>Email <span class="req">*</span></label><input id="iu-email" type="email" placeholder="name@crea.asia or partner email">
       <div class="field-grid">
         <div><label>Role</label><select id="iu-role">
-          <option value="internal">Internal staff — full edit in their workspaces</option>
-          <option value="requester">Requester — view, raise tasks/tickets &amp; comment only</option>
-          <option value="management">Management — sees all workspaces</option>
+          <option value="internal">Internal staff</option>
+          <option value="requester">Requester</option>
+          <option value="management">Management</option>
           <option value="partner">Partner (external)</option><option value="freelancer">Freelancer (external)</option>
-          <option value="admin">Admin — everything</option></select></div>
+          <option value="admin">Admin</option></select></div>
         <div><label>Temporary password <span class="req">*</span></label><input id="iu-pass" value="${'Crea'+Math.random().toString(36).slice(2,8)+'!'}"></div>
       </div>
-      <label style="margin-top:14px">Workspaces they can open <span style="font-weight:400;color:var(--ink3)">— tick as many as you need</span></label>
+      <label style="margin-top:14px">Workspaces they can open ${helpIcon('Tick as many as you need.')}</label>
       <div id="iu-ws">${S.workspaces.map(w=>`<div class="chk"><input type="checkbox" data-wid="${w.id}">
         <span class="ws-dot" style="display:inline-block;background:${w.color}"></span><span>${esc(w.name)}</span></div>`).join('') || '<div style="font-size:12.5px;color:var(--ink3)">No workspaces yet.</div>'}</div>
       <p id="iu-wsnote" style="margin-top:8px;font-size:12px;color:var(--ink3);display:none">Admin and management see every workspace — these ticks are ignored for those roles.</p>
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">Share the email + temporary password with them directly. They can change it after signing in with the key button in the sidebar.</p>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="iu-save">Create account</button></div>`);
   const roleSel = m.querySelector('#iu-role');
@@ -1352,7 +1356,6 @@ function newWorkspaceModal(){
     <div class="modal-body">
       <label>Workspace name <span class="req">*</span></label><input id="nw-name" placeholder="e.g. Livestream Squad">
       <label>Description</label><input id="nw-desc">
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">You'll be added as a member automatically. Add colleagues from the workspace page → Members.</p>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="nw-save">Create workspace</button></div>`);
   m.querySelector('#nw-save').onclick = async ()=>{
@@ -1398,7 +1401,7 @@ async function renderPlatform(){
       <td style="color:var(--ink2)">${c.trial_ends_at? fmtDate(c.trial_ends_at):'—'}</td>
       <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="savePlatformCo('${c.id}')">Save</button></td>
     </tr>`).join('')}</tbody></table></div>
-    <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">Billing is manual for now — set plan/status here when a customer pays (or stops paying). Suspended and cancelled companies are locked out at sign-in. Stripe checkout can be wired in later.</p>`;
+    `;
 }
 async function savePlatformCo(id){
   const row = document.getElementById('co-'+id); if(!row) return;

@@ -480,6 +480,82 @@ if(typeof MutationObserver!=='undefined'){
 }
 /* Generic little popover menu, anchored to an element. items:[{label,danger,fn}|'-'] */
 let _ctxItems = [];
+/* ---- what the automations did ----
+   A custom automation is an AFTER trigger on `tasks`: by the time our UPDATE returns, a rule
+   may already have moved the task to another group, set its status, reassigned it or pushed
+   its due date - and nothing told the browser, so the board sat there showing the old row
+   until something re-read it. (That is why an automation looked like it only ran when you
+   pressed "Run timed checks now": the button re-rendered the page, it did not run the rule.)
+   Every write that can fire a rule calls this: re-read the rows, patch the cache with what
+   the server actually holds, and hand back the changes we did not ask for so the caller can
+   redraw and say so out loud. */
+const AUTO_ECHO = ['group_id','status','priority','assignee_id','due_date','archived_at'];
+async function echoAutomation(ids, sent){
+  ids = [].concat(ids).filter(Boolean); if(!ids.length) return [];
+  let data=null;
+  try{ ({data} = await db.from('tasks').select('id,'+AUTO_ECHO.join(',')).in('id', ids)); }catch(e){ return []; }
+  if(!Array.isArray(data)) return [];      // a save must never fall over on a shape we did not expect
+  const changed = [];
+  data.forEach(row=>{
+    const t = (S._tasks||[]).find(x=>x.id===row.id); if(!t) return;
+    AUTO_ECHO.forEach(k=>{
+      const asked = sent && Object.prototype.hasOwnProperty.call(sent, k);
+      const before = asked? sent[k] : t[k];
+      if((row[k]??null) !== (before??null)) changed.push({id:row.id, field:k, value:row[k]});
+      t[k] = row[k];
+    });
+  });
+  return changed;
+}
+/* One short line naming what a rule did, so it never happens invisibly. */
+function automationToast(changed){
+  if(!changed || !changed.length) return;
+  const c = changed[0];
+  const gname = id => ((S._groups||[]).find(g=>g.id===id)||{}).name;
+  const said = {
+    group_id:  ()=> gname(c.value)? 'moved it to '+gname(c.value) : 'moved it to another group',
+    status:    ()=> 'set the status to '+statusLabel(c.value),
+    priority:  ()=> 'set the priority to '+prioLabel(c.value),
+    assignee_id:()=> c.value? 'assigned it to '+(prof(c.value)||{}).full_name : 'cleared the assignee',
+    due_date:  ()=> c.value? 'set the due date to '+fmtDate(c.value) : 'cleared the due date',
+    archived_at:()=> c.value? 'archived it' : 'restored it',
+  }[c.field];
+  const rest = changed.length>1? ' (+'+(changed.length-1)+' more)' : '';
+  toast('Automation '+(said? said() : 'changed the task')+rest);
+}
+/* ---- ⓘ help ----
+   Every optional explanation in the app goes through here. The text lives in the button's
+   own data-help attribute (no registry, nothing to keep in step with a re-render) and may
+   carry <b>; call sites pass developer copy, so esc() anything interpolated from the DB.
+   mousedown is stopped because these icons sit inside menus whose own outside-click
+   handler listens on mousedown and would close the menu before the click ever landed. */
+const helpAttr = t => String(t).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+function helpIcon(text, style){
+  return `<button type="button" class="ihelp" aria-label="What is this?" title="What is this?"`
+    + (style? ` style="${style}"`:'')
+    + ` data-help="${helpAttr(text)}" onmousedown="event.stopPropagation()" onclick="helpPop(this,event)">i</button>`;
+}
+function helpPop(btn, ev){
+  if(ev) ev.stopPropagation();
+  const open = document.getElementById('ihelppop');
+  const same = open && open.dataset.owner === (btn.dataset.help||'');
+  if(open) open.remove();
+  document.querySelectorAll('.ihelp.on').forEach(x=>x.classList.remove('on'));
+  if(same) return;                                  // a second click on the same icon closes it
+  const p = document.createElement('div');
+  p.id='ihelppop'; p.className='ihelp-pop'; p.setAttribute('role','tooltip');
+  p.dataset.owner = btn.dataset.help||'';
+  p.innerHTML = btn.dataset.help||'';
+  document.body.appendChild(p);
+  const r = btn.getBoundingClientRect(), pb = p.getBoundingClientRect();
+  p.style.left = Math.max(8, Math.min(r.left - 10, innerWidth - pb.width - 10)) + 'px';
+  p.style.top  = (r.bottom + pb.height + 10 > innerHeight ? Math.max(8, r.top - pb.height - 8) : r.bottom + 8) + 'px';
+  btn.classList.add('on');
+  const close = ()=>{ p.remove(); btn.classList.remove('on'); document.removeEventListener('mousedown', off); document.removeEventListener('keydown', key); };
+  const off = e=>{ if(!p.contains(e.target) && e.target!==btn && !btn.contains(e.target)) close(); };
+  const key = e=>{ if(e.key==='Escape'){ e.stopPropagation(); close(); } };
+  setTimeout(()=>{ document.addEventListener('mousedown', off); document.addEventListener('keydown', key); }, 0);
+}
 function ctxMenu(anchor, items){
   document.getElementById('tvmenu')?.remove();
   document.querySelectorAll('.ws-menu.on').forEach(x=>x.classList.remove('on'));
@@ -487,7 +563,7 @@ function ctxMenu(anchor, items){
   const m = document.createElement('div'); m.id='tvmenu';
   m.innerHTML = `<div class="opts">${items.map(i=> i==='-'
     ? '<div style="height:1px;background:var(--line);margin:5px 6px"></div>'
-    : `<div class="opt" ${i.danger?'style="color:var(--red)"':''} data-i="${_ctxItems.indexOf(i)}">${esc(i.label)}</div>`).join('')}</div>`;
+    : `<div class="opt" ${i.danger?'style="color:var(--red)"':''} data-i="${_ctxItems.indexOf(i)}">${esc(i.label)}${i.info? helpIcon(i.info):''}</div>`).join('')}</div>`;
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect(), mb = m.getBoundingClientRect();
   m.style.left = Math.min(r.left, innerWidth - mb.width - 10) + 'px';
@@ -495,6 +571,7 @@ function ctxMenu(anchor, items){
   anchor.classList.add('on');
   m.querySelectorAll('.opt').forEach(o=> o.onclick = e=>{
     e.stopPropagation();
+    if(e.target.closest && e.target.closest('.ihelp')) return;   // the ⓘ is not the row
     const fn = _ctxItems[+o.dataset.i]?.fn;
     m.remove(); anchor.classList.remove('on');
     if(fn) fn();
