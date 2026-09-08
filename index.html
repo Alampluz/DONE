@@ -552,6 +552,12 @@ td.tv-name .tv-open{padding-left:20px}
 .ihelp:hover,.ihelp:focus-visible,.ihelp.on{background:var(--accent);border-color:var(--accent);color:#fff;outline:none}
 .ihelp-pop{position:fixed;z-index:1200;max-width:290px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 34px rgba(16,18,25,.16);font-size:12.5px;font-weight:400;font-style:normal;line-height:1.55;letter-spacing:.1px;color:var(--ink2);text-align:left;text-transform:none;animation:pop .12s ease}
 .ihelp-pop b{color:var(--ink);font-weight:600}
+/* Ticket number tag - CS-260908-001 - in front of a task title. Monospace and quiet:
+   it is a reference you read out, not the thing you scan the row for. */
+.tkt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:-.2px;color:var(--ink3);background:var(--gray-soft);border-radius:5px;padding:1px 5px;margin-right:7px;white-space:nowrap;vertical-align:1px}
+.tcard .tkt{font-size:10px;margin-right:0;margin-bottom:5px;display:block;width:fit-content}
+.modal-head .tkt{font-size:12px;vertical-align:2px}
+.tv-arch .tkt{opacity:.6}
 /* email settings */
 .es-master{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;margin:6px 0 12px}
 .es-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink)}
@@ -1155,6 +1161,34 @@ if(typeof MutationObserver!=='undefined'){
 }
 /* Generic little popover menu, anchored to an element. items:[{label,danger,fn}|'-'] */
 let _ctxItems = [];
+/* ---- ticket numbers ----
+   Every task carries a permanent human number, <board key>-YYMMDD-NNN (CS-260908-001):
+   the board's own key, the Bangkok day it was created, and a counter that restarts daily.
+   The database assigns it on insert (`assign_task_ticket_no`), so nothing here invents one -
+   these are only for showing it and for typing it into a filter box. A board with no key
+   has unnumbered tasks, which is why every one of these tolerates a blank. */
+const ticketNo = t => (t && t.ticket_no) || '';
+/* The grey monospace tag used in front of a task title, wherever a title is shown. */
+function ticketTag(t, cls){
+  const n = ticketNo(t); if(!n) return '';
+  return `<span class="tkt${cls? ' '+cls:''}" title="Ticket number">${esc(n)}</span>`;
+}
+/* A board key: up to 6 letters/digits, upper-cased, no spaces or punctuation. */
+const boardKeyClean = v => String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+/* Suggest one from a board's name. A name that already opens with an acronym keeps it -
+   "CS Inquiries - Q3 2026" -> CS, "BD Pipeline" -> BD - because that is what the team
+   already says. Otherwise take the initials of the words that carry meaning
+   ("Creative Queue" -> CQ), and for a single word its first three ("Escalations" -> ESC). */
+const KEY_SKIP = new Set(['THE','AND','OF','FOR','A','AN','TO','ON','IN','Q1','Q2','Q3','Q4']);
+function boardKeySuggest(name){
+  const raw = String(name||'').split(/[^A-Za-z0-9]+/).filter(Boolean);
+  const words = raw.filter(x=> !KEY_SKIP.has(x.toUpperCase()) && !/^\d+$/.test(x));
+  if(!words.length) return '';
+  const first = words[0];
+  if(first.length>=2 && first.length<=4 && first===first.toUpperCase() && /[A-Z]/.test(first)) return boardKeyClean(first);
+  if(words.length===1) return boardKeyClean(first.slice(0,3));
+  return boardKeyClean(words.map(x=>x[0]).join(''));
+}
 /* ---- what the automations did ----
    A custom automation is an AFTER trigger on `tasks`: by the time our UPDATE returns, a rule
    may already have moved the task to another group, set its status, reassigned it or pushed
@@ -2403,6 +2437,9 @@ function editProjectModal(pid){
   const m = modal(`<div class="modal-head"><h2>Edit board</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <label>Board name <span class="req">*</span></label><input id="ep-name" value="${esc(p.name)}">
+      <label>Ticket prefix ${helpIcon('Every task on this board gets a permanent number: this prefix, the date it was created, then a counter that restarts each day \u2014 e.g. <b>'+esc(boardKeyClean(p.key)||boardKeySuggest(p.name)||'CS')+'-260908-001</b>. Up to 6 letters or digits. Changing it only affects tasks created from then on; numbers already given out never change.')}</label>
+      <input id="ep-key" maxlength="6" style="width:130px;text-transform:uppercase" value="${esc(p.key||'')}" placeholder="${esc(boardKeySuggest(p.name)||'CS')}"
+        oninput="this.value=boardKeyClean(this.value)">
       <label>Description</label><input id="ep-desc" value="${esc(p.description||'')}">
       <div class="field-grid">
         <div><label>Workspace</label><select id="ep-ws">${S.workspaces.map(w=>`<option value="${w.id}" ${w.id===p.workspace_id?'selected':''}>${esc(w.name)}</option>`).join('')}</select></div>
@@ -2454,7 +2491,8 @@ function editProjectModal(pid){
     }
     const upd = {name, description:m.querySelector('#ep-desc').value.trim(),
       workspace_id:m.querySelector('#ep-ws').value, visibility:vis,
-      status:m.querySelector('#ep-status').value, color:colour};
+      status:m.querySelector('#ep-status').value, color:colour,
+      key: boardKeyClean(m.querySelector('#ep-key').value) || null};
     if(presetSel) upd.edit_preset = presetSel.value;
     const fc = {};
     CORE_FIELDS.forEach(f=>{
@@ -2468,7 +2506,7 @@ function editProjectModal(pid){
       status: m.querySelector('#ep-gate-status').value,
       approvers: [...m.querySelectorAll('#ep-gate-appr input[data-gapp]:checked')].map(c=>c.dataset.gapp)};
     const {error} = await db.from('projects').update(upd).eq('id',pid);
-    if(error) return toast(error.message, true);
+    if(error) return toast(boardSaveError(error), true);
     closeModals(); toast('Board updated'); await refreshCore();
     if(S.route.view==='project') renderProject(pid); else if(S.route.view==='ws') renderWorkspace(S.route.id, S.route.tab); else renderSidebar();
   };
@@ -2631,12 +2669,23 @@ async function userWorkspacesModal(uid){
     await refreshCore(); renderSidebar(); if(S.route.view==='admin') renderAdmin();
   };
 }
+/* The prefix follows the board name until someone types their own. */
+function pjKeySuggest(nameInput){
+  const k = document.getElementById('pj-key'); if(!k || k.dataset.touched) return;
+  k.value = boardKeySuggest(nameInput.value);
+}
+/* Two boards sharing a prefix would race for the same ticket number, so the database
+   refuses it - say which field to change rather than showing the constraint name. */
+const boardSaveError = e => /projects_company_key_uq|duplicate key/i.test(e.message||'')
+  ? 'Another board already uses that ticket prefix — pick a different one' : e.message;
 function newProjectModal(wsId){
   // Opened from inside a workspace: that workspace is the answer, not a question.
   const fixedWs = wsId ? wsById(wsId) : null;
   const m = modal(`<div class="modal-head"><h2>New board${fixedWs? ' in '+esc(fixedWs.name):''}</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
-      <label>Board name <span class="req">*</span></label><input id="pj-name" placeholder="e.g. Escalations — Q3">
+      <label>Board name <span class="req">*</span></label><input id="pj-name" placeholder="e.g. Escalations — Q3" oninput="pjKeySuggest(this)">
+      <label>Ticket prefix ${helpIcon('Tasks on this board get a permanent number made of this prefix, the date they were created and a daily counter \u2014 e.g. <b>ESC-260908-001</b>. Filled in from the board name; change it if you would rather something else. Up to 6 letters or digits.')}</label>
+      <input id="pj-key" maxlength="6" style="width:130px;text-transform:uppercase" placeholder="auto" oninput="this.value=boardKeyClean(this.value);this.dataset.touched='1'">
       <label>Description</label><textarea id="pj-desc" rows="2"></textarea>
       <div id="pj-tpl-wrap" hidden><label>Start from</label>
         <select id="pj-tpl"><option value="">Blank board</option></select></div>
@@ -2665,9 +2714,10 @@ function newProjectModal(wsId){
     const {data, error} = await db.from('projects').insert({
       workspace_id:m.querySelector('#pj-ws').value, name, description:m.querySelector('#pj-desc').value.trim(),
       visibility:m.querySelector('#pj-vis').dataset.sel||'collaborate', created_by:S.me.id,
-      color:colors[Math.floor(Math.random()*colors.length)]
+      color:colors[Math.floor(Math.random()*colors.length)],
+      key: boardKeyClean(m.querySelector('#pj-key').value) || boardKeySuggest(name) || null
     }).select().single();
-    if(error) return toast(error.message, true);
+    if(error) return toast(boardSaveError(error), true);
     const tpl = tpls.find(t=>t.id===(m.querySelector('#pj-tpl')?.value||''));
     if(tpl) await applyTemplate(data.id, tpl.spec||{});
     S.projects.push(data); closeModals(); toast('Board created');
@@ -2705,7 +2755,8 @@ function bfApply(pid, rows){
   const quick = BF_QUICK.find(x=>x.k===f.quick);
   return rows.filter(t=>
     (!quick || quick.test(t))
-    && (!q || (t.title||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q))
+    && (!q || (t.title||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q)
+          || (t.ticket_no||'').toLowerCase().includes(q))
     && (!f.status   || t.status===f.status)
     && (!f.priority || t.priority===f.priority)
     && (!f.assignee || (f.assignee==='__none__' ? !t.assignee_id : t.assignee_id===f.assignee))
@@ -3111,7 +3162,7 @@ function taskCard(t){
   const done = t.status==='done';
   const chk = t._chk;
   return `<div class="tcard" draggable="${canEditTask(t)}" data-id="${t.id}" onclick="openTask('${t.id}')">
-    <div class="t">${esc(t.title)}</div>
+    <div class="t">${ticketTag(t)}${esc(t.title)}</div>
     <div class="meta">${prioChip(t.priority)}${dueBadge(t.due_date, done)}
       ${(S._subs||{})[t.id]?.total? `<span class="subchip" style="font-size:11px;font-weight:700;color:var(--ink3);background:var(--gray-soft);border-radius:6px;padding:1px 6px">${S._subs[t.id].done}/${S._subs[t.id].total}</span>`:''}
       ${t.tags?.length? t.tags.slice(0,2).map(g=>`<span class="chip" style="background:var(--purple-soft);color:var(--purple)">${esc(g)}</span>`).join(''):''}
@@ -3591,8 +3642,9 @@ function exportBoardCSV(pid){
     if(f.ftype==='file') return (v&&v.name)? v.name : '';
     return v==null? '' : v;
   };
-  const out = [['Task','Group',coreLabel(pid,'status'),coreLabel(pid,'priority'),coreLabel(pid,'assignee'),coreLabel(pid,'due_date'), ...flds.map(f=>f.label), 'Created']];
+  const out = [['Ticket','Task','Group',coreLabel(pid,'status'),coreLabel(pid,'priority'),coreLabel(pid,'assignee'),coreLabel(pid,'due_date'), ...flds.map(f=>f.label), 'Created']];
   rows.forEach(t=> out.push([
+    t.ticket_no||'',
     t.title||'',
     (groups.find(g=>g.id===t.group_id)||{}).name||'',
     (STATUSES.find(s=>s.k===t.status)||{}).label||t.status||'',
@@ -3757,7 +3809,7 @@ function tvRowHTML(t, flds, gc){
   const dep = taskHasOpenDeps(t.id)? depIconHTML() : '';
   return `<tr class="tv-row${tvSel.has(t.id)?' rowsel':''}${arch?' tv-arch':''}" data-tid="${t.id}" ${gc?`style="--gcol:${gc}"`:''}>
     ${canEdit()?`<td class="tv-check">${canEditTask(t)?`<input type="checkbox" ${tvSel.has(t.id)?'checked':''} onchange="tvSelToggle('${t.id}',this.checked)">`:''}</td>`:''}
-    <td class="tv-name"><span class="tv-dots" title="Task options" onclick="event.stopPropagation();rowMenu(this,'${t.id}')">⋯</span><div class="tv-open" draggable="${canEditTask(t)&&!arch}" ondragstart="tvDragStart(event,'${t.id}')" ondragend="tvDragEnd(event)" onclick="openTask('${t.id}')">${dep}${esc(t.title)}${sc&&sc.total? `<span class="subchip">${sc.done}/${sc.total}</span>`:''}</div>${arch&&canEdit()?`<span class="tv-restore" onclick="event.stopPropagation();tvUnarchive('${t.id}')">Restore</span>`:''}</td>
+    <td class="tv-name"><span class="tv-dots" title="Task options" onclick="event.stopPropagation();rowMenu(this,'${t.id}')">⋯</span><div class="tv-open" draggable="${canEditTask(t)&&!arch}" ondragstart="tvDragStart(event,'${t.id}')" ondragend="tvDragEnd(event)" onclick="openTask('${t.id}')">${dep}${ticketTag(t)}${esc(t.title)}${sc&&sc.total? `<span class="subchip">${sc.done}/${sc.total}</span>`:''}</div>${arch&&canEdit()?`<span class="tv-restore" onclick="event.stopPropagation();tvUnarchive('${t.id}')">Restore</span>`:''}</td>
     <td>${tvPickHTML('status', t.id, 'status', false, t.status, t)}</td>
     ${coreHidden(t.project_id,'assignee')?'':`<td>${tvPickHTML('people', t.id, 'assignee_id', false, t.assignee_id, t)}</td>`}
     ${coreHidden(t.project_id,'due_date')?'':`<td>${tvPickHTML('due', t.id, 'due_date', false, t.due_date, t)}</td>`}
@@ -4369,7 +4421,7 @@ async function openTask(id){
   S._commentCache = {}; (comments||[]).forEach(c=> S._commentCache[c.id]=c);
   const p = projById(t.project_id);
   const m = modal(`<div class="modal-head">
-      <h2><span id="tv-title-view">${esc(t.title)}</span></h2>
+      <h2>${ticketTag(t)}<span id="tv-title-view">${esc(t.title)}</span></h2>
       ${isStaff()? `<button class="x" title="Delete task" onclick="deleteTask('${t.id}','${t.project_id}')" style="font-size:12px;font-weight:600">Delete</button>`:''}
       <button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
