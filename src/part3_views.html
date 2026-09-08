@@ -362,6 +362,9 @@ function editProjectModal(pid){
   const m = modal(`<div class="modal-head"><h2>Edit board</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <label>Board name <span class="req">*</span></label><input id="ep-name" value="${esc(p.name)}">
+      <label>Ticket prefix ${helpIcon('Every task on this board gets a permanent number: this prefix, the date it was created, then a counter that restarts each day \u2014 e.g. <b>'+esc(boardKeyClean(p.key)||boardKeySuggest(p.name)||'CS')+'-260908-001</b>. Up to 6 letters or digits. Changing it only affects tasks created from then on; numbers already given out never change.')}</label>
+      <input id="ep-key" maxlength="6" style="width:130px;text-transform:uppercase" value="${esc(p.key||'')}" placeholder="${esc(boardKeySuggest(p.name)||'CS')}"
+        oninput="this.value=boardKeyClean(this.value)">
       <label>Description</label><input id="ep-desc" value="${esc(p.description||'')}">
       <div class="field-grid">
         <div><label>Workspace</label><select id="ep-ws">${S.workspaces.map(w=>`<option value="${w.id}" ${w.id===p.workspace_id?'selected':''}>${esc(w.name)}</option>`).join('')}</select></div>
@@ -413,7 +416,8 @@ function editProjectModal(pid){
     }
     const upd = {name, description:m.querySelector('#ep-desc').value.trim(),
       workspace_id:m.querySelector('#ep-ws').value, visibility:vis,
-      status:m.querySelector('#ep-status').value, color:colour};
+      status:m.querySelector('#ep-status').value, color:colour,
+      key: boardKeyClean(m.querySelector('#ep-key').value) || null};
     if(presetSel) upd.edit_preset = presetSel.value;
     const fc = {};
     CORE_FIELDS.forEach(f=>{
@@ -427,7 +431,7 @@ function editProjectModal(pid){
       status: m.querySelector('#ep-gate-status').value,
       approvers: [...m.querySelectorAll('#ep-gate-appr input[data-gapp]:checked')].map(c=>c.dataset.gapp)};
     const {error} = await db.from('projects').update(upd).eq('id',pid);
-    if(error) return toast(error.message, true);
+    if(error) return toast(boardSaveError(error), true);
     closeModals(); toast('Board updated'); await refreshCore();
     if(S.route.view==='project') renderProject(pid); else if(S.route.view==='ws') renderWorkspace(S.route.id, S.route.tab); else renderSidebar();
   };
@@ -590,12 +594,23 @@ async function userWorkspacesModal(uid){
     await refreshCore(); renderSidebar(); if(S.route.view==='admin') renderAdmin();
   };
 }
+/* The prefix follows the board name until someone types their own. */
+function pjKeySuggest(nameInput){
+  const k = document.getElementById('pj-key'); if(!k || k.dataset.touched) return;
+  k.value = boardKeySuggest(nameInput.value);
+}
+/* Two boards sharing a prefix would race for the same ticket number, so the database
+   refuses it - say which field to change rather than showing the constraint name. */
+const boardSaveError = e => /projects_company_key_uq|duplicate key/i.test(e.message||'')
+  ? 'Another board already uses that ticket prefix — pick a different one' : e.message;
 function newProjectModal(wsId){
   // Opened from inside a workspace: that workspace is the answer, not a question.
   const fixedWs = wsId ? wsById(wsId) : null;
   const m = modal(`<div class="modal-head"><h2>New board${fixedWs? ' in '+esc(fixedWs.name):''}</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
-      <label>Board name <span class="req">*</span></label><input id="pj-name" placeholder="e.g. Escalations — Q3">
+      <label>Board name <span class="req">*</span></label><input id="pj-name" placeholder="e.g. Escalations — Q3" oninput="pjKeySuggest(this)">
+      <label>Ticket prefix ${helpIcon('Tasks on this board get a permanent number made of this prefix, the date they were created and a daily counter \u2014 e.g. <b>ESC-260908-001</b>. Filled in from the board name; change it if you would rather something else. Up to 6 letters or digits.')}</label>
+      <input id="pj-key" maxlength="6" style="width:130px;text-transform:uppercase" placeholder="auto" oninput="this.value=boardKeyClean(this.value);this.dataset.touched='1'">
       <label>Description</label><textarea id="pj-desc" rows="2"></textarea>
       <div id="pj-tpl-wrap" hidden><label>Start from</label>
         <select id="pj-tpl"><option value="">Blank board</option></select></div>
@@ -624,9 +639,10 @@ function newProjectModal(wsId){
     const {data, error} = await db.from('projects').insert({
       workspace_id:m.querySelector('#pj-ws').value, name, description:m.querySelector('#pj-desc').value.trim(),
       visibility:m.querySelector('#pj-vis').dataset.sel||'collaborate', created_by:S.me.id,
-      color:colors[Math.floor(Math.random()*colors.length)]
+      color:colors[Math.floor(Math.random()*colors.length)],
+      key: boardKeyClean(m.querySelector('#pj-key').value) || boardKeySuggest(name) || null
     }).select().single();
-    if(error) return toast(error.message, true);
+    if(error) return toast(boardSaveError(error), true);
     const tpl = tpls.find(t=>t.id===(m.querySelector('#pj-tpl')?.value||''));
     if(tpl) await applyTemplate(data.id, tpl.spec||{});
     S.projects.push(data); closeModals(); toast('Board created');
@@ -664,7 +680,8 @@ function bfApply(pid, rows){
   const quick = BF_QUICK.find(x=>x.k===f.quick);
   return rows.filter(t=>
     (!quick || quick.test(t))
-    && (!q || (t.title||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q))
+    && (!q || (t.title||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q)
+          || (t.ticket_no||'').toLowerCase().includes(q))
     && (!f.status   || t.status===f.status)
     && (!f.priority || t.priority===f.priority)
     && (!f.assignee || (f.assignee==='__none__' ? !t.assignee_id : t.assignee_id===f.assignee))
@@ -1070,7 +1087,7 @@ function taskCard(t){
   const done = t.status==='done';
   const chk = t._chk;
   return `<div class="tcard" draggable="${canEditTask(t)}" data-id="${t.id}" onclick="openTask('${t.id}')">
-    <div class="t">${esc(t.title)}</div>
+    <div class="t">${ticketTag(t)}${esc(t.title)}</div>
     <div class="meta">${prioChip(t.priority)}${dueBadge(t.due_date, done)}
       ${(S._subs||{})[t.id]?.total? `<span class="subchip" style="font-size:11px;font-weight:700;color:var(--ink3);background:var(--gray-soft);border-radius:6px;padding:1px 6px">${S._subs[t.id].done}/${S._subs[t.id].total}</span>`:''}
       ${t.tags?.length? t.tags.slice(0,2).map(g=>`<span class="chip" style="background:var(--purple-soft);color:var(--purple)">${esc(g)}</span>`).join(''):''}
@@ -1550,8 +1567,9 @@ function exportBoardCSV(pid){
     if(f.ftype==='file') return (v&&v.name)? v.name : '';
     return v==null? '' : v;
   };
-  const out = [['Task','Group',coreLabel(pid,'status'),coreLabel(pid,'priority'),coreLabel(pid,'assignee'),coreLabel(pid,'due_date'), ...flds.map(f=>f.label), 'Created']];
+  const out = [['Ticket','Task','Group',coreLabel(pid,'status'),coreLabel(pid,'priority'),coreLabel(pid,'assignee'),coreLabel(pid,'due_date'), ...flds.map(f=>f.label), 'Created']];
   rows.forEach(t=> out.push([
+    t.ticket_no||'',
     t.title||'',
     (groups.find(g=>g.id===t.group_id)||{}).name||'',
     (STATUSES.find(s=>s.k===t.status)||{}).label||t.status||'',
@@ -1716,7 +1734,7 @@ function tvRowHTML(t, flds, gc){
   const dep = taskHasOpenDeps(t.id)? depIconHTML() : '';
   return `<tr class="tv-row${tvSel.has(t.id)?' rowsel':''}${arch?' tv-arch':''}" data-tid="${t.id}" ${gc?`style="--gcol:${gc}"`:''}>
     ${canEdit()?`<td class="tv-check">${canEditTask(t)?`<input type="checkbox" ${tvSel.has(t.id)?'checked':''} onchange="tvSelToggle('${t.id}',this.checked)">`:''}</td>`:''}
-    <td class="tv-name"><span class="tv-dots" title="Task options" onclick="event.stopPropagation();rowMenu(this,'${t.id}')">⋯</span><div class="tv-open" draggable="${canEditTask(t)&&!arch}" ondragstart="tvDragStart(event,'${t.id}')" ondragend="tvDragEnd(event)" onclick="openTask('${t.id}')">${dep}${esc(t.title)}${sc&&sc.total? `<span class="subchip">${sc.done}/${sc.total}</span>`:''}</div>${arch&&canEdit()?`<span class="tv-restore" onclick="event.stopPropagation();tvUnarchive('${t.id}')">Restore</span>`:''}</td>
+    <td class="tv-name"><span class="tv-dots" title="Task options" onclick="event.stopPropagation();rowMenu(this,'${t.id}')">⋯</span><div class="tv-open" draggable="${canEditTask(t)&&!arch}" ondragstart="tvDragStart(event,'${t.id}')" ondragend="tvDragEnd(event)" onclick="openTask('${t.id}')">${dep}${ticketTag(t)}${esc(t.title)}${sc&&sc.total? `<span class="subchip">${sc.done}/${sc.total}</span>`:''}</div>${arch&&canEdit()?`<span class="tv-restore" onclick="event.stopPropagation();tvUnarchive('${t.id}')">Restore</span>`:''}</td>
     <td>${tvPickHTML('status', t.id, 'status', false, t.status, t)}</td>
     ${coreHidden(t.project_id,'assignee')?'':`<td>${tvPickHTML('people', t.id, 'assignee_id', false, t.assignee_id, t)}</td>`}
     ${coreHidden(t.project_id,'due_date')?'':`<td>${tvPickHTML('due', t.id, 'due_date', false, t.due_date, t)}</td>`}

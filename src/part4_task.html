@@ -70,7 +70,7 @@ async function openTask(id){
   S._commentCache = {}; (comments||[]).forEach(c=> S._commentCache[c.id]=c);
   const p = projById(t.project_id);
   const m = modal(`<div class="modal-head">
-      <h2><span id="tv-title-view">${esc(t.title)}</span></h2>
+      <h2>${ticketTag(t)}<span id="tv-title-view">${esc(t.title)}</span></h2>
       ${isStaff()? `<button class="x" title="Delete task" onclick="deleteTask('${t.id}','${t.project_id}')" style="font-size:12px;font-weight:600">Delete</button>`:''}
       <button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">

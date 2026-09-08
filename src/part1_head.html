@@ -552,6 +552,12 @@ td.tv-name .tv-open{padding-left:20px}
 .ihelp:hover,.ihelp:focus-visible,.ihelp.on{background:var(--accent);border-color:var(--accent);color:#fff;outline:none}
 .ihelp-pop{position:fixed;z-index:1200;max-width:290px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 34px rgba(16,18,25,.16);font-size:12.5px;font-weight:400;font-style:normal;line-height:1.55;letter-spacing:.1px;color:var(--ink2);text-align:left;text-transform:none;animation:pop .12s ease}
 .ihelp-pop b{color:var(--ink);font-weight:600}
+/* Ticket number tag - CS-260908-001 - in front of a task title. Monospace and quiet:
+   it is a reference you read out, not the thing you scan the row for. */
+.tkt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:-.2px;color:var(--ink3);background:var(--gray-soft);border-radius:5px;padding:1px 5px;margin-right:7px;white-space:nowrap;vertical-align:1px}
+.tcard .tkt{font-size:10px;margin-right:0;margin-bottom:5px;display:block;width:fit-content}
+.modal-head .tkt{font-size:12px;vertical-align:2px}
+.tv-arch .tkt{opacity:.6}
 /* email settings */
 .es-master{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;margin:6px 0 12px}
 .es-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink)}

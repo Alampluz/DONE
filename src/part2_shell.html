@@ -480,6 +480,34 @@ if(typeof MutationObserver!=='undefined'){
 }
 /* Generic little popover menu, anchored to an element. items:[{label,danger,fn}|'-'] */
 let _ctxItems = [];
+/* ---- ticket numbers ----
+   Every task carries a permanent human number, <board key>-YYMMDD-NNN (CS-260908-001):
+   the board's own key, the Bangkok day it was created, and a counter that restarts daily.
+   The database assigns it on insert (`assign_task_ticket_no`), so nothing here invents one -
+   these are only for showing it and for typing it into a filter box. A board with no key
+   has unnumbered tasks, which is why every one of these tolerates a blank. */
+const ticketNo = t => (t && t.ticket_no) || '';
+/* The grey monospace tag used in front of a task title, wherever a title is shown. */
+function ticketTag(t, cls){
+  const n = ticketNo(t); if(!n) return '';
+  return `<span class="tkt${cls? ' '+cls:''}" title="Ticket number">${esc(n)}</span>`;
+}
+/* A board key: up to 6 letters/digits, upper-cased, no spaces or punctuation. */
+const boardKeyClean = v => String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+/* Suggest one from a board's name. A name that already opens with an acronym keeps it -
+   "CS Inquiries - Q3 2026" -> CS, "BD Pipeline" -> BD - because that is what the team
+   already says. Otherwise take the initials of the words that carry meaning
+   ("Creative Queue" -> CQ), and for a single word its first three ("Escalations" -> ESC). */
+const KEY_SKIP = new Set(['THE','AND','OF','FOR','A','AN','TO','ON','IN','Q1','Q2','Q3','Q4']);
+function boardKeySuggest(name){
+  const raw = String(name||'').split(/[^A-Za-z0-9]+/).filter(Boolean);
+  const words = raw.filter(x=> !KEY_SKIP.has(x.toUpperCase()) && !/^\d+$/.test(x));
+  if(!words.length) return '';
+  const first = words[0];
+  if(first.length>=2 && first.length<=4 && first===first.toUpperCase() && /[A-Z]/.test(first)) return boardKeyClean(first);
+  if(words.length===1) return boardKeyClean(first.slice(0,3));
+  return boardKeyClean(words.map(x=>x[0]).join(''));
+}
 /* ---- what the automations did ----
    A custom automation is an AFTER trigger on `tasks`: by the time our UPDATE returns, a rule
    may already have moved the task to another group, set its status, reassigned it or pushed
