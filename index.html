@@ -543,8 +543,15 @@ td.tv-name .tv-open{padding-left:20px}
 .view-menu .vm-head{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);padding:6px 10px 4px}
 .vm-opt{display:grid;grid-template-columns:18px 1fr 16px;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border-radius:8px;color:var(--ink);cursor:pointer;background:none;border:0}
 .vm-opt:hover,.vm-opt:focus{background:var(--gray-soft);outline:none} .vm-opt.on{background:var(--accent-soft)} .vm-opt.on .vp-ico{color:var(--accent-ink)}
-.vm-txt{display:flex;flex-direction:column;line-height:1.2} .vm-txt b{font-size:13px;font-weight:600} .vm-txt span{font-size:11.5px;color:var(--ink3);margin-top:1px}
+.vm-txt{display:flex;align-items:center;line-height:1.2} .vm-txt b{font-size:13px;font-weight:600}
 .vm-check{font-size:13px;font-weight:700;color:var(--accent-ink);text-align:right}
+/* ⓘ help — the app used to spell every option out inline ("Board — tasks in groups and
+   columns"). April asked for the labels to stand on their own, so the note now sits behind
+   this icon, one click away. One component, used everywhere an explanation used to be. */
+.ihelp{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;flex:0 0 15px;padding:0;margin-left:5px;border:1px solid var(--ink3);border-radius:50%;background:none;color:var(--ink3);font-family:inherit;font-size:10px;font-weight:700;font-style:normal;line-height:1;letter-spacing:0;cursor:pointer;vertical-align:middle;transition:color .12s,background .12s,border-color .12s}
+.ihelp:hover,.ihelp:focus-visible,.ihelp.on{background:var(--accent);border-color:var(--accent);color:#fff;outline:none}
+.ihelp-pop{position:fixed;z-index:1200;max-width:290px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 34px rgba(16,18,25,.16);font-size:12.5px;font-weight:400;font-style:normal;line-height:1.55;letter-spacing:.1px;color:var(--ink2);text-align:left;text-transform:none;animation:pop .12s ease}
+.ihelp-pop b{color:var(--ink);font-weight:600}
 /* email settings */
 .es-master{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px;margin:6px 0 12px}
 .es-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink)}
@@ -1148,6 +1155,82 @@ if(typeof MutationObserver!=='undefined'){
 }
 /* Generic little popover menu, anchored to an element. items:[{label,danger,fn}|'-'] */
 let _ctxItems = [];
+/* ---- what the automations did ----
+   A custom automation is an AFTER trigger on `tasks`: by the time our UPDATE returns, a rule
+   may already have moved the task to another group, set its status, reassigned it or pushed
+   its due date - and nothing told the browser, so the board sat there showing the old row
+   until something re-read it. (That is why an automation looked like it only ran when you
+   pressed "Run timed checks now": the button re-rendered the page, it did not run the rule.)
+   Every write that can fire a rule calls this: re-read the rows, patch the cache with what
+   the server actually holds, and hand back the changes we did not ask for so the caller can
+   redraw and say so out loud. */
+const AUTO_ECHO = ['group_id','status','priority','assignee_id','due_date','archived_at'];
+async function echoAutomation(ids, sent){
+  ids = [].concat(ids).filter(Boolean); if(!ids.length) return [];
+  let data=null;
+  try{ ({data} = await db.from('tasks').select('id,'+AUTO_ECHO.join(',')).in('id', ids)); }catch(e){ return []; }
+  if(!Array.isArray(data)) return [];      // a save must never fall over on a shape we did not expect
+  const changed = [];
+  data.forEach(row=>{
+    const t = (S._tasks||[]).find(x=>x.id===row.id); if(!t) return;
+    AUTO_ECHO.forEach(k=>{
+      const asked = sent && Object.prototype.hasOwnProperty.call(sent, k);
+      const before = asked? sent[k] : t[k];
+      if((row[k]??null) !== (before??null)) changed.push({id:row.id, field:k, value:row[k]});
+      t[k] = row[k];
+    });
+  });
+  return changed;
+}
+/* One short line naming what a rule did, so it never happens invisibly. */
+function automationToast(changed){
+  if(!changed || !changed.length) return;
+  const c = changed[0];
+  const gname = id => ((S._groups||[]).find(g=>g.id===id)||{}).name;
+  const said = {
+    group_id:  ()=> gname(c.value)? 'moved it to '+gname(c.value) : 'moved it to another group',
+    status:    ()=> 'set the status to '+statusLabel(c.value),
+    priority:  ()=> 'set the priority to '+prioLabel(c.value),
+    assignee_id:()=> c.value? 'assigned it to '+(prof(c.value)||{}).full_name : 'cleared the assignee',
+    due_date:  ()=> c.value? 'set the due date to '+fmtDate(c.value) : 'cleared the due date',
+    archived_at:()=> c.value? 'archived it' : 'restored it',
+  }[c.field];
+  const rest = changed.length>1? ' (+'+(changed.length-1)+' more)' : '';
+  toast('Automation '+(said? said() : 'changed the task')+rest);
+}
+/* ---- ⓘ help ----
+   Every optional explanation in the app goes through here. The text lives in the button's
+   own data-help attribute (no registry, nothing to keep in step with a re-render) and may
+   carry <b>; call sites pass developer copy, so esc() anything interpolated from the DB.
+   mousedown is stopped because these icons sit inside menus whose own outside-click
+   handler listens on mousedown and would close the menu before the click ever landed. */
+const helpAttr = t => String(t).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+function helpIcon(text, style){
+  return `<button type="button" class="ihelp" aria-label="What is this?" title="What is this?"`
+    + (style? ` style="${style}"`:'')
+    + ` data-help="${helpAttr(text)}" onmousedown="event.stopPropagation()" onclick="helpPop(this,event)">i</button>`;
+}
+function helpPop(btn, ev){
+  if(ev) ev.stopPropagation();
+  const open = document.getElementById('ihelppop');
+  const same = open && open.dataset.owner === (btn.dataset.help||'');
+  if(open) open.remove();
+  document.querySelectorAll('.ihelp.on').forEach(x=>x.classList.remove('on'));
+  if(same) return;                                  // a second click on the same icon closes it
+  const p = document.createElement('div');
+  p.id='ihelppop'; p.className='ihelp-pop'; p.setAttribute('role','tooltip');
+  p.dataset.owner = btn.dataset.help||'';
+  p.innerHTML = btn.dataset.help||'';
+  document.body.appendChild(p);
+  const r = btn.getBoundingClientRect(), pb = p.getBoundingClientRect();
+  p.style.left = Math.max(8, Math.min(r.left - 10, innerWidth - pb.width - 10)) + 'px';
+  p.style.top  = (r.bottom + pb.height + 10 > innerHeight ? Math.max(8, r.top - pb.height - 8) : r.bottom + 8) + 'px';
+  btn.classList.add('on');
+  const close = ()=>{ p.remove(); btn.classList.remove('on'); document.removeEventListener('mousedown', off); document.removeEventListener('keydown', key); };
+  const off = e=>{ if(!p.contains(e.target) && e.target!==btn && !btn.contains(e.target)) close(); };
+  const key = e=>{ if(e.key==='Escape'){ e.stopPropagation(); close(); } };
+  setTimeout(()=>{ document.addEventListener('mousedown', off); document.addEventListener('keydown', key); }, 0);
+}
 function ctxMenu(anchor, items){
   document.getElementById('tvmenu')?.remove();
   document.querySelectorAll('.ws-menu.on').forEach(x=>x.classList.remove('on'));
@@ -1155,7 +1238,7 @@ function ctxMenu(anchor, items){
   const m = document.createElement('div'); m.id='tvmenu';
   m.innerHTML = `<div class="opts">${items.map(i=> i==='-'
     ? '<div style="height:1px;background:var(--line);margin:5px 6px"></div>'
-    : `<div class="opt" ${i.danger?'style="color:var(--red)"':''} data-i="${_ctxItems.indexOf(i)}">${esc(i.label)}</div>`).join('')}</div>`;
+    : `<div class="opt" ${i.danger?'style="color:var(--red)"':''} data-i="${_ctxItems.indexOf(i)}">${esc(i.label)}${i.info? helpIcon(i.info):''}</div>`).join('')}</div>`;
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect(), mb = m.getBoundingClientRect();
   m.style.left = Math.min(r.left, innerWidth - mb.width - 10) + 'px';
@@ -1163,6 +1246,7 @@ function ctxMenu(anchor, items){
   anchor.classList.add('on');
   m.querySelectorAll('.opt').forEach(o=> o.onclick = e=>{
     e.stopPropagation();
+    if(e.target.closest && e.target.closest('.ihelp')) return;   // the ⓘ is not the row
     const fn = _ctxItems[+o.dataset.i]?.fn;
     m.remove(); anchor.classList.remove('on');
     if(fn) fn();
@@ -2161,14 +2245,14 @@ function wireVisPicker(root, id){
 /* monday-style "Add to workspace": everything you can create here, one menu. */
 function wsAddMenu(anchor, wid){
   const items = [
-    {label:'Board', fn:()=>newProjectModal(wid)},
-    {label:'Report widget', fn:()=>{
+    {label:'Board', info:'Tasks in groups and columns.', fn:()=>newProjectModal(wid)},
+    {label:'Report widget', info:'A chart on this workspace\'s report, seen by everyone on the team.', fn:()=>{
       const go=()=>widgetModal(null, wid);
       if(S.route.view==='ws' && S.route.id===wid && S.route.tab==='report') go();
       else { location.hash = '#/ws/'+wid+'/report'; setTimeout(go, 600); }
     }},
   ];
-  if(isAdmin()) items.push({label:'Form', fn:()=>editTypeModal(null, wid)});
+  if(isAdmin()) items.push({label:'Form', info:'A public request form. Anyone with the link can submit a ticket, and it lands in the Requests queue routed here.', fn:()=>editTypeModal(null, wid)});
   ctxMenu(anchor, items);
 }
 /* ---- Boards (projects): rename, recolour, delete ---- */
@@ -2201,8 +2285,7 @@ async function saveTemplateModal(pid){
   }
   const m = modal(`<div class="modal-head"><h2>Save as template</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
-      <label>Template name <span class="req">*</span></label><input id="tp-name" value="${esc(p.name)}">
-      <div style="font-size:12.5px;color:var(--ink3);margin-top:8px">Saves this board's groups, columns and tasks (statuses and priorities included, archived tasks left out). Pick it under "Start from" when creating a board.</div>
+      <label>Template name <span class="req">*</span>${helpIcon('Saves this board\'s groups, columns and tasks (statuses and priorities included, archived tasks left out). Pick it under “Start from” when creating a board.')}</label><input id="tp-name" value="${esc(p.name)}">
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="tp-save">Save template</button></div>`);
   m.querySelector('#tp-save').onclick = async ()=>{
@@ -2263,9 +2346,8 @@ async function recurringModal(pid){
   S._rcGroups = groups||[];
   const people = S.profiles.filter(u=>u.active && !(u.email||'').startsWith('forms+'));
   const today = new Date().toISOString().slice(0,10);
-  const m = modal(`<div class="modal-head"><h2>Recurring tasks — ${esc(p.name)}</h2><button class="x" onclick="closeModals()">✕</button></div>
+  const m = modal(`<div class="modal-head"><h2>Recurring tasks — ${esc(p.name)} ${helpIcon('Each rule creates a fresh task on schedule, within 15 minutes of its next-run date.')}</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
-      <div style="font-size:12.5px;color:var(--ink3);margin-bottom:6px">Each rule creates a fresh task on schedule — within 15 minutes of its next-run date.</div>
       <div id="rc-list">${(rules||[]).map(r=>rcRow(r, groups||[])).join('') || '<div style="color:var(--ink3);font-size:13px;padding:6px 0">No recurring tasks on this board yet</div>'}</div>
       <label style="margin-top:14px">New rule</label>
       <input id="rc-title" placeholder="Task title, e.g. Weekly stock check">
@@ -2314,7 +2396,7 @@ function editProjectModal(pid){
         <select id="ep-gate-status" style="width:auto">${STATUSES.map(s=>`<option value="${s.k}" ${s.k===(gate.status||'done')?'selected':''}>${s.label}</option>`).join('')}</select>
       </div>
       <div id="ep-gate-appr" style="margin-top:8px" ${gate.on?'':'hidden'}>
-        <div style="font-size:12px;color:var(--ink3);margin-bottom:4px">Who usually signs off — they pre-fill the request picker</div>
+        <label style="margin:0 0 4px">Who usually signs off ${helpIcon('These people pre-fill the request picker when someone asks for sign-off.')}</label>
         ${gatePool.map(u=>`<div class="chk"><input type="checkbox" data-gapp="${u.id}" ${(gate.approvers||[]).includes(u.id)?'checked':''}>
           ${avatar(u,true)} <span>${esc(u.full_name)}</span></div>`).join('')}
       </div>`:'';
@@ -2326,17 +2408,16 @@ function editProjectModal(pid){
         <div><label>Workspace</label><select id="ep-ws">${S.workspaces.map(w=>`<option value="${w.id}" ${w.id===p.workspace_id?'selected':''}>${esc(w.name)}</option>`).join('')}</select></div>
         <div><label>Status</label><select id="ep-status">${['active','on_hold','archived'].map(s=>`<option value="${s}" ${s===p.status?'selected':''}>${s.replace('_',' ')}</option>`).join('')}</select></div>
       </div>
-      <label style="margin-top:14px">Board owners</label>
+      <label style="margin-top:14px">Board owners ${helpIcon('Owners and admins manage this board\'s settings, columns, groups and sign-off.')}</label>
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
         ${avatarStack(boardOwnerIds(pid))}
         <span style="font-size:13px;color:var(--ink2);flex:1;min-width:120px">${esc(ownerNames(boardOwnerIds(pid)))}</span>
         <button type="button" class="btn btn-ghost btn-sm" id="ep-owners">Manage owners</button>
       </div>
-      <div style="font-size:12px;color:var(--ink3);margin-top:4px">Owners and admins manage this board's settings, columns, groups and sign-off.</div>
       ${canManageBoard(pid)? `<label style="margin-top:14px">Who can change tasks</label>
       <select id="ep-preset">${BOARD_PRESETS.map(o=>`<option value="${o.k}" ${o.k===(p.edit_preset||'everything')?'selected':''}>${o.label}</option>`).join('')}</select>
-      <div id="ep-preset-blurb" style="font-size:12px;color:var(--ink3);margin-top:4px">${BOARD_PRESETS.find(o=>o.k===(p.edit_preset||'everything')).blurb} Owners, admins and management are never restricted.</div>`:''}
-      <label style="margin-top:14px">Standard fields on this board <span style="font-weight:400;color:var(--ink3)">— rename to match the work, untick what this board doesn't use</span></label>
+      <span id="ep-preset-blurb">${helpIcon(BOARD_PRESETS.find(o=>o.k===(p.edit_preset||'everything')).blurb + ' Owners, admins and management are never restricted.')}</span>`:''}
+      <label style="margin-top:14px">Standard fields on this board ${helpIcon('Rename them to match the work, and untick whatever this board doesn\'t use.')}</label>
       <div class="ep-fields">
         ${CORE_FIELDS.map(f=>`<div class="ep-field">
           <label class="chk" style="margin:0" title="${f.hideable?'Show this field on the board':'Status is always shown'}"><input type="checkbox" data-epf-show="${f.k}" ${coreHidden(pid,f.k)?'':'checked'} ${f.hideable?'':'disabled'}><span>${esc(f.label)}</span></label>
@@ -2354,7 +2435,7 @@ function editProjectModal(pid){
   let colour = p.color;
   m.querySelector('#ep-owners').onclick = ()=>{ closeModals(); projectMembersModal(pid); };
   const presetSel = m.querySelector('#ep-preset');
-  if(presetSel) presetSel.onchange = ()=>{ m.querySelector('#ep-preset-blurb').textContent = BOARD_PRESETS.find(o=>o.k===presetSel.value).blurb + ' Owners, admins and management are never restricted.'; };
+  if(presetSel) presetSel.onchange = ()=>{ m.querySelector('#ep-preset-blurb').innerHTML = helpIcon(BOARD_PRESETS.find(o=>o.k===presetSel.value).blurb + ' Owners, admins and management are never restricted.'); };
   wireVisPicker(m,'ep-vis');
   const gateOn = m.querySelector('#ep-gate-on');
   if(gateOn) gateOn.onchange = ()=>{ m.querySelector('#ep-gate-appr').hidden = !gateOn.checked; };
@@ -2687,15 +2768,18 @@ function viewPickerHTML(id){
 function viewMenu(anchor, pid){
   if(document.getElementById('tvmenu')){ document.getElementById('tvmenu').remove(); anchor.classList.remove('on'); return; }
   const m = document.createElement('div'); m.id='tvmenu'; m.className='view-menu'; m.setAttribute('role','menu');
-  m.innerHTML = `<div class="vm-head">View</div>` + BOARD_VIEWS.map(([k,l,d])=>`<button role="menuitemradio" aria-checked="${boardMode===k}" class="vm-opt ${boardMode===k?'on':''}" data-k="${k}">
-      <span class="vp-ico">${VIEW_ICON[k]}</span><span class="vm-txt"><b>${l}</b><span>${d}</span></span><span class="vm-check">${boardMode===k?'✓':''}</span></button>`).join('');
+  m.innerHTML = `<div class="vm-head">View</div>` + BOARD_VIEWS.map(([k,l,d])=>`<div role="menuitemradio" tabindex="-1" aria-checked="${boardMode===k}" class="vm-opt ${boardMode===k?'on':''}" data-k="${k}">
+      <span class="vp-ico">${VIEW_ICON[k]}</span><span class="vm-txt"><b>${l}</b>${helpIcon(d)}</span><span class="vm-check">${boardMode===k?'✓':''}</span></div>`).join('');
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect(), mb = m.getBoundingClientRect();
   m.style.left = Math.max(8, Math.min(r.left, innerWidth - mb.width - 10)) + 'px';
   m.style.top  = (r.bottom + mb.height > innerHeight ? Math.max(8, r.top - mb.height - 6) : r.bottom + 6) + 'px';
   anchor.classList.add('on');
   const close = ()=>{ m.remove(); anchor.classList.remove('on'); document.removeEventListener('mousedown', off); document.removeEventListener('keydown', key); };
-  m.querySelectorAll('.vm-opt').forEach(o=> o.onclick = e=>{ e.stopPropagation(); close(); setBoardView(pid, o.dataset.k); });
+  m.querySelectorAll('.vm-opt').forEach(o=> o.onclick = e=>{
+    e.stopPropagation();
+    if(e.target.closest && e.target.closest('.ihelp')) return;   // the ⓘ is not the row
+    close(); setBoardView(pid, o.dataset.k); });
   const off = e=>{ if(!m.contains(e.target) && e.target!==anchor && !anchor.contains(e.target)) close(); };
   const key = e=>{
     if(e.key==='Escape') return close();
@@ -3049,7 +3133,9 @@ function wireDnD(projectId){
       const old = t.status; t.status=status;
       renderProjectFromCache(projectId);
       const {error} = await db.from('tasks').update({status}).eq('id',dragId);
-      if(error){ t.status=old; renderProjectFromCache(projectId); toast(error.message, true); }
+      if(error){ t.status=old; renderProjectFromCache(projectId); return toast(error.message, true); }
+      const changed = await echoAutomation(dragId, {status});
+      if(changed.length){ automationToast(changed); renderProjectFromCache(projectId); }
 
     });
   });
@@ -3778,6 +3864,8 @@ async function tvBulkApply(field, value){
   if(error) return toast(error.message, true);
   S._tasks.forEach(t=>{ if(tvSel.has(t.id)) t[field]=value; });
   toast(ids.length+' task'+(ids.length>1?'s':'')+' updated');
+  const changed = await echoAutomation(ids, {[field]:value});
+  if(changed.length) automationToast(changed);
   const y=scrollY; renderBoardBody(tvPid); scrollTo(0,y);
 }
 /* Archive = reversible. This is the default for removing rows. */
@@ -3988,15 +4076,19 @@ async function tvCore(tid, field, val){
   const t=S._tasks.find(x=>x.id===tid); if(!t) return;
   const old=t[field]; t[field]=val;
   const {error}=await db.from('tasks').update({[field]:val}).eq('id',tid);
-  if(error){ t[field]=old; toast(error.message, true); }
-
+  if(error){ t[field]=old; toast(error.message, true); return; }
+  // an automation may have moved or changed the row behind us - show what it did
+  const changed = await echoAutomation(tid, {[field]:val});
+  if(changed.length){ automationToast(changed); const y=scrollY; renderProjectFromCache(tvPid); scrollTo(0,y); }
 }
 async function tvCustom(tid, fid, val){
   const t=S._tasks.find(x=>x.id===tid); if(!t) return;
   t.custom = Object.assign({}, t.custom||{});
   if(val===''||val===null){ delete t.custom[fid]; } else { t.custom[fid]=val; }
   const {error}=await db.from('tasks').update({custom:t.custom}).eq('id',tid);
-  if(error) toast(error.message, true);
+  if(error) return toast(error.message, true);
+  const changed = await echoAutomation(tid, null);
+  if(changed.length){ automationToast(changed); const y=scrollY; renderProjectFromCache(tvPid); scrollTo(0,y); }
 }
 function addColumnModal(pid){ columnModal(pid, null); }
 function editColumnModal(fid, pid){ const f=(S._fields||[]).find(x=>x.id===fid); if(f) columnModal(pid, f); }
@@ -4006,7 +4098,7 @@ function columnModal(pid, f){
   const m = modal(`<div class="modal-head"><h2>${f?'Edit column':'New column'}</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <label>Column name <span class="req">*</span></label><input id="cf-label" value="${f? esc(f.label):''}" placeholder="e.g. Store Location">
-      <label>Type</label><select id="cf-type" ${f?'disabled':''}>${types.map(([k,l])=>`<option value="${k}" ${f&&f.ftype===k?'selected':''}>${l}</option>`).join('')}</select>
+      <label>Type ${f? helpIcon('Type cannot be changed after creation. Deleting a column keeps the task data but hides it.'):''}</label><select id="cf-type" ${f?'disabled':''}>${types.map(([k,l])=>`<option value="${k}" ${f&&f.ftype===k?'selected':''}>${l}</option>`).join('')}</select>
       <div id="cf-opts-wrap" style="display:${(f? f.ftype:'text')==='select'?'block':'none'}">
         <label>Dropdown options (one per line)</label>
         <textarea id="cf-opts" rows="4" placeholder="Option A&#10;Option B">${f && Array.isArray(f.options)? esc(f.options.join('\n')):''}</textarea>
@@ -4020,10 +4112,9 @@ function columnModal(pid, f){
         <div id="cf-fx-prev" style="margin-top:9px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--gray-soft);font-size:12.5px;color:var(--ink2)">Preview appears as you type</div>
       </div>
       <div id="cf-link-wrap" style="display:${(f? f.ftype:'text')==='link'?'block':'none'}">
-        <label>Board to link to</label>
+        <label>Board to link to ${helpIcon('Each row can point at one task on that board.')}</label>
         <select id="cf-link-board"><option value="">Choose a board…</option>
           ${(S.projects||[]).filter(p=>p.id!==pid).map(p=>`<option value="${p.id}" ${f&&f.options&&f.options.project_id===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
-        <p style="color:var(--ink3);font-size:12px;margin-top:6px">Each row can point at one task on that board.</p>
       </div>
       <div id="cf-mirror-wrap" style="display:${(f? f.ftype:'text')==='mirror'?'block':'none'}">
         ${linkFields.length? `<label>Via link column</label>
@@ -4032,7 +4123,6 @@ function columnModal(pid, f){
         <select id="cf-mirror-show">${[['status','Status'],['priority','Priority'],['assignee','Assignee'],['due_date','Due date']].map(([v,l])=>`<option value="${v}" ${f&&f.options&&f.options.show===v?'selected':''}>${l}</option>`).join('')}</select>`
         : `<p style="color:var(--ink3);font-size:12.5px;margin-top:8px">Add a <b>Link to board</b> column first — a mirror shows a value from the task each row links to.</p>`}
       </div>
-      ${f? `<p style="color:var(--ink3);font-size:12.5px;margin-top:10px">Type cannot be changed after creation. Deleting a column keeps task data but hides it.</p>`:''}
     </div>
     <div class="modal-foot">
       ${f? `<button class="btn btn-ghost" id="cf-del" style="color:var(--red)">Delete column</button>`:''}
@@ -4159,7 +4249,7 @@ async function projectMembersModal(pid){
   const peopleHTML = `
       ${searchBoxHTML('pm-q','Search by name, team, role, or email address')}
       ${canGuest? teamAddHTML('pm-team') : ''}
-      <label style="margin-top:4px">People on this board</label>
+      <label style="margin-top:4px">People on this board ${helpIcon('A filled heart marks an owner' + (canSetOwner? '; click an outline heart to make someone an owner, or a filled one to remove them':'') + '. Owners and admins manage this board\'s settings; everyone here works on its tasks.')}</label>
       <div style="display:flex;gap:26px;align-items:center;margin:6px 0 10px;font-size:12.5px;color:var(--ink2)">
         <span style="display:flex;align-items:center;gap:8px">Members ${avatarStack(people.filter(p=>!ownerIds.includes(p.id)).map(p=>p.id))}</span>
         <span style="display:flex;align-items:center;gap:8px">Owners ${avatarStack(ownerIds)}</span>
@@ -4171,10 +4261,7 @@ async function projectMembersModal(pid){
             ${p.job_title? `<span class="pr-sub">${esc(p.job_title)}</span>`:''}</span>
           ${ownerHeartHTML(ownerIds.includes(p.id), canSetOwner, `setBoardOwner('${pid}','${p.id}')`, 'board')}
         </div>`).join('')}</div>
-      <div style="font-size:12px;color:var(--ink3);margin:6px 0 14px">
-        A filled heart marks an owner${canSetOwner? ' — click an outline heart to make someone an owner, or a filled one to remove them':''}.
-        Owners and admins manage this board's settings; everyone here works on its tasks.
-      </div>`;
+      `;
   const vis = board.visibility || 'collaborate';
   const canGuest = vis === 'shareable';
   const m = modal(`<div class="modal-head"><h2>Board members (partner access)</h2><button class="x" onclick="closeModals()">✕</button></div>
@@ -5334,7 +5421,7 @@ function widgetModal(id, wsId, projId){
   const m = modal(`<div class="modal-head"><h2>${w?'Edit widget':'Add widget'}</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <label>Widget type</label>
-      <div class="type-pick" id="wm-type">${types.map(([k,l,d])=>`<div class="tp ${ (w?w.wtype:'bar')===k?'sel':''}" data-k="${k}" onclick="[...this.parentNode.children].forEach(x=>x.classList.remove('sel'));this.classList.add('sel');wmRefresh()"><b>${l}</b><span>${d}</span></div>`).join('')}</div>
+      <div class="type-pick" id="wm-type">${types.map(([k,l,d])=>`<div class="tp ${ (w?w.wtype:'bar')===k?'sel':''}" data-k="${k}" onclick="[...this.parentNode.children].forEach(x=>x.classList.remove('sel'));this.classList.add('sel');wmRefresh()"><b>${l}</b>${helpIcon(d)}</div>`).join('')}</div>
       <label>Title</label><input id="wm-title" value="${w? esc(w.title):''}" placeholder="e.g. Creative workload">
       <div class="field-grid">
         <div><label>Source</label><select id="wm-entity" onchange="wmRefresh()">
@@ -5343,7 +5430,7 @@ function widgetModal(id, wsId, projId){
         <div id="wm-dim"></div>
       </div>
       <div class="chk" id="wm-mine-wrap" style="margin-top:6px"><input type="checkbox" id="wm-mine" ${cfg.mine?'checked':''}> <span>Only items assigned to me</span></div>
-      <p style="color:var(--ink3);font-size:12.5px;margin-top:10px">${pScope? 'This widget lives on this board\'s report — everyone who can open the board sees it.' : scope? 'This widget lives on the workspace report — everyone on the team sees it.' : 'Widgets follow the workspace selector at the top of the dashboard, and only you see them.'}</p>
+      <div style="margin-top:12px;font-size:12.5px;color:var(--ink3)">${pScope? 'On this board\'s report' : scope? 'On the workspace report' : 'On your dashboard'}${helpIcon(pScope? 'Everyone who can open the board sees this widget.' : scope? 'Everyone on the team sees this widget.' : 'Widgets follow the workspace selector at the top of the dashboard, and only you see them.')}</div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="wm-save">${w?'Save':'Add widget'}</button></div>`);
   window.wmRefresh = ()=>{
@@ -5387,6 +5474,17 @@ function hbars(rows){
     <div class="hbar-val">${r.n}</div></div>`).join('');
 }
 /* ================= ADMIN ================= */
+/* Each tab used to end in a muted paragraph explaining itself. Those now sit behind the ⓘ
+   next to the Admin heading, which follows whichever tab is open. */
+const ADMIN_HELP = {
+  users:'<b>admin</b>: everything · <b>management</b>: sees all workspaces · <b>internal</b>: only the workspaces they are members of · <b>requester</b>: read-only in their workspaces, can raise tasks and tickets and comment but not edit · <b>partner / freelancer</b>: only boards they are added to, plus their own requests.',
+  workspaces:'Internal staff only see workspaces they are members of; admin and management see everything. Deleting a workspace also deletes its boards and tasks, so you will be asked to type the name to confirm.',
+  teams:'A team is a saved group of people, a shortcut when picking workspace or board members. <b>Being in a team grants no access on its own</b>: adding someone here does not put them on any workspace, and removing them takes nothing away.',
+  brands:'Seeded from the CS brand master list. Only active brands appear in request forms.',
+  types:'Turn on “Public form link” to get a shareable URL — anyone can submit a ticket through it without an account. Submissions land in the Requests queue with a WO number and SLA timer.',
+  sla:'These settings decide how every ticket deadline is counted. “Apply to open tickets” recalculates the ones already running.',
+  automations:'Switching a built-in rule off stops it for the scope shown above. Timed rules run every 15 minutes on their own.',
+};
 let adminTab='users';
 async function renderAdmin(){
   if(!isAdmin()){ location.hash='#/home'; return; }
@@ -5394,7 +5492,7 @@ async function renderAdmin(){
   const C=$('#content'); C.innerHTML='<div class="empty">Loading…</div>';
   await refreshCore();
   C.innerHTML = `
-    <div class="page-head"><h1>Admin</h1>
+    <div class="page-head"><h1>Admin ${helpIcon(ADMIN_HELP[adminTab]||'')}</h1>
       <div class="tabs">
         <button class="tab ${adminTab==='users'?'active':''}" onclick="adminTab='users';renderAdmin()">Users</button>
         <button class="tab ${adminTab==='workspaces'?'active':''}" onclick="adminTab='workspaces';renderAdmin()">Workspaces</button>
@@ -5440,7 +5538,7 @@ async function renderAdmin(){
           <button class="btn btn-ghost btn-sm" onclick="resetPassword('${p.id}','${esc(p.full_name).replace(/'/g,"\\'")}')">Reset password</button>
           ${p.id!==S.me.id? `<button class="btn btn-ghost btn-sm" onclick="toggleActive('${p.id}', ${!p.active})">${p.active?'Deactivate':'Activate'}</button>`:''}</td>
       </tr>`).join('')}</tbody></table></div>
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">Roles — <b>admin</b>: everything · <b>management</b>: sees all workspaces · <b>internal</b>: only the workspaces they are members of · <b>requester</b>: read-only in their workspaces — can raise tasks &amp; tickets and comment, but cannot edit anything · <b>partner / freelancer</b>: only boards they're added to + their own requests.</p>`;
+      `;
   }
   if(adminTab==='teams'){
     B.innerHTML = (S.teams||[]).length
@@ -5456,8 +5554,7 @@ async function renderAdmin(){
               <button class="btn btn-ghost btn-sm" onclick="teamMembersEditModal('${t.id}')">People</button>
               <button class="btn btn-ghost btn-sm" onclick="editTeamModal('${t.id}')">Rename</button>
               <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteTeamModal('${t.id}')">Delete</button></td>
-          </tr>`;}).join('')}</tbody></table></div>
-        <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">A team is a saved group of people — a shortcut when picking workspace or board members. <b>Being in a team grants no access on its own</b>: adding someone to a team here does not put them on any workspace, and removing them takes nothing away.</p>`
+          </tr>`;}).join('')}</tbody></table></div>`
       : `<div class="empty">No teams yet. Create one to bulk-add people to workspaces and boards.</div>`;
   }
   if(adminTab==='workspaces'){
@@ -5469,8 +5566,7 @@ async function renderAdmin(){
         <td style="text-align:right;white-space:nowrap">
           <button class="btn btn-ghost btn-sm" onclick="editWorkspaceModal('${w.id}')">Edit</button>
           <button class="btn btn-ghost btn-sm" onclick="teamMembersModal('${w.id}')">Members</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteWorkspaceModal('${w.id}')">Delete</button></td></tr>`).join('')}</tbody></table></div>
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">Internal staff only see workspaces they are members of. Admin and Management see everything. Deleting a workspace also deletes its boards and tasks — you'll be asked to type the name to confirm.</p>`;
+          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteWorkspaceModal('${w.id}')">Delete</button></td></tr>`).join('')}</tbody></table></div>`;
   }
   if(adminTab==='brands'){
     const brs = S.brandsList||[];
@@ -5486,7 +5582,7 @@ async function renderAdmin(){
         <td><span class="chip" style="background:${b.active?'var(--green-soft);color:var(--green)':'var(--gray-soft);color:var(--ink3)'}">${b.active?'active':'offboarded'}</span></td>
         <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="toggleBrand('${b.id}', ${!b.active})">${b.active?'Offboard':'Reactivate'}</button></td>
       </tr>`).join('')}</tbody></table></div>
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">${brs.filter(b=>b.active).length} active · ${brs.filter(b=>!b.active).length} offboarded. Seeded from the CS brand master list. Only active brands appear in request forms.</p>`;
+      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">${brs.filter(b=>b.active).length} active · ${brs.filter(b=>!b.active).length} offboarded</p>`;
     B.querySelector('#nb-add').onclick = async ()=>{
       const name = B.querySelector('#nb-name').value.trim(); if(!name) return toast('Brand name required', true);
       const {error} = await db.from('brands').insert({name, brand_group:B.querySelector('#nb-group').value.trim()});
@@ -5509,8 +5605,7 @@ async function renderAdmin(){
         <td style="color:var(--ink2)">${w? esc(w.name):'All staff'}</td>
         <td>${rt.public_enabled? `<button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Form link copied'))">Copy link</button>`:'<span style="color:var(--ink3)">Off</span>'}</td>
         <td><span class="chip" style="background:${rt.active?'var(--green-soft);color:var(--green)':'var(--gray-soft);color:var(--ink3)'}">${rt.active?'active':'inactive'}</span></td>
-        <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="editTypeModal('${rt.id}')">Edit</button></td></tr>`;}).join('')}</tbody></table></div>
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">Turn on “Public form link” to get a shareable URL — anyone can submit a ticket through it without an account. Submissions land in the Requests queue with a WO number and SLA timer.</p>`;
+        <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="editTypeModal('${rt.id}')">Edit</button></td></tr>`;}).join('')}</tbody></table></div>`;
   }
 }
 /* ================= AUTOMATIONS (editable in-app) ================= */
@@ -5555,7 +5650,7 @@ async function renderAutomationsTab(B, pinnedWs){
   B.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       ${pinnedWs
-        ? `<span style="font-size:12.5px;color:var(--ink2)">Rules for this workspace — anything you don't change here follows the Everywhere setting.</span>`
+        ? `<span style="font-size:12.5px;color:var(--ink2)">Rules for this workspace ${helpIcon('Anything you don\'t change here follows the Everywhere setting.')}</span>`
         : `<label style="margin:0">Rules apply to</label>
       <select style="width:auto;min-width:200px" onchange="autoWs=this.value;renderAdmin()">
         <option value="">Everywhere</option>
@@ -5593,7 +5688,6 @@ async function renderAutomationsTab(B, pinnedWs){
               : '<span style="font-size:11px;color:var(--ink3)">inherited</span>') : ''}</td>
         </tr>`;}).join('')}
     </tbody></table></div>
-    <p style="margin-top:10px;font-size:12.5px;color:var(--ink2)">Switching a rule off here stops it ${effWs? 'for this workspace only — everywhere else follows the global setting':'everywhere, unless a workspace has its own setting'}. Timed rules run every 15 minutes on their own.</p>
     <div class="section-title" style="margin-top:24px">Recent runs</div>
     <div class="card"><table class="tbl"><thead><tr><th>When</th><th>Rule</th><th>On</th><th>Result</th></tr></thead><tbody>
       ${(runs||[]).length? runs.map(x=>`<tr>
@@ -5655,7 +5749,7 @@ async function renderSlaTab(B){
       <div class="section-title" style="margin-top:0">How the clock runs</div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
         <label class="sw"><input type="checkbox" id="sla-wt" ${_sla.use_working_time?'checked':''} ${dis}><span></span></label>
-        <span>Count <b>working hours only</b> — evenings, non-working days and holidays don't burn the SLA</span>
+        <span>Count <b>working hours only</b>${helpIcon('Evenings, non-working days and holidays don\'t burn the SLA.')}</span>
       </div>
       <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end">
         <div><label>Work starts</label><input type="time" id="sla-ws" value="${_sla.work_start.slice(0,5)}" ${dis} style="width:110px"></div>
@@ -5666,24 +5760,22 @@ async function renderSlaTab(B){
         <div><label>Warn at</label><div style="display:flex;align-items:center;gap:6px">
           <input type="number" id="sla-warn" min="10" max="95" value="${_sla.warn_pct}" ${dis} style="width:76px"><span>% of the SLA used</span></div></div>
       </div>
-      <div style="margin-top:14px"><label>Pause the clock while a ticket is</label>
+      <div style="margin-top:14px"><label>Pause the clock while a ticket is ${helpIcon('While paused a ticket sends no warnings, and the time it spends paused is added back to its deadline.')}</label>
         <div style="display:flex;gap:14px;flex-wrap:wrap;padding-top:4px">
           ${SLA_PAUSABLE.map(k=>`<label style="display:flex;gap:5px;align-items:center;font-size:13px;margin:0">
             <input type="checkbox" class="sla-pause" data-s="${k}" ${(_sla.pause_statuses||[]).includes(k)?'checked':''} ${dis}>${esc(reqLabel(k))}</label>`).join('')}
         </div>
-        <div style="font-size:12px;color:var(--ink3);margin-top:4px">While paused a ticket sends no warnings, and the time it spends paused is added back to its deadline.</div></div>
+        </div>
     </div>
     <div class="card" style="padding:18px;margin-bottom:16px">
-      <div class="section-title" style="margin-top:0">Speed by priority</div>
-      <div style="font-size:12.5px;color:var(--ink2);margin-bottom:10px">Each priority gets this share of the request type's SLA time — 50% means an urgent ticket must be handled twice as fast.</div>
+      <div class="section-title" style="margin-top:0">Speed by priority ${helpIcon('Each priority gets this share of the request type\'s SLA time. 50% means an urgent ticket must be handled twice as fast.')}</div>
       <div style="display:flex;gap:22px;flex-wrap:wrap">
         ${PRIORITIES.map(p=>`<div><label>${p.label}</label><div style="display:flex;align-items:center;gap:6px">
           <input type="number" class="sla-prio" data-p="${p.k}" min="10" max="500" value="${_sla.prio_pct[p.k]??100}" ${dis} style="width:80px"><span>%</span></div></div>`).join('')}
       </div>
     </div>
     <div class="card" style="padding:18px;margin-bottom:16px">
-      <div class="section-title" style="margin-top:0">Holidays</div>
-      <div style="font-size:12.5px;color:var(--ink2);margin-bottom:10px">Skipped entirely when counting working hours. Fixed-date Thai public holidays for 2026 are pre-loaded — lunar ones (Makha Bucha, Visakha Bucha, Asarnha Bucha, Khao Phansa) move every year, so add them here.</div>
+      <div class="section-title" style="margin-top:0">Holidays ${helpIcon('Skipped entirely when counting working hours. Fixed-date Thai public holidays for 2026 are pre-loaded; lunar ones (Makha Bucha, Visakha Bucha, Asarnha Bucha, Khao Phansa) move every year, so add them here.')}</div>
       ${S._slaHolidays.length? `<table class="tbl"><tbody>
         ${S._slaHolidays.map(h=>`<tr><td style="width:130px;white-space:nowrap">${h.day}</td>
           <td>${esc(h.name)}</td>
@@ -6041,7 +6133,7 @@ function caDraw(){
   B.innerHTML = `
     <div class="ca-sec"><label>When</label>
       <div class="ca-row"><select onchange="caSetTrigger(this.value)">${CA_TRIGGERS.map(t=>opt(t.key,_ca.trigger,t.label)).join('')}</select>${tcCtl}</div></div>
-    <div class="ca-sec"><label>Only if <span class="ca-opt">optional — every line must be true</span></label>
+    <div class="ca-sec"><label>Only if <span class="ca-opt">optional</span>${helpIcon('Every line must be true for the rule to fire.')}</label>
       <div id="ca-conds">${_ca.conds.map(condRow).join('')}</div>
       <button class="btn btn-ghost btn-sm" onclick="caCondAdd()">＋ Add a condition</button></div>
     <div class="ca-sec"><label>Then <span class="ca-opt">in this order</span></label>
@@ -6149,18 +6241,17 @@ function inviteUserModal(){
       <label>Email <span class="req">*</span></label><input id="iu-email" type="email" placeholder="name@crea.asia or partner email">
       <div class="field-grid">
         <div><label>Role</label><select id="iu-role">
-          <option value="internal">Internal staff — full edit in their workspaces</option>
-          <option value="requester">Requester — view, raise tasks/tickets &amp; comment only</option>
-          <option value="management">Management — sees all workspaces</option>
+          <option value="internal">Internal staff</option>
+          <option value="requester">Requester</option>
+          <option value="management">Management</option>
           <option value="partner">Partner (external)</option><option value="freelancer">Freelancer (external)</option>
-          <option value="admin">Admin — everything</option></select></div>
+          <option value="admin">Admin</option></select></div>
         <div><label>Temporary password <span class="req">*</span></label><input id="iu-pass" value="${'Crea'+Math.random().toString(36).slice(2,8)+'!'}"></div>
       </div>
-      <label style="margin-top:14px">Workspaces they can open <span style="font-weight:400;color:var(--ink3)">— tick as many as you need</span></label>
+      <label style="margin-top:14px">Workspaces they can open ${helpIcon('Tick as many as you need.')}</label>
       <div id="iu-ws">${S.workspaces.map(w=>`<div class="chk"><input type="checkbox" data-wid="${w.id}">
         <span class="ws-dot" style="display:inline-block;background:${w.color}"></span><span>${esc(w.name)}</span></div>`).join('') || '<div style="font-size:12.5px;color:var(--ink3)">No workspaces yet.</div>'}</div>
       <p id="iu-wsnote" style="margin-top:8px;font-size:12px;color:var(--ink3);display:none">Admin and management see every workspace — these ticks are ignored for those roles.</p>
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">Share the email + temporary password with them directly. They can change it after signing in with the key button in the sidebar.</p>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="iu-save">Create account</button></div>`);
   const roleSel = m.querySelector('#iu-role');
@@ -6371,7 +6462,6 @@ function newWorkspaceModal(){
     <div class="modal-body">
       <label>Workspace name <span class="req">*</span></label><input id="nw-name" placeholder="e.g. Livestream Squad">
       <label>Description</label><input id="nw-desc">
-      <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">You'll be added as a member automatically. Add colleagues from the workspace page → Members.</p>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="nw-save">Create workspace</button></div>`);
   m.querySelector('#nw-save').onclick = async ()=>{
@@ -6417,7 +6507,7 @@ async function renderPlatform(){
       <td style="color:var(--ink2)">${c.trial_ends_at? fmtDate(c.trial_ends_at):'—'}</td>
       <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="savePlatformCo('${c.id}')">Save</button></td>
     </tr>`).join('')}</tbody></table></div>
-    <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">Billing is manual for now — set plan/status here when a customer pays (or stops paying). Suspended and cancelled companies are locked out at sign-in. Stripe checkout can be wired in later.</p>`;
+    `;
 }
 async function savePlatformCo(id){
   const row = document.getElementById('co-'+id); if(!row) return;
