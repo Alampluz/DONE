@@ -1,6 +1,6 @@
 /* Board view switcher: a styled button showing the current view (icon + label) opens a menu
-   with all five views, each with an icon, a one-line description and a check on the active
-   one. Choosing a view switches boardMode, remembers it per board in localStorage, and a
+   with all five views, each with an icon, a ⓘ carrying the one-line description and a check
+   on the active one. Choosing a view switches boardMode, remembers it per board in localStorage, and a
    later visit to the same board lands on the remembered view. Esc closes the menu. */
 const fs=require('fs'),{JSDOM}=require('jsdom');
 const html=fs.readFileSync('index.html','utf8');
@@ -20,7 +20,7 @@ const driver=`window.__run=function(){const r={};
  viewMenu(btn, PID);
  const menu=document.getElementById('tvmenu'); const opts=menu?[...menu.querySelectorAll('.vm-opt')]:[];
  r.menu=!!menu; r.opts=opts.length; r.labels=opts.map(o=>o.querySelector('b').textContent).join(',');
- r.descs=opts.every(o=>o.querySelector('.vm-txt span').textContent.length>5);
+ r.descs=opts.every(o=>((o.querySelector('.vm-txt .ihelp')||{dataset:{}}).dataset.help||'').length>5);
  r.icons=opts.every(o=>o.querySelector('.vp-ico svg'));
  r.active=opts.filter(o=>o.classList.contains('on')).map(o=>o.dataset.k).join(','); r.check=menu.querySelector('.vm-opt.on .vm-check').textContent;
  r.checked=opts.filter(o=>o.getAttribute('aria-checked')==='true').length; r.btnOn=btn.classList.contains('on');
@@ -45,7 +45,7 @@ w.eval(scripts.join('\n')+'\n'+driver);
 w.eval('window.__run()').then(s=>{ const r=JSON.parse(s); let ok=true;
 const check=(n,c)=>{ console.log((c?'PASS':'FAIL')+' '+n+(c?'':' -> '+JSON.stringify(r))); if(!c) ok=false; };
 check('picker is a styled button with icon + current label, no native select', r.btn && r.btnLabel==='Table' && r.btnIcon && r.noSelect);
-check('menu lists the five views in order with icons and descriptions', r.menu && r.opts===5 && r.labels==='Table,Board,Calendar,Report,Workload' && r.icons && r.descs);
+check('menu lists the five views in order with icons and ⓘ descriptions', r.menu && r.opts===5 && r.labels==='Table,Board,Calendar,Report,Workload' && r.icons && r.descs);
 check('active view marked once with a check, button highlighted', r.active==='table' && r.check==='✓' && r.checked===1 && r.btnOn);
 check('choosing Board switches, saves, closes and re-renders', r.mode==='board' && r.saved==='board' && r.closed && r.rerendered==='p1' && r.btnAfter==='Board');
 check('remembered per board; bogus/missing values fall back', r.loaded==='board' && r.bogus===null && r.other===null);

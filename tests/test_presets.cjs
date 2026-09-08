@@ -54,14 +54,16 @@ const driver=`window.__run=function(){const r={};try{
  r.cellByIdLookup = /tv-pickv ro/.test(tvPickHTML('number','t3','f9',true,5));      // custom cells pass no task, resolved by id
  r.cardDrag = /draggable="true"/.test(taskCard(mine)) && /draggable="false"/.test(taskCard(other));
 
- // --- Edit board: owners get the dropdown with the current preset selected and a live blurb
+ // --- Edit board: owners get the dropdown with the current preset selected, and the ⓘ help
+ // beside it follows the selection (the blurb used to be inline text; it moved behind the icon).
+ const blurb = ()=> document.querySelector('#ep-preset-blurb .ihelp').dataset.help;
  setMe('admin'); board('assigned');
  editProjectModal('p1');
  const sel=document.getElementById('ep-preset');
  r.presetSelect = !!sel && sel.value==='assigned' && sel.options.length===3;
- r.blurbMatches = /assigned to them/.test(document.getElementById('ep-preset-blurb').textContent);
+ r.blurbMatches = /assigned to them/.test(blurb());
  sel.value='view'; sel.onchange();
- r.blurbFollows = /read and comment/.test(document.getElementById('ep-preset-blurb').textContent);
+ r.blurbFollows = /read and comment/.test(blurb());
  closeModals();
  // a plain member who is not an owner does not see the control at all
  setMe('internal'); editProjectModal('p1');
