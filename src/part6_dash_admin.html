@@ -809,6 +809,54 @@ const CA_OPS = [
   {key:'empty',     label:'is empty'},
   {key:'not_empty', label:'is set'},
 ];
+/* ================= AUTOMATIONS ON A BOARD =================
+   Rules used to be admin-only to create, so every routing rule came through April. A board
+   owner - or the owner of the workspace the board sits in - now manages the rules scoped to
+   their own board from the board itself. "Everywhere" and workspace-wide rules stay in Admin,
+   because those reach boards the author may not manage. The database enforces both halves
+   (policies ca_write_admin / ca_write_board and trigger ca_reach_trg); this is the front door. */
+async function boardAutomationsModal(pid){
+  const p = projById(pid); if(!p) return;
+  if(!canManageBoard(pid)) return toast('Only this board\'s owners can set up its automations', true);
+  const m = modal(`<div class="modal-head"><h2>Automations on ${esc(p.name)} ${helpIcon('A rule watches this board and reacts on its own. It can also reach out to another board you manage \u2014 for example, when a CS inquiry is escalated, create a task on the Creative Queue. Rules that apply everywhere or to a whole workspace are set up in Admin.')}</h2>
+      <button class="x" onclick="closeModals()">\u2715</button></div>
+    <div class="modal-body" id="ba-body"><div class="empty">Loading\u2026</div></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Close</button>
+      <button class="btn btn-primary" onclick="caModal(null,'p:${pid}')">\uff0b Add automation</button></div>`);
+  m.querySelector('.modal').classList.add('wide');
+  autoRerender = ()=> renderBoardAutomations(pid);
+  await renderBoardAutomations(pid);
+}
+async function renderBoardAutomations(pid){
+  const B = document.getElementById('ba-body'); if(!B) return;
+  const {data, error} = await db.from('custom_automations').select('*').eq('project_id',pid).order('created_at');
+  if(error){ B.innerHTML = `<div class="card empty">${esc(error.message)}</div>`; return; }
+  S._customAutos = data||[];
+  // Rules from a wider scope also fire here, and it is confusing not to see them - listed,
+  // but not editable from a board, because their reach is bigger than this board.
+  const {data:wider} = await db.from('custom_automations').select('id,name,enabled,workspace_id,project_id')
+    .is('project_id',null).order('created_at');
+  const ws = projById(pid)?.workspace_id;
+  const inherited = (wider||[]).filter(c=> !c.workspace_id || c.workspace_id===ws);
+  B.innerHTML = (S._customAutos.length
+    ? `<table class="tbl"><tbody>${S._customAutos.map(c=>`<tr>
+        <td style="width:40px"><label class="sw"><input type="checkbox" ${c.enabled?'checked':''} onchange="caToggle('${c.id}', this.checked)"><span></span></label></td>
+        <td style="font-weight:600">${esc(c.name||'Untitled automation')}
+          <div style="font-weight:400;font-size:11.5px;color:var(--ink3);margin-top:2px">${esc(caStepsText(c)||'')}</div></td>
+        <td style="text-align:right;white-space:nowrap;width:250px">
+          <button class="btn btn-ghost btn-sm" onclick="caRuns('${c.id}')">Runs</button>
+          <button class="btn btn-ghost btn-sm" onclick="caModal('${c.id}')">Edit</button>
+          <button class="btn btn-ghost btn-sm" onclick="caDuplicate('${c.id}')">Duplicate</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="caDelete('${c.id}')">Remove</button></td>
+      </tr>`).join('')}</tbody></table>`
+    : `<div class="empty" style="padding:24px">No automations on this board yet. Add one and it is live straight away.</div>`)
+    + (inherited.length? `<div style="margin-top:16px"><div class="section-title" style="margin-top:0">Also running here ${helpIcon('These come from a wider scope, so they are managed in Admin rather than from this board.')}</div>
+        <table class="tbl"><tbody>${inherited.map(c=>`<tr>
+          <td style="width:40px"><span class="chip" style="background:${c.enabled?'var(--green-soft);color:var(--green)':'var(--gray-soft);color:var(--ink3)'}">${c.enabled?'on':'off'}</span></td>
+          <td style="color:var(--ink2)">${esc(c.name||'Untitled automation')}</td>
+          <td style="text-align:right;color:var(--ink3);font-size:12px">${c.workspace_id? 'this workspace':'everywhere'}</td>
+        </tr>`).join('')}</tbody></table></div>`:'');
+}
 function caScopeLabel(c){
   if(c.project_id){ const p=(S.projects||[]).find(x=>x.id===c.project_id); return p? esc(p.name):'One board'; }
   if(c.workspace_id){ const w=wsById(c.workspace_id); return w? esc(w.name):'One workspace'; }
@@ -895,6 +943,9 @@ function caDraft(rec, defScope){
 function caModal(id, defScope){
   const rec = id? (S._customAutos||[]).find(x=>x.id===id) : null;
   _ca = caDraft(rec, defScope);
+  // Opened from a board: that board is the answer, not a question - and the person may not
+  // even be allowed to widen it, so the picker is replaced by the board's name.
+  _ca.lockScope = !!(defScope||'').startsWith('p:') || (!isAdmin() && _ca.scope.startsWith('p:'));
   const m = modal(`<div class="modal-head"><h2>${id? 'Edit automation':'Add automation'}</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body" id="ca-body"></div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
@@ -951,6 +1002,10 @@ function caDraw(){
   const selFields = fields.filter(f=>f.ftype==='select');
   const needBoard = (what)=>`<div class="ca-hint">Choose a board under “Where it applies” first — ${what} belong to a board.</div>`;
   const opt = (v, cur, label)=>`<option value="${esc(String(v))}" ${String(cur??'')===String(v)?'selected':''}>${esc(label)}</option>`;
+  // A rule may only point at a board the author manages (trigger ca_reach_trg), so those are
+  // the only ones worth offering. An admin manages everything, so nothing narrows for them.
+  const reachable = (S.projects||[]).filter(p=>p.status!=='archived' && canManageBoard(p.id))
+    .slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'}));
   // People and boards are long lists at CREA (30+ staff, 10 workspaces, dozens of boards) — searchable pickers.
   let pickN = 0;
   const personSel = (cur, on, blank)=>{
@@ -1014,7 +1069,7 @@ function caDraw(){
     if(act.cfg==='pushdays') cfgCtl = `<span class="ca-inline">by <input type="number" min="-365" max="365" style="width:80px" value="${parseInt(cfg.days??1,10)}" onchange="caActCfg(${i},'days',this.value)"> days (negative = earlier)</span>`;
     if(act.cfg==='newtask')  cfgCtl = `<div class="ca-sub">
         <input value="${esc(cfg.title||'')}" placeholder="Title — {title} is the original task's name (default: Follow-up: {title})" onchange="caActCfg(${i},'title',this.value)">
-        <div class="ca-inline">on <select onchange="caActCfg(${i},'project_id',this.value)"><option value="">the same board</option>${(S.projects||[]).filter(p=>p.status!=='archived').map(p=>opt(p.id,cfg.project_id,p.name)).join('')}</select>
+        <div class="ca-inline">on <select onchange="caActCfg(${i},'project_id',this.value)"><option value="">the same board</option>${reachable.map(p=>opt(p.id,cfg.project_id,p.name)).join('')}</select>
         assigned to <select onchange="caActCfg(${i},'user_id',this.value);caActCfg(${i},'same_assignee', this.value==='__same'?'true':'false')"><option value="">nobody</option><option value="__same" ${cfg.same_assignee==='true'?'selected':''}>the same person</option>${people.map(u=>opt(u.id,cfg.user_id,u.full_name)).join('')}</select>
         due in <input type="number" min="0" max="365" style="width:70px" value="${cfg.due_in_days??''}" placeholder="—" onchange="caActCfg(${i},'due_in_days',this.value)"> days</div></div>`;
     return `<div class="ca-row ca-act" data-act="${i}">
@@ -1034,10 +1089,15 @@ function caDraw(){
       <div id="ca-acts">${_ca.acts.map(actRow).join('')}</div>
       <button class="btn btn-ghost btn-sm" onclick="caActAdd()">＋ Add another action</button></div>
     <div class="ca-sec"><label>Where it applies</label>
+    ${_ca.lockScope
+      ? `<div class="ca-row" style="align-items:center"><span class="chip" style="background:var(--accent-soft);color:var(--accent-ink)">${esc((projById(pid)||{}).name||'This board')}</span>${helpIcon('A rule you set up from a board stays on that board. To make one that applies to a whole workspace or everywhere, an admin sets it up in Admin \u2192 Automations.')}</div>`
+      : `
     ${pickerHTML({id:'ca-scope', value:_ca.scope||'', placeholder:'Everywhere', onpick:(v)=>caScope(v),
       groups:[{label:'', items:[{v:'', l:'Everywhere'}]},
-              {label:'Workspaces', items:(S.workspaces||[]).map(w=>({v:'w:'+w.id, l:w.name}))},
-              {label:'Boards', items:(S.projects||[]).filter(p=>p.status!=='archived').slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'})).map(p=>{const w=wsById(p.workspace_id); return {v:'p:'+p.id, l:p.name, sub:w? w.name:''};})}]})}</div>
+              ...(isAdmin()? [{label:'Workspaces', items:(S.workspaces||[]).map(w=>({v:'w:'+w.id, l:w.name}))}] : []),
+              {label:'Boards', items:(isAdmin()? (S.projects||[]).filter(p=>p.status!=='archived') : reachable).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'',undefined,{sensitivity:'base'})).map(p=>{const w=wsById(p.workspace_id); return {v:'p:'+p.id, l:p.name, sub:w? w.name:''};})}]})}</div>
+`}
+    </div>
     <div class="ca-preview" id="ca-preview">${esc(caSentence(_ca))}<span style="color:var(--ink3)"> · ${trg.timed? 'checked every 15 minutes, fires once per task':'fires the moment it happens'}</span></div>`;
 }
 /* Validate the draft and turn it into the row the engine expects. Returns {error} or {payload}. */
@@ -1081,13 +1141,21 @@ function caPayload(d){
   return {payload:{workspace_id:wid, project_id:pid, trigger_key:d.trigger, trigger_config:tc, conditions, actions,
                    condition:tc, action_key:actions[0].key, action_config:actions[0].cfg, name:caSentence(d)}};
 }
+/* The two things the database refuses for a non-admin, in words rather than a policy name. */
+function caSaveError(e){
+  const msg = e.message||'';
+  if(/points at a board you do not manage/i.test(msg)) return 'That action points at a board you don\'t manage — pick one of your own boards';
+  if(/rule that applies everywhere/i.test(msg))        return 'Only an admin can make a rule that applies everywhere or to a whole workspace';
+  if(/row-level security/i.test(msg))                  return 'You can only set up automations on a board you own';
+  return msg;
+}
 async function caSave(){
   const {error:verr, payload} = caPayload(_ca);
   if(verr) return toast(verr, true);
   const {error} = _ca.id
     ? await db.from('custom_automations').update(payload).eq('id',_ca.id)
     : await db.from('custom_automations').insert(payload);
-  if(error) return toast(error.message, true);
+  if(error) return toast(caSaveError(error), true);
   toast(_ca.id? 'Automation updated':'Automation added — it is live now');
   closeModals(); autoRerender();
 }

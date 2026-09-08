@@ -821,6 +821,7 @@ async function renderProject(id){
     `${viewPickerHTML(id)}
      <button class="btn btn-ghost btn-sm" onclick="shareBoardModal('${id}')" title="Copy the link, send it to colleagues, or make a public read-only link">Share</button>
      ${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="projectMembersModal('${id}')">Partner access</button>`:''}
+     ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" onclick="boardAutomationsModal('${id}')" title="Rules that watch this board and react on their own">Automate</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" onclick="editProjectModal('${id}')">Edit board</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteProjectModal('${id}')">Delete board</button>`:''}
      ${(canEditOnBoard(id) || isRequester() && boardPreset(id)!=='view')? `<button class="btn btn-primary btn-sm" onclick="newTaskModal('${id}')">＋ New task</button>`:''}`);
