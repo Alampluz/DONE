@@ -80,6 +80,24 @@ const CORE_FIELDS = [
 function fieldConf(pid, k){ const p = (S.projects||[]).find(x=>x.id===pid); return ((p && p.field_config)||{})[k] || {}; }
 function coreLabel(pid, k){ const c = fieldConf(pid,k); return (c.label && String(c.label).trim()) || (CORE_FIELDS.find(f=>f.k===k)||{}).label || k; }
 function coreHidden(pid, k){ const f = CORE_FIELDS.find(x=>x.k===k); return !!(f && f.hideable && fieldConf(pid,k).hidden); }
+/* Which sections of the task window a board shows. A CS inquiry is one touch - it has no
+   subtasks, no checklist, nothing to wait on - and every empty section is noise the agent
+   scrolls past. Stored alongside the standard-field settings in projects.field_config under
+   the reserved `sections` key, and on by default so an untouched board looks as it always did. */
+const TASK_SECTIONS = [
+  {k:'description', label:'Description', help:'The body of the task. On a CS board this is the inquiry itself.'},
+  {k:'subtasks',    label:'Subtasks',    help:'Smaller pieces of work under the task, each with its own status.'},
+  {k:'checklist',   label:'Checklist',   help:'A simple list of things to tick off. Overlaps with subtasks - most boards want one or the other.'},
+  {k:'attachments', label:'Attachments', help:'Files dropped on the task. Screenshots of a customer chat live here.'},
+  {k:'deps',        label:'Waiting on',  help:'Marks this task as blocked by another. Useful on a pipeline, rarely on a queue.'},
+  {k:'comments',    label:'Comments',    help:'The discussion thread, with @mentions.'},
+];
+function sectionOn(pid, k){
+  const p = (S.projects||[]).find(x=>x.id===pid);
+  const sec = ((p && p.field_config)||{}).sections;
+  if(!sec || !Object.prototype.hasOwnProperty.call(sec, k)) return true;   // default: shown
+  return sec[k] !== false;
+}
 const PLATFORMS = [
   {k:'TikTok Shop', label:'TikTok Shop', color:'#111827'},
   {k:'Shopee',      label:'Shopee',      color:'#EE4D2D'},

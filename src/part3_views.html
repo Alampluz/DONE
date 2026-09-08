@@ -386,6 +386,12 @@ function editProjectModal(pid){
           <input data-epf-label="${f.k}" value="${esc(fieldConf(pid,f.k).label||'')}" placeholder="${esc(f.label)}" maxlength="24">
         </div>`).join('')}
       </div>
+      <label style="margin-top:14px">Sections in the task window ${helpIcon('What a person sees when they open a task on this board. Untick anything the team doesn\'t use \u2014 a one-touch CS inquiry has no subtasks or checklist, and an empty section is just something to scroll past. Existing content is kept, only hidden.')}</label>
+      <div class="ep-secs">
+        ${TASK_SECTIONS.map(x=>`<label class="chk ep-sec" style="margin:0">
+          <input type="checkbox" data-eps="${x.k}" ${sectionOn(pid,x.k)?'checked':''}>
+          <span>${esc(x.label)}</span>${helpIcon(x.help)}</label>`).join('')}
+      </div>
       <label style="margin-top:14px">Who can open this board</label>
       ${visPickerHTML('ep-vis', p.visibility||'collaborate')}
       <label style="margin-top:14px">Colour</label>
@@ -426,6 +432,14 @@ function editProjectModal(pid){
       const c = {}; if(lab && lab!==f.label) c.label = lab; if(f.hideable && !show) c.hidden = true;
       if(Object.keys(c).length) fc[f.k] = c;
     });
+    // `sections` sits beside the per-field entries in the same JSON; only the ones that are
+    // off are written, so an untouched board keeps an empty config rather than six `true`s.
+    const secs = {};
+    TASK_SECTIONS.forEach(x=>{
+      const el = m.querySelector(`[data-eps="${x.k}"]`);
+      if(el && !el.checked) secs[x.k] = false;
+    });
+    if(Object.keys(secs).length) fc.sections = secs;
     upd.field_config = fc;
     if(canGate) upd.approval_gate = {on: gateOn.checked,
       status: m.querySelector('#ep-gate-status').value,
