@@ -1211,6 +1211,19 @@ function boardKeySuggest(name){
   if(words.length===1) return boardKeyClean(first.slice(0,3));
   return boardKeyClean(words.map(x=>x[0]).join(''));
 }
+/* ---- writes and reads over many ids ----
+   Supabase puts `.in('id', ids)` into the URL, and ~3,000 ids there throws "Failed to fetch"
+   (6 Sep, dependencies). "Select all" on the CS board selects 3,043 rows, so every bulk path
+   goes through here in slices. Returns the first error, or null. */
+const ID_CHUNK = 200;
+const chunks = (arr, n) => { const out=[]; for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i,i+n)); return out; };
+async function forIdChunks(ids, fn){
+  for(const part of chunks([].concat(ids).filter(Boolean), ID_CHUNK)){
+    const {error} = await fn(part);
+    if(error) return error;
+  }
+  return null;
+}
 /* ---- what the automations did ----
    A custom automation is an AFTER trigger on `tasks`: by the time our UPDATE returns, a rule
    may already have moved the task to another group, set its status, reassigned it or pushed
@@ -1223,9 +1236,14 @@ function boardKeySuggest(name){
 const AUTO_ECHO = ['group_id','status','priority','assignee_id','due_date','archived_at'];
 async function echoAutomation(ids, sent){
   ids = [].concat(ids).filter(Boolean); if(!ids.length) return [];
-  let data=null;
-  try{ ({data} = await db.from('tasks').select('id,'+AUTO_ECHO.join(',')).in('id', ids)); }catch(e){ return []; }
-  if(!Array.isArray(data)) return [];      // a save must never fall over on a shape we did not expect
+  let data=[];
+  try{
+    for(const part of chunks(ids, ID_CHUNK)){
+      const {data:rows} = await db.from('tasks').select('id,'+AUTO_ECHO.join(',')).in('id', part);
+      if(!Array.isArray(rows)) return [];  // a save must never fall over on a shape we did not expect
+      data = data.concat(rows);
+    }
+  }catch(e){ return []; }
   const changed = [];
   data.forEach(row=>{
     const t = (S._tasks||[]).find(x=>x.id===row.id); if(!t) return;
@@ -2778,6 +2796,8 @@ const BF_QUICK = [
   {k:'new7',       label:'New this week',  test:t=> (t.created_at||'') >= daysAgoISO(7)},
   {k:'done7',      label:'Done this week', test:t=> t.status==='done' && (t.completed_at||'') >= daysAgoISO(7)},
 ];
+/* The Overdue chip is a due-date idea; a board that has switched Due date off does not get it. */
+const bfQuickOffered = (pid, x) => !(x.k==='overdue' && coreHidden(pid,'due_date'));
 function bfQuickLoad(pid){ try{ return localStorage.getItem('workos.quick.'+pid)||''; }catch(e){ return ''; } }
 function bfQuickSave(pid, k){ try{ k? localStorage.setItem('workos.quick.'+pid, k) : localStorage.removeItem('workos.quick.'+pid); }catch(e){} }
 const bfGet = pid => (boardFilters[pid] || (boardFilters[pid] = {q:'', status:'', priority:'', assignee:'', group:'', quick:bfQuickLoad(pid)}));
@@ -2788,7 +2808,7 @@ function bfClear(pid){ boardFilters[pid] = {q:'', status:'', priority:'', assign
 function bfApply(pid, rows){
   const f = bfGet(pid);
   const q = f.q.trim().toLowerCase();
-  const quick = BF_QUICK.find(x=>x.k===f.quick);
+  const quick = BF_QUICK.filter(x=>bfQuickOffered(pid,x)).find(x=>x.k===f.quick);   // a saved 'overdue' on a due-less board is simply ignored
   return rows.filter(t=>
     (!quick || quick.test(t))
     && (!q || (t.title||'').toLowerCase().includes(q) || (t.description||'').toLowerCase().includes(q)
@@ -2812,7 +2832,7 @@ function filterBarHTML(pid){
   const sel = (key, label, opts) => `<select class="bf-sel ${f[key]?'on':''}" onchange="bfSet('${pid}','${key}',this.value)">
       <option value="">${label}</option>
       ${opts.map(o=>`<option value="${o.v}" ${f[key]===o.v?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`;
-  const quick = BF_QUICK.map(x=>`<button class="bf-chip ${f.quick===x.k?'on':''}" onclick="bfQuick('${pid}','${x.k}')">${x.label}</button>`).join('');
+  const quick = BF_QUICK.filter(x=>bfQuickOffered(pid,x)).map(x=>`<button class="bf-chip ${f.quick===x.k?'on':''}" onclick="bfQuick('${pid}','${x.k}')">${x.label}</button>`).join('');
   return `<div class="bfbar bf-quickbar">${quick}</div><div class="bfbar">
     <input class="bf-q ${f.q?'on':''}" placeholder="Search tasks…" value="${esc(f.q)}" oninput="bfSet('${pid}','q',this.value)">
     ${sel('status','Status', STATUSES.map(s=>({v:s.k,l:s.label})))}
@@ -2856,7 +2876,7 @@ function viewMenu(anchor, pid){
   if(document.getElementById('tvmenu')){ document.getElementById('tvmenu').remove(); anchor.classList.remove('on'); return; }
   const m = document.createElement('div'); m.id='tvmenu'; m.className='view-menu'; m.setAttribute('role','menu');
   m.innerHTML = `<div class="vm-head">View</div>` + BOARD_VIEWS.map(([k,l,d])=>`<div role="menuitemradio" tabindex="-1" aria-checked="${boardMode===k}" class="vm-opt ${boardMode===k?'on':''}" data-k="${k}">
-      <span class="vp-ico">${VIEW_ICON[k]}</span><span class="vm-txt"><b>${l}</b>${helpIcon(d)}</span><span class="vm-check">${boardMode===k?'✓':''}</span></div>`).join('');
+      <span class="vp-ico">${VIEW_ICON[k]}</span><span class="vm-txt"><b>${l}</b>${helpIcon(k==='calendar'? CAL_WORDS[calBasis(pid)].desc : d)}</span><span class="vm-check">${boardMode===k?'✓':''}</span></div>`).join('');
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect(), mb = m.getBoundingClientRect();
   m.style.left = Math.max(8, Math.min(r.left, innerWidth - mb.width - 10)) + 'px';
@@ -3066,11 +3086,28 @@ function calGrid(first){
   }
   return cells;
 }
-/* date key -> tasks, plus the ones with no due date (never silently dropped). */
-function calBuckets(rows){
+/* What the calendar plots a task by. A board that has switched Due date off (CS: an inquiry
+   is solved or it isn't, nobody sets a date) has nothing to put on a due-date grid, so its
+   calendar shows the day each task was completed instead - solved-per-day, which is what a
+   CS lead actually reads. completed_at is stamped by the database the moment a task goes to
+   Done (tasks_touch / auto_task_rules) and cleared if it is reopened, so this needs no new
+   data. It is a timestamp, not a date: build the Date from it and let calKey take the
+   Bangkok calendar day, never slice the ISO string (that would give the UTC day). */
+const calBasis = pid => coreHidden(pid,'due_date') ? 'completed' : 'due';
+function calDateOf(t, basis){
+  if(basis==='completed'){ if(!t.completed_at) return null; const d = new Date(t.completed_at); return isNaN(d)? null : d; }
+  return calParse(t.due_date);
+}
+const CAL_WORDS = {
+  due:       {none:'no due date',       out:'due outside the weeks shown',       desc:'Tasks on their due dates'},
+  completed: {none:'not been completed yet', out:'completed outside the weeks shown', desc:'Tasks on the day they were completed'},
+};
+/* date key -> tasks, plus the ones with no date on the chosen basis (never silently dropped). */
+function calBuckets(rows, basis){
+  basis = basis || 'due';
   const by = new Map(), undated = [];
   (rows||[]).forEach(t=>{
-    const d = calParse(t.due_date);
+    const d = calDateOf(t, basis);
     if(!d){ undated.push(t); return; }
     const k = calKey(d);
     (by.get(k) || by.set(k, []).get(k)).push(t);
@@ -3092,9 +3129,9 @@ function calToggleDay(id, key){
   if(calOpenDays.has(key)) calOpenDays.delete(key); else calOpenDays.add(key);
   calRedraw(id);
 }
-function calPill(t){
+function calPill(t, basis){
   const st = STATUSES.find(s=>s.k===t.status) || STATUSES[0];
-  const overdue = t.status!=='done' && daysDiff(t.due_date) < 0;
+  const overdue = (basis||'due')==='due' && t.status!=='done' && daysDiff(t.due_date) < 0;
   const board = t._pname? ` · ${esc(t._pname)}` : '';
   const bdot = t._pname? `<span class="cal-bdot" style="background:${t._pcolor||'var(--ink3)'}" title="${esc(t._pname)}"></span>` : '';
   return `<button class="cal-pill${overdue?' over':''}" style="--pc:${st.color}" title="${esc(t.title)} · ${esc(st.label)}${overdue?' · overdue':''}${board}"
@@ -3102,8 +3139,9 @@ function calPill(t){
 }
 function calendarHTML(id, rows, opts){
   const everywhere = (opts&&opts.everywhere) || 'the Table view shows everything';
+  const basis = (opts&&opts.basis) || 'due', words = CAL_WORDS[basis];
   const first = calFirst(), todayKey = calKey(new Date());
-  const {by, undated} = calBuckets(rows);
+  const {by, undated} = calBuckets(rows, basis);
   const cells = calGrid(first);
   // A task due last month is not on this grid at all. Say so, or the header
   // count and what you can actually see disagree with no explanation.
@@ -3119,7 +3157,7 @@ function calendarHTML(id, rows, opts){
     const wknd = c.date.getDay()===0 || c.date.getDay()===6;
     return `<div class="cal-cell${c.inMonth?'':' out'}${wknd?' wknd':''}${c.key===todayKey?' today':''}" data-day="${c.key}">
       <div class="cal-dnum">${c.date.getDate()}${c.key===todayKey? '<span class="cal-tod">Today</span>':''}</div>
-      <div class="cal-list">${shown.map(calPill).join('')}
+      <div class="cal-list">${shown.map(t=>calPill(t,basis)).join('')}
         ${hidden>0? `<button class="cal-more" onclick="calToggleDay('${id}','${c.key}')">+${hidden} more</button>`:''}
         ${open && list.length>CAL_FOLD? `<button class="cal-more" onclick="calToggleDay('${id}','${c.key}')">Show less</button>`:''}</div>
     </div>`;
@@ -3132,19 +3170,19 @@ function calendarHTML(id, rows, opts){
         <button class="btn btn-ghost btn-sm" onclick="calMove('${id}',1)" title="Next month">›</button>
         <button class="btn btn-ghost btn-sm" onclick="calMove('${id}',0)">Today</button>
       </div>
-      <div class="cal-note">${shownCount} task${shownCount===1?'':'s'} shown${elsewhere>0? ` · <span class="cal-und">${elsewhere} outside this view</span>`:''}${undated.length? ` · <span class="cal-und">${undated.length} with no due date</span>`:''}</div>
+      <div class="cal-note">${shownCount} task${shownCount===1?'':'s'} shown${elsewhere>0? ` · <span class="cal-und">${elsewhere} outside this view</span>`:''}${undated.length? ` · <span class="cal-und">${undated.length} ${basis==='completed'? 'not completed yet' : 'with no due date'}</span>`:''}</div>
     </div>
     <div class="cal-dows">${dows.map(d=>`<div>${d}</div>`).join('')}</div>
     <div class="cal-grid">${cells.map(cellHTML).join('')}</div>
     ${(undated.length||elsewhere>0)? `<div class="cal-foot">${[
-        undated.length? `${undated.length} task${undated.length===1?' has':'s have'} no due date` : '',
-        elsewhere>0? `${elsewhere} ${elsewhere===1?'is':'are'} due outside the weeks shown` : ''
+        undated.length? `${undated.length} task${undated.length===1?' has':'s have'} ${words.none}` : '',
+        elsewhere>0? `${elsewhere} ${elsewhere===1?'is':'are'} ${words.out}` : ''
       ].filter(Boolean).join(' · ')} — ${everywhere}.</div>`:''}
   </div>`;
 }
 function renderCalendar(id, rows, host){
   calRerender = () => renderBoardBody(id);
-  host.innerHTML = calendarHTML(id, rows);
+  host.innerHTML = calendarHTML(id, rows, {basis: calBasis(id)});
 }
 /* ---- Workspace calendar: every board in the workspace on one grid ----
    Reads live tasks for the workspace's active boards (RLS decides which boards
@@ -3949,7 +3987,7 @@ function tvBulkPick(btn, which){
 }
 async function tvBulkApply(field, value){
   const ids=[...tvSel]; if(!ids.length) return;
-  const {error}=await db.from('tasks').update({[field]:value}).in('id',ids);
+  const error = await forIdChunks(ids, part=> db.from('tasks').update({[field]:value}).in('id',part));
   if(error) return toast(error.message, true);
   S._tasks.forEach(t=>{ if(tvSel.has(t.id)) t[field]=value; });
   toast(ids.length+' task'+(ids.length>1?'s':'')+' updated');
@@ -3964,7 +4002,7 @@ function tvToggleArch(){ tvShowArch=!tvShowArch; tvApplyArch(); const y=scrollY;
 async function tvBulkArchive(){
   const ids=[...tvSel]; if(!ids.length) return;
   const at=new Date().toISOString();
-  const {error}=await db.from('tasks').update({archived_at:at}).in('id',ids);
+  const error = await forIdChunks(ids, part=> db.from('tasks').update({archived_at:at}).in('id',part));
   if(error) return toast(error.message, true);
   (S._tasksAll||[]).forEach(t=>{ if(tvSel.has(t.id)) t.archived_at=at; });
   tvSel.clear(); tvBulkBar(); tvApplyArch();
@@ -4005,7 +4043,7 @@ function tvBulkDelete(){
   m.querySelector('#bd-archive').onclick = ()=>{ closeModals(); tvBulkArchive(); };
   go.onclick = async ()=>{
     go.disabled=true; go.textContent='Deleting…';
-    const {error}=await db.from('tasks').delete().in('id',ids);
+    const error = await forIdChunks(ids, part=> db.from('tasks').delete().in('id',part));
     if(error){ go.disabled=false; go.textContent='Delete permanently'; return toast(error.message, true); }
     S._tasksAll = (S._tasksAll||[]).filter(t=>!tvSel.has(t.id));
     tvSel.clear(); tvBulkBar(); tvApplyArch(); closeModals(); toast(ids.length+' task'+(ids.length>1?'s':'')+' deleted');
