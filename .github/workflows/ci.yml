@@ -11,6 +11,11 @@ on:
       - 'build.sh'
       - 'run_tests.sh'
       - '.github/workflows/ci.yml'
+      # A hand-uploaded root index.html (it has happened three times: 6 Sep twice, 9 Sep) went
+      # live unchecked because nothing ran. Now it triggers a rebuild from src/, which
+      # overwrites the upload within a couple of minutes. The bot's own deploy push does not
+      # re-trigger (GITHUB_TOKEN pushes never do), and the job below also refuses to run for it.
+      - 'index.html'
   pull_request:
     paths:
       - 'src/**'
@@ -26,10 +31,19 @@ concurrency:
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+
+      # Say so loudly when the trigger was someone replacing the served bundle by hand.
+      - name: Warn if the root index.html was edited directly
+        if: github.event_name == 'push'
+        run: |
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -qx 'index.html'; then
+            echo "::warning title=index.html was uploaded by hand::${{ github.actor }} changed the served bundle directly. index.html is built from src/ and this run will overwrite the upload. Edit src/ instead."
+          fi
 
       - uses: actions/setup-node@v4
         with:
