@@ -526,6 +526,19 @@ function boardKeySuggest(name){
   if(words.length===1) return boardKeyClean(first.slice(0,3));
   return boardKeyClean(words.map(x=>x[0]).join(''));
 }
+/* ---- writes and reads over many ids ----
+   Supabase puts `.in('id', ids)` into the URL, and ~3,000 ids there throws "Failed to fetch"
+   (6 Sep, dependencies). "Select all" on the CS board selects 3,043 rows, so every bulk path
+   goes through here in slices. Returns the first error, or null. */
+const ID_CHUNK = 200;
+const chunks = (arr, n) => { const out=[]; for(let i=0;i<arr.length;i+=n) out.push(arr.slice(i,i+n)); return out; };
+async function forIdChunks(ids, fn){
+  for(const part of chunks([].concat(ids).filter(Boolean), ID_CHUNK)){
+    const {error} = await fn(part);
+    if(error) return error;
+  }
+  return null;
+}
 /* ---- what the automations did ----
    A custom automation is an AFTER trigger on `tasks`: by the time our UPDATE returns, a rule
    may already have moved the task to another group, set its status, reassigned it or pushed
@@ -538,9 +551,14 @@ function boardKeySuggest(name){
 const AUTO_ECHO = ['group_id','status','priority','assignee_id','due_date','archived_at'];
 async function echoAutomation(ids, sent){
   ids = [].concat(ids).filter(Boolean); if(!ids.length) return [];
-  let data=null;
-  try{ ({data} = await db.from('tasks').select('id,'+AUTO_ECHO.join(',')).in('id', ids)); }catch(e){ return []; }
-  if(!Array.isArray(data)) return [];      // a save must never fall over on a shape we did not expect
+  let data=[];
+  try{
+    for(const part of chunks(ids, ID_CHUNK)){
+      const {data:rows} = await db.from('tasks').select('id,'+AUTO_ECHO.join(',')).in('id', part);
+      if(!Array.isArray(rows)) return [];  // a save must never fall over on a shape we did not expect
+      data = data.concat(rows);
+    }
+  }catch(e){ return []; }
   const changed = [];
   data.forEach(row=>{
     const t = (S._tasks||[]).find(x=>x.id===row.id); if(!t) return;
