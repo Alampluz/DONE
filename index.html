@@ -3266,6 +3266,9 @@ function wireDnD(projectId){
     });
   });
 }
+/* KANBAN ONLY. Redraws the columns from S._tasks without refetching; the drag-drop handler
+   uses it. It does not look at boardMode - calling it from the Table view (9 Sep) flipped the
+   board to kanban after every automation. For "redraw whatever view is open" use renderBoardBody. */
 function renderProjectFromCache(id){
   const C=$('#content');
   C.innerHTML = `<div class="board">${STATUSES.map(s=>{
@@ -4206,7 +4209,8 @@ async function tvCore(tid, field, val){
   if(error){ t[field]=old; toast(error.message, true); return; }
   // an automation may have moved or changed the row behind us - show what it did
   const changed = await echoAutomation(tid, {[field]:val});
-  if(changed.length){ automationToast(changed); const y=scrollY; renderProjectFromCache(tvPid); scrollTo(0,y); }
+  // renderBoardBody redraws whichever view is open; renderProjectFromCache is the kanban only
+  if(changed.length){ automationToast(changed); const y=scrollY; renderBoardBody(tvPid); scrollTo(0,y); }
 }
 async function tvCustom(tid, fid, val){
   const t=S._tasks.find(x=>x.id===tid); if(!t) return;
@@ -4215,7 +4219,7 @@ async function tvCustom(tid, fid, val){
   const {error}=await db.from('tasks').update({custom:t.custom}).eq('id',tid);
   if(error) return toast(error.message, true);
   const changed = await echoAutomation(tid, null);
-  if(changed.length){ automationToast(changed); const y=scrollY; renderProjectFromCache(tvPid); scrollTo(0,y); }
+  if(changed.length){ automationToast(changed); const y=scrollY; renderBoardBody(tvPid); scrollTo(0,y); }
 }
 function addColumnModal(pid){ columnModal(pid, null); }
 function editColumnModal(fid, pid){ const f=(S._fields||[]).find(x=>x.id===fid); if(f) columnModal(pid, f); }
