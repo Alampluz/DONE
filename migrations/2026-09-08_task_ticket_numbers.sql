@@ -1,0 +1,24 @@
+-- Applied 8 Sep 2026 as Supabase migrations `task_ticket_numbers` + `board_key_unique`.
+-- Every task carries a permanent human number: <projects.key>-YYMMDD-NNN, e.g. CS-260908-001.
+-- projects.key is the board's short prefix (editable, unique per company); the date is the
+-- Bangkok calendar day the task was created; the counter restarts each day per board and is
+-- never reused, so deleting CS-260908-004 retires that number rather than shifting the rest.
+-- task_no_seq holds one only-ever-incremented counter per board per day, touched solely by
+-- the SECURITY DEFINER trigger (RLS on, no policy, so no client can reach it).
+-- insert..on conflict do update..returning is atomic and row-locks, so two people creating a
+-- task in the same second cannot land on the same number.
+-- The 3,442-row backfill ran oldest-first with `alter table tasks disable trigger user` inside
+-- the transaction: otherwise auto_task_rules_trg / custom_autos_trg fire a rule per row and
+-- tasks_touch bumps every updated_at. Result: 3,442 numbered, 0 duplicates.
+-- See the Supabase migration history for the exact statements as applied.
+
+-- !! DO NOT RE-RUN the counter seed. It set task_no_seq.last = count(*) per board per day, which
+-- was correct only at backfill time (numbers ran 1..N with no holes). Once any task has been
+-- deleted, count(*) is LOWER than the highest number already issued, and re-seeding would hand
+-- the next task a number that already exists. If a counter ever needs repairing, derive it from
+-- the numbers themselves:
+--   update task_no_seq s set last = greatest(s.last, x.hi)
+--   from (select project_id, (created_at at time zone 'Asia/Bangkok')::date as day,
+--                max(split_part(ticket_no,'-',3)::int) as hi
+--           from tasks where ticket_no is not null group by 1,2) x
+--   where x.project_id = s.project_id and x.day = s.day;
