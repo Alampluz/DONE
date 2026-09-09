@@ -60,6 +60,13 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  r.offline = (await echoAutomation('t1', null)).length; db.from=_from;
  // 7. an empty change list says nothing at all
  const before=toasts.length; automationToast([]); r.silent = toasts.length===before;
+ // 8. the redraw after an automation keeps the view you were in (9 Sep: it flipped Table to kanban)
+ boardMode='table'; tvPid='p1'; S.projects=[{id:'p1',name:'B',status:'active',field_config:{}}]; S.route={view:'project',id:'p1'};
+ document.body.innerHTML='<div id="content"><div id="board-body"></div></div>';
+ S._tasks[0].group_id='g1'; S._tasks[0].status='todo';
+ window.__server.tasks=[{id:'t1',status:'done',priority:'normal',assignee_id:null,due_date:null,group_id:'g2',archived_at:null}];
+ await tvCore('t1','status','done');
+ r.stillTable = boardMode==='table' && !document.querySelector('#content .board') && !!document.querySelector('#board-body table, #board-body .tv-wrap, #board-body .tv-row');
 }catch(e){r.error=e.message+' | '+(e.stack||'').split('\n').slice(0,3).join(' / ');}return r;};`;
 w.eval(scripts.join('\n')+'\n'+driver);
 w.eval('window.__run()').then(r=>{ let ok=true;
@@ -73,4 +80,5 @@ check('several changes: all collected, toast names one and counts the rest', r.m
 check('rows the board is not holding are skipped', r.unknown===0);
 check('no ids, or a failed read, returns empty instead of throwing', r.none===0 && r.offline===0);
 check('nothing changed means no toast', r.silent);
+check('the redraw after an automation stays in the Table view', r.stillTable);
 if(!ok) process.exit(1); });
