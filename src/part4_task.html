@@ -496,8 +496,11 @@ function showAllHistory(){
   const box = document.getElementById('tv-history'); if(!box) return;
   box.innerHTML = historyHTML(S._taskHist||[], true);
 }
-/* The activity log stays folded until asked for — a click on the header opens it. */
+/* The activity log stays folded until asked for — a click on the header opens it.
+   Partners and freelancers never see it: the board's change history is internal, and the
+   database returns them nothing anyway (April, 10 Sep 2026). */
 function historySectionHTML(){
+  if(isExternal()) return '';
   const n = (S._taskHist||[]).length;
   return `<div class="hist-toggle" onclick="toggleHistoryPanel(this)">
       <label style="cursor:pointer;margin:0">Activity log</label>
