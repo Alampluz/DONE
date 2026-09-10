@@ -711,20 +711,73 @@ function bfApply(pid, rows){
 function bfColsMatch(f, t){
   const cols = f.cols || {};
   for(const fid in cols){
-    const want = bfColWanted(cols[fid]);          // one or many; any of them is a match
-    if(!want.length) continue;
+    const flt = bfColFilter(cols[fid]); if(!flt) continue;      // half-typed is not yet a filter
     const fld = (S._fields||[]).find(x=>x.id===fid);
     const have = fld? bfColValue(t, fld) : '';
     const chips = (fld && fld.ftype==='platform' && Array.isArray((t.custom||{})[fid]))? (t.custom||{})[fid] : null;
-    const hit = want.some(v => v==='__none__' ? (chips? !chips.length : have==='')
-                             : chips ? chips.includes(v) : have===v);
-    if(!hit) return false;
+    if(!bfOpMatch(flt, have, chips)) return false;
   }
   return true;
 }
-/* A column filter holds an array of values. A single string is accepted too, because a view
-   saved before multi-select (10 Sep) stored one, and those must keep working. */
-const bfColWanted = v => v==null? [] : Array.isArray(v)? v.filter(x=>x!=='') : (v===''? [] : [v]);
+/* The operators a column filter can use (April, 10 Sep 2026: she wanted monday's where-clause
+   power without a second panel to learn, so they live in the column's own Filter menu).
+   'multi' takes any number of ticked values, 'none' takes none, the rest take typing.
+   `types` limits an operator to one family of columns; without it, it fits them all. */
+const BF_OPS = [
+  {k:'is',      l:'is',               kind:'multi'},
+  {k:'nis',     l:'is not',           kind:'multi'},
+  {k:'empty',   l:'is empty',         kind:'none'},
+  {k:'nempty',  l:'is not empty',     kind:'none'},
+  {k:'has',     l:'contains',         kind:'text', types:'text'},
+  {k:'nhas',    l:'does not contain', kind:'text', types:'text'},
+  {k:'gt',      l:'greater than',     kind:'num',  types:'number'},
+  {k:'lt',      l:'less than',        kind:'num',  types:'number'},
+  {k:'before',  l:'before',           kind:'date', types:'date'},
+  {k:'after',   l:'after',            kind:'date', types:'date'},
+  {k:'between', l:'between',          kind:'date2',types:'date'}
+];
+const BF_OP = k => BF_OPS.find(o=>o.k===k);
+const bfOpFamily = ftype => ftype==='number'? 'number' : ftype==='date'? 'date' : 'text';
+const bfOpsFor = ftype => BF_OPS.filter(o=> !o.types || o.types===bfOpFamily(ftype));
+/* Normalise whatever is stored into {op, v[]}, or null when it would filter nothing.
+   Accepts an array (multi-select, 10 Sep) and a bare string (any view saved before that),
+   so filters people already saved keep working untouched. */
+function bfColFilter(raw){
+  if(raw==null) return null;
+  if(Array.isArray(raw) || typeof raw!=='object'){ const v=bfColWanted(raw); return v.length? {op:'is', v} : null; }
+  const op = BF_OP(raw.op); if(!op) return null;
+  if(op.kind==='none') return {op:op.k, v:[]};
+  const v = [].concat(raw.v==null? [] : raw.v).filter(x=> x!=='' && x!=null);
+  if(!v.length || (op.kind==='date2' && v.length<2)) return null;
+  return {op:op.k, v};
+}
+/* Does one cell pass one column filter? `have` is the text the cell amounts to; `chips` is the
+   list for a Platform cell, which matches on any one of its chips. */
+function bfOpMatch(flt, have, chips){
+  const isEmpty = chips? !chips.length : have==='';
+  const anyOf = () => flt.v.some(v => v==='__none__'? isEmpty : chips? chips.includes(v) : have===v);
+  const txt = String(have).toLowerCase(), needle = String(flt.v[0]==null?'':flt.v[0]).toLowerCase();
+  const num = ()=>{ const n=parseFloat(String(have).replace(/[^0-9.\-]/g,'')); return isNaN(n)? null : n; };
+  switch(flt.op){
+    case 'is':      return anyOf();
+    case 'nis':     return !anyOf();
+    case 'empty':   return isEmpty;
+    case 'nempty':  return !isEmpty;
+    case 'has':     return !isEmpty && txt.includes(needle);
+    case 'nhas':    return !txt.includes(needle);            // an empty cell contains nothing
+    case 'gt': case 'lt': { const n=num(), w=parseFloat(flt.v[0]);
+      if(n===null || isNaN(w)) return false;
+      return flt.op==='gt'? n>w : n<w; }
+    // Dates are stored yyyy-mm-dd, which compares correctly as text.
+    case 'before':  return !isEmpty && String(have) < String(flt.v[0]);
+    case 'after':   return !isEmpty && String(have) > String(flt.v[0]);
+    case 'between': return !isEmpty && String(have) >= String(flt.v[0]) && String(have) <= String(flt.v[1]);
+  }
+  return true;
+}
+/* The ticked values of a column filter, whichever shape it was stored in. */
+const bfColWanted = v => v==null? [] : (typeof v==='object' && !Array.isArray(v))? bfColWanted(v.v)
+  : Array.isArray(v)? v.filter(x=>x!=='') : (v===''? [] : [v]);
 /* The text a column's cell amounts to - what a filter compares and what the picker lists. */
 function bfColValue(t, f){
   const v = (t.custom||{})[f.id];
@@ -2002,16 +2055,30 @@ const TV_CORE_SLOT = {status:'status', priority:'priority', assignee:'assignee'}
 function tvColFiltered(pid, key){
   const f = bfGet(pid);
   if(TV_CORE_SLOT[key]) return !!f[TV_CORE_SLOT[key]];
-  return key.startsWith('f:') && bfColWanted((f.cols||{})[key.slice(2)]).length>0;
+  return key.startsWith('f:') && !!bfColFilter((f.cols||{})[key.slice(2)]);
 }
+/* Short enough to sit in a column header: the operator, then its first value and how many more. */
 function tvColFilterLabel(pid, key){
   const f = bfGet(pid);
   if(key==='status')   return statusLabel(f.status);
   if(key==='priority') return prioLabel(f.priority);
   if(key==='assignee') return f.assignee==='__none__'? 'Unassigned' : ((prof(f.assignee)||{}).full_name||'someone');
-  const want = bfColWanted((f.cols||{})[key.slice(2)]);
+  const flt = bfColFilter((f.cols||{})[key.slice(2)]); if(!flt) return '';
   const name = v => v==='__none__'? 'Empty' : v;
-  return want.length>1? `${name(want[0])} +${want.length-1}` : name(want[0]||'');
+  const more = flt.v.length>1? ` +${flt.v.length-1}` : '';
+  switch(flt.op){
+    case 'nis':     return 'not ' + name(flt.v[0]) + more;
+    case 'empty':   return 'Empty';
+    case 'nempty':  return 'Not empty';
+    case 'has':     return `“${flt.v[0]}”`;
+    case 'nhas':    return `not “${flt.v[0]}”`;
+    case 'gt':      return '> ' + flt.v[0];
+    case 'lt':      return '< ' + flt.v[0];
+    case 'before':  return 'before ' + flt.v[0];
+    case 'after':   return 'after ' + flt.v[0];
+    case 'between': return flt.v[0] + ' → ' + flt.v[1];
+  }
+  return name(flt.v[0]) + more;                                  // 'is'
 }
 function tvColFilterPick(btn, pid, key){
   // Core columns: hand it to the filter bar's own slot.
@@ -2041,23 +2108,66 @@ function tvColFilterPick(btn, pid, key){
   // Offering only "Empty" would filter to every row, which is no filter at all.
   if(!counts.size) return toast('Nothing to filter by — this column is empty on every task', true);
   if(empties) opts.push({v:'__none__', l:'Empty', n:empties});
-  tvColMultiMenu(btn, pid, fid, fld.label, opts);
+  tvColMultiMenu(btn, pid, fid, fld.label, opts, fld.ftype);
 }
-/* Tick as many values as you like; the board redraws behind the menu after every tick, and
-   the menu stays open. Lives on document.body so a board re-render cannot remove it. */
-function tvColMultiMenu(anchor, pid, fid, label, opts){
+/* One column's filter, monday's "Where <column> <operator> <value>" folded into the column's
+   own menu (April, 10 Sep 2026). 'is'/'is not' tick as many values as you like; the others
+   take typing or nothing at all. The board redraws behind the menu after every change and the
+   menu stays open, so it lives on document.body where a re-render cannot remove it. */
+function tvColMultiMenu(anchor, pid, fid, label, opts, ftype){
   tvCloseMenu();
-  const sel = () => new Set(bfColWanted((bfGet(pid).cols||{})[fid]));
+  const ops = bfOpsFor(ftype);
+  const stored = bfColFilter(bfGet(pid).cols? bfGet(pid).cols[fid] : null);
+  let op = (stored && ops.some(o=>o.k===stored.op))? stored.op : 'is';
+  let vals = stored? stored.v.slice() : [];
+  const kind = () => BF_OP(op).kind;
   const m = document.createElement('div'); m.id='tvmenu';
+
+  // Anything incomplete (an operator picked but nothing typed yet) simply clears the column.
+  const write = ()=>{
+    const f = bfGet(pid); f.cols = {...(f.cols||{})};
+    const raw = kind()==='none'? {op} : (op==='is' && vals.length)? vals : {op, v:vals.slice()};
+    if(bfColFilter(raw)) f.cols[fid] = raw; else delete f.cols[fid];
+    const y = scrollY; renderProject(pid); scrollTo(0,y);
+  };
+  const foot = ()=> kind()==='multi'
+    ? (vals.length? vals.length+' selected' : 'Nothing selected')
+    : (bfColFilter(kind()==='none'? {op} : {op, v:vals})? 'Filtering' : 'Type a value');
+
   const draw = ()=>{
-    const on = sel();
-    m.innerHTML = `${opts.length>7? `<div class="search"><input placeholder="Search ${esc(label)}…"></div>`:''}
-      <div class="opts">${opts.map(o=>`<div class="opt multi ${on.has(o.v)?'on':''}" data-v="${esc(o.v)}" data-l="${esc(o.l.toLowerCase())}">
-        <span class="mbox">${on.has(o.v)?'✓':''}</span><span>${esc(o.l)}</span><span class="mcount">${o.n}</span></div>`).join('')}</div>
-      <div class="mfoot"><span>${on.size? on.size+' selected' : 'Nothing selected'}</span>${on.size? '<span class="clr" data-clear="1">Clear</span>':''}</div>`;
+    const on = new Set(vals), k = kind();
+    const dates = k==='date2'? 2 : 1;
+    m.innerHTML = `<div class="mhead"><span>Where</span>
+        <select class="mop">${ops.map(o=>`<option value="${o.k}" ${o.k===op?'selected':''}>${esc(o.l)}</option>`).join('')}</select></div>
+      ${k==='multi'? `${opts.length>7? `<div class="search"><input placeholder="Search ${esc(label)}…"></div>`:''}
+        <div class="opts">${opts.map(o=>`<div class="opt multi ${on.has(o.v)?'on':''}" data-v="${esc(o.v)}" data-l="${esc(o.l.toLowerCase())}">
+          <span class="mbox">${on.has(o.v)?'✓':''}</span><span>${esc(o.l)}</span><span class="mcount">${o.n}</span></div>`).join('')}</div>` : ''}
+      ${k==='text'||k==='num'||k==='date'||k==='date2'? `<div class="mval">${
+          [...Array(dates)].map((_,i)=>`${i? '<span>and</span>':''}<input type="${k==='num'?'number':k==='date'||k==='date2'?'date':'text'}"
+            data-i="${i}" value="${esc(vals[i]==null?'':vals[i])}" placeholder="${k==='num'?'0':k==='text'?'Type to match…':''}">`).join('')}</div>` : ''}
+      <div class="mfoot"><span class="mfc">${esc(foot())}</span>${(vals.length||kind()==='none')? '<span class="clr" data-clear="1">Clear</span>':''}</div>`;
+
     const si = m.querySelector('.search input');
     if(si){ si.oninput = ()=>{ const q=si.value.toLowerCase();
         m.querySelectorAll('.opt').forEach(o=>{ o.style.display = !q || o.dataset.l.includes(q)? '' : 'none'; }); }; }
+    m.querySelector('.mop').onchange = e=>{
+      // Ticked values mean nothing to "contains", and typed text means nothing to "is", so the
+      // value only survives a switch between two operators that take the same kind of value.
+      const was = kind(); op = e.target.value;
+      const typed = x => x==='text' || x==='num' || x==='date' || x==='date2';
+      if(!(was===kind() || (typed(was) && typed(kind())))) vals = [];
+      if(kind()!=='date2') vals = vals.slice(0,1);
+      write(); draw();
+    };
+    // Typing filters as you go, but not on every keystroke - a big board would redraw per letter.
+    let timer=null;
+    m.querySelectorAll('.mval input').forEach(inp=>{
+      inp.oninput = ()=>{
+        vals = [...m.querySelectorAll('.mval input')].map(x=>x.value);
+        clearTimeout(timer); timer = setTimeout(()=>{ write();
+          const fc=m.querySelector('.mfc'); if(fc) fc.textContent = foot(); }, 300);
+      };
+    });
   };
   draw();
   document.body.appendChild(m);
@@ -2068,19 +2178,14 @@ function tvColMultiMenu(anchor, pid, fid, label, opts){
   m.onclick = e=>{
     const clear = e.target.closest('[data-clear]'), opt = e.target.closest('.opt');
     if(!clear && !opt) return;
-    const f = bfGet(pid); f.cols = {...(f.cols||{})};
-    if(clear) delete f.cols[fid];
-    else {
-      const set = sel(); const v = opt.dataset.v;
-      set.has(v)? set.delete(v) : set.add(v);
-      set.size? f.cols[fid] = [...set] : delete f.cols[fid];
-    }
-    draw();
-    const y=scrollY; renderProject(pid); scrollTo(0,y);
+    if(clear){ vals=[]; op='is'; }
+    else { const v = opt.dataset.v; vals.includes(v)? vals=vals.filter(x=>x!==v) : vals=vals.concat([v]); }
+    write(); draw();
   };
   const off = e=>{ if(!m.contains(e.target)){ m.remove(); document.removeEventListener('mousedown', off); document.removeEventListener('keydown', key); } };
   const key = e=>{ if(e.key==='Escape'){ m.remove(); document.removeEventListener('mousedown', off); document.removeEventListener('keydown', key); } };
-  setTimeout(()=>{ document.addEventListener('mousedown', off); document.addEventListener('keydown', key); m.querySelector('.search input')?.focus(); }, 0);
+  setTimeout(()=>{ document.addEventListener('mousedown', off); document.addEventListener('keydown', key);
+    (m.querySelector('.mval input') || m.querySelector('.search input'))?.focus(); }, 0);
 }
 /* Rename in place: a custom column's label, or a standard field's per-board label. */
 function tvRenameColumn(pid, key){
