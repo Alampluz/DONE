@@ -38,6 +38,9 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  const ins=window.__writes.find(x=>x.t==='board_views'&&x.op==='insert');
  r.saved=JSON.stringify({u:ins.p.user_id,f:ins.p.filters,s:ins.p.sort,v:ins.p.view});
  r.tabsAfter=tabs().join('|'); r.onAfter=onTab(); r.remembered=localStorage.getItem('workos.vtab.p1');
+ // 2b. a column filter is part of the view too, and an empty one is not stored
+ bfGet('p1').cols={fx:'Late'}; r.snapWithCols=JSON.stringify(bvSnapshot('p1').filters.cols);
+ bfGet('p1').cols={}; r.snapNoCols=('cols' in bvSnapshot('p1').filters);
  // 3. drift: change a filter -> amber dot; "All" clears filters, sort and the memory
  bfGet('p1').status='done'; renderBoardChrome('p1'); r.dirty=!!document.querySelector('.vtab.on .vt-dirty');
  bvClear('p1'); r.cleared=JSON.stringify(bfGet('p1')); r.sortCleared=tvSortLoad('p1'); r.allOn=onTab(); r.forgot=localStorage.getItem('workos.vtab.p1');
@@ -71,6 +74,7 @@ check('no error', !r.error);
 check('empty strip: All (active) and Save view', r.empty==='All|＋ Save view' && r.emptyOn==='All');
 check('saving captures filters, sort and view type as a personal row; owner is offered pin', r.saved==='{"u":"me","f":{"status":"todo","assignee":"me"},"s":{"key":"priority","dir":"desc"},"v":"table"}' && r.pinOffered);
 check('new tab appears, is active and remembered', /My urgent/.test(r.tabsAfter) && /My urgent/.test(r.onAfter) && !!r.remembered);
+check('a column filter is saved with the view; an empty one is not stored', r.snapWithCols==='{"fx":"Late"}' && r.snapNoCols===false);
 check('drifting marks the tab; All clears filters, sort and memory', r.dirty && /"status":""/.test(r.cleared) && r.sortCleared===null && r.allOn==='All' && r.forgot===null);
 check('clicking a tab re-applies filters, sort and view type', r.applied==='{"st":"todo","as":"me","sort":"priority","mode":"board"}');
 check('pinning re-creates the row with no user and shows the pin', r.pinInsert==='null' && r.pinDeleteOld && r.pinned && r.pinIcon);

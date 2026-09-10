@@ -59,7 +59,41 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  tvColMenu(document.createElement('span'),'p1','title');    r.menuTitle=items.map(i=>i==='-'?'-':i.label).join('|');
  S.me={id:'u2',role:'internal',full_name:'Bee'}; tvColMenu(document.createElement('span'),'p1','status'); r.menuMember=items.map(i=>i==='-'?'-':i.label).join('|');
  S.me={id:'me',role:'admin',full_name:'April'}; window.ctxMenu=_ctx;
- // 7. rename a custom column and a standard field
+ // 7. filter from a column header: values present on the board, counted, Empty last
+ let fopts=null,frender=null,fpick=null; const _tsm=window.tvShowMenu;
+ window.tvShowMenu=(a,o,rend,pick)=>{ fopts=o; frender=rend; fpick=pick; };
+ S._fields=[{id:'fx',project_id:'p1',label:'Budget',ftype:'number',options:null},
+            {id:'fp',project_id:'p1',label:'Platform',ftype:'platform',options:null},
+            {id:'fs',project_id:'p1',label:'Reason',ftype:'select',options:['Damaged','Late','Wrong item']}];
+ S._tasks[0].custom={fx:'30',fp:['Lazada','Shopee'],fs:'Late'};
+ S._tasks[1].custom={fx:'5', fp:['Lazada'],          fs:'Late'};
+ S._tasks[2].custom={};
+ r.filterable=[tvColFilterable('title'),tvColFilterable('ticket_no'),tvColFilterable('due_date'),tvColFilterable('status'),tvColFilterable('f:fs')].join(',');
+ tvColFilterPick(document.createElement('span'),'p1','f:fs');
+ r.selOpts=fopts.map(o=>o.v+':'+o.n).join('|');
+ fpick('Late'); r.selFiltered=bfApply('p1',S._tasks).map(t=>t.id).join('');
+ r.headerMark=/th-filt/.test(tvHeadHTML('p1',S._fields,false,'g1')); r.headerLabel=tvColFilterLabel('p1','f:fs');
+ r.countsIn=bfActiveCount('p1');
+ // a platform column matches any one of the chips in the cell
+ fpick(null); tvColFilterPick(document.createElement('span'),'p1','f:fp');
+ r.platOpts=fopts.map(o=>o.v+':'+o.n).join('|');
+ fpick('Shopee'); r.platFiltered=bfApply('p1',S._tasks).map(t=>t.id).join('');
+ fpick('Lazada'); r.platBoth=bfApply('p1',S._tasks).map(t=>t.id).join('');
+ // Empty picks the rows with nothing in that column
+ fpick('__none__'); r.emptyFiltered=bfApply('p1',S._tasks).map(t=>t.id).join(''); r.emptyLabel=tvColFilterLabel('p1','f:fp');
+ // a core column hands over to the filter bar's own slot, so bar and header agree
+ tvColFilterPick(document.createElement('span'),'p1','status'); fpick('done');
+ r.coreSlot=bfGet('p1').status; r.coreMark=tvColFiltered('p1','status');
+ // clearing everything drops the column filters too
+ bfClear('p1'); r.afterClear=JSON.stringify(bfGet('p1').cols)+'/'+bfActiveCount('p1');
+ // a column that is empty on every task says so instead of opening an empty menu
+ let toasted=''; window.toast=(m)=>{toasted=m;};
+ S._tasks.forEach(t=>t.custom={}); tvColFilterPick(document.createElement('span'),'p1','f:fx');
+ r.emptyCol=/Nothing to filter by/.test(toasted);
+ window.tvShowMenu=_tsm; window.toast=()=>{};
+ S._fields=[{id:'fx',project_id:'p1',label:'Budget',ftype:'number',options:null}];
+ S._tasks[0].custom={fx:'30'}; S._tasks[1].custom={fx:'5'}; S._tasks[2].custom={};
+ // 8. rename a custom column and a standard field
  tvRenameColumn('p1','f:fx'); document.getElementById('rc-name').value='Spend'; await document.getElementById('rc-save').onclick();
  r.renamedField = S._fields[0].label; r.fieldWrite = JSON.stringify(window.__writes.find(x=>x.t==='project_fields')?.p);
  tvRenameColumn('p1','assignee'); document.getElementById('rc-name').value='Owner'; await document.getElementById('rc-save').onclick();
@@ -77,4 +111,12 @@ check('remembered in localStorage, never written to the database, bar shown', r.
 check('clearing restores drag order and forgets', r.cleared==='abc' && r.barGone && r.forgot===null);
 check('menu labels fit the column; members get no Rename', /Rename\|-\|Oldest first\|Newest first/.test(r.menuDue) && /Lowest first\|Highest first/.test(r.menuNum) && !/Rename/.test(r.menuTitle) && !/Rename/.test(r.menuMember));
 check('rename writes the custom column label and the standard-field label', r.renamedField==='Spend' && /Spend/.test(r.fieldWrite||'') && r.renamedCore==='Owner' && /Owner/.test(r.coreWrite||''));
+check('Task, Ticket and Due date are not value-filtered; the rest are', r.filterable==='false,false,false,true,true');
+check('the picker offers the values on the board, counted, Empty last', r.selOpts==='Late:2|__none__:1' && r.platOpts==='Lazada:2|Shopee:1|__none__:1');
+check('picking a value filters the board and marks the header', r.selFiltered==='ab' && r.headerMark && r.headerLabel==='Late' && r.countsIn===1);
+check('a platform cell matches any of its chips', r.platFiltered==='a' && r.platBoth==='ab');
+check('Empty picks the rows with nothing in that column', r.emptyFiltered==='c' && r.emptyLabel==='Empty');
+check('a core column goes through the filter bar slot', r.coreSlot==='done' && r.coreMark);
+check('Clear filters drops the column filters too', r.afterClear==='{}/0');
+check('a column empty on every task says so', r.emptyCol);
 if(!ok) process.exit(1); });
