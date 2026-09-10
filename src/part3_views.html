@@ -711,14 +711,20 @@ function bfApply(pid, rows){
 function bfColsMatch(f, t){
   const cols = f.cols || {};
   for(const fid in cols){
-    const want = cols[fid], fld = (S._fields||[]).find(x=>x.id===fid);
+    const want = bfColWanted(cols[fid]);          // one or many; any of them is a match
+    if(!want.length) continue;
+    const fld = (S._fields||[]).find(x=>x.id===fid);
     const have = fld? bfColValue(t, fld) : '';
-    if(want==='__none__'){ if(have!=='') return false; }
-    else if(fld && fld.ftype==='platform'){ const list=Array.isArray((t.custom||{})[fid])? (t.custom||{})[fid] : []; if(!list.includes(want)) return false; }
-    else if(have !== want) return false;
+    const chips = (fld && fld.ftype==='platform' && Array.isArray((t.custom||{})[fid]))? (t.custom||{})[fid] : null;
+    const hit = want.some(v => v==='__none__' ? (chips? !chips.length : have==='')
+                             : chips ? chips.includes(v) : have===v);
+    if(!hit) return false;
   }
   return true;
 }
+/* A column filter holds an array of values. A single string is accepted too, because a view
+   saved before multi-select (10 Sep) stored one, and those must keep working. */
+const bfColWanted = v => v==null? [] : Array.isArray(v)? v.filter(x=>x!=='') : (v===''? [] : [v]);
 /* The text a column's cell amounts to - what a filter compares and what the picker lists. */
 function bfColValue(t, f){
   const v = (t.custom||{})[f.id];
@@ -1996,15 +2002,16 @@ const TV_CORE_SLOT = {status:'status', priority:'priority', assignee:'assignee'}
 function tvColFiltered(pid, key){
   const f = bfGet(pid);
   if(TV_CORE_SLOT[key]) return !!f[TV_CORE_SLOT[key]];
-  return key.startsWith('f:') && (f.cols||{})[key.slice(2)] !== undefined;
+  return key.startsWith('f:') && bfColWanted((f.cols||{})[key.slice(2)]).length>0;
 }
 function tvColFilterLabel(pid, key){
   const f = bfGet(pid);
   if(key==='status')   return statusLabel(f.status);
   if(key==='priority') return prioLabel(f.priority);
   if(key==='assignee') return f.assignee==='__none__'? 'Unassigned' : ((prof(f.assignee)||{}).full_name||'someone');
-  const v = (f.cols||{})[key.slice(2)];
-  return v==='__none__'? 'Empty' : v;
+  const want = bfColWanted((f.cols||{})[key.slice(2)]);
+  const name = v => v==='__none__'? 'Empty' : v;
+  return want.length>1? `${name(want[0])} +${want.length-1}` : name(want[0]||'');
 }
 function tvColFilterPick(btn, pid, key){
   // Core columns: hand it to the filter bar's own slot.
@@ -2034,10 +2041,46 @@ function tvColFilterPick(btn, pid, key){
   // Offering only "Empty" would filter to every row, which is no filter at all.
   if(!counts.size) return toast('Nothing to filter by — this column is empty on every task', true);
   if(empties) opts.push({v:'__none__', l:'Empty', n:empties});
-  tvShowMenu(btn, opts, o=>`<span>${esc(o.l)}</span><span style="margin-left:auto;color:var(--ink3);font-size:11.5px">${o.n}</span>`,
-    v=>{ const f=bfGet(pid); f.cols = {...(f.cols||{})}; if(v===null||v==='') delete f.cols[fid]; else f.cols[fid]=v;
-         const y=scrollY; renderProject(pid); scrollTo(0,y); },
-    opts.length>7, true);
+  tvColMultiMenu(btn, pid, fid, fld.label, opts);
+}
+/* Tick as many values as you like; the board redraws behind the menu after every tick, and
+   the menu stays open. Lives on document.body so a board re-render cannot remove it. */
+function tvColMultiMenu(anchor, pid, fid, label, opts){
+  tvCloseMenu();
+  const sel = () => new Set(bfColWanted((bfGet(pid).cols||{})[fid]));
+  const m = document.createElement('div'); m.id='tvmenu';
+  const draw = ()=>{
+    const on = sel();
+    m.innerHTML = `${opts.length>7? `<div class="search"><input placeholder="Search ${esc(label)}…"></div>`:''}
+      <div class="opts">${opts.map(o=>`<div class="opt multi ${on.has(o.v)?'on':''}" data-v="${esc(o.v)}" data-l="${esc(o.l.toLowerCase())}">
+        <span class="mbox">${on.has(o.v)?'✓':''}</span><span>${esc(o.l)}</span><span class="mcount">${o.n}</span></div>`).join('')}</div>
+      <div class="mfoot"><span>${on.size? on.size+' selected' : 'Nothing selected'}</span>${on.size? '<span class="clr" data-clear="1">Clear</span>':''}</div>`;
+    const si = m.querySelector('.search input');
+    if(si){ si.oninput = ()=>{ const q=si.value.toLowerCase();
+        m.querySelectorAll('.opt').forEach(o=>{ o.style.display = !q || o.dataset.l.includes(q)? '' : 'none'; }); }; }
+  };
+  draw();
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(r.left, innerWidth - m.offsetWidth - 12)) + 'px';
+  m.style.top  = (r.bottom + m.offsetHeight + 12 > innerHeight && r.top - m.offsetHeight - 6 > 0 ? r.top - m.offsetHeight - 6 : r.bottom + 4) + 'px';
+  m.onmousedown = e=> e.stopPropagation();      // ticking must not read as a click outside
+  m.onclick = e=>{
+    const clear = e.target.closest('[data-clear]'), opt = e.target.closest('.opt');
+    if(!clear && !opt) return;
+    const f = bfGet(pid); f.cols = {...(f.cols||{})};
+    if(clear) delete f.cols[fid];
+    else {
+      const set = sel(); const v = opt.dataset.v;
+      set.has(v)? set.delete(v) : set.add(v);
+      set.size? f.cols[fid] = [...set] : delete f.cols[fid];
+    }
+    draw();
+    const y=scrollY; renderProject(pid); scrollTo(0,y);
+  };
+  const off = e=>{ if(!m.contains(e.target)){ m.remove(); document.removeEventListener('mousedown', off); document.removeEventListener('keydown', key); } };
+  const key = e=>{ if(e.key==='Escape'){ m.remove(); document.removeEventListener('mousedown', off); document.removeEventListener('keydown', key); } };
+  setTimeout(()=>{ document.addEventListener('mousedown', off); document.addEventListener('keydown', key); m.querySelector('.search input')?.focus(); }, 0);
 }
 /* Rename in place: a custom column's label, or a standard field's per-board label. */
 function tvRenameColumn(pid, key){
