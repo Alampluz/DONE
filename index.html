@@ -120,7 +120,7 @@ table.tv{border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:10
 .vtab{display:inline-flex;align-items:center;gap:6px;padding:8px 12px 9px;font-size:13px;font-weight:600;color:var(--ink2);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;cursor:pointer;border-radius:8px 8px 0 0;background:none;border-top:0;border-left:0;border-right:0;font-family:inherit}
 .vtab:hover{background:var(--gray-soft);color:var(--ink)}
 .vtab.on{color:var(--accent-ink);border-bottom-color:var(--accent)}
-.vtab .vt-pin{font-size:10px;color:var(--ink3)} .vtab.on .vt-pin{color:var(--accent-ink)}
+.vtab .vt-pin{color:var(--ink3);flex:0 0 auto;margin-right:-1px} .vtab.on .vt-pin{color:var(--accent-ink)}
 .vtab .vt-dirty{width:6px;height:6px;border-radius:50%;background:var(--amber);display:inline-block}
 .vtab .vt-dots{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;color:var(--ink3);font-size:12px;opacity:0;margin-left:-2px}
 .vtab:hover .vt-dots,.vtab.on .vt-dots{opacity:1} .vtab .vt-dots:hover{background:rgba(0,0,0,.06);color:var(--ink)}
@@ -2875,6 +2875,8 @@ function bfPickPerson(btn, pid){
    The active tab is remembered per board in localStorage, like the view type, so the board
    opens where the person left it. */
 const BV_BLANK = {q:'', status:'', priority:'', assignee:'', group:'', quick:''};
+/* A line-drawn pin in the app's icon style, not an emoji. */
+const PIN_ICON = '<svg class="vt-pin" viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Pinned for the board"><path d="M6 2.5h4M7 2.5v3.2L4.6 8.4a.6.6 0 0 0 .4 1h6a.6.6 0 0 0 .4-1L9 5.7V2.5M8 9.4v4.1"/></svg>';
 const vtabLoad = pid => { try{ return localStorage.getItem('workos.vtab.'+pid)||''; }catch(e){ return ''; } };
 const vtabSave = (pid, id) => { try{ id? localStorage.setItem('workos.vtab.'+pid, id) : localStorage.removeItem('workos.vtab.'+pid); }catch(e){} };
 const bvList = pid => (S._views||[]).filter(v=>v.project_id===pid);
@@ -2909,7 +2911,7 @@ function bvClear(pid){
 function viewTabsHTML(pid){
   const act = bvActive(pid), dirty = bvDirty(pid, act);
   const tab = v => `<button class="vtab ${act&&act.id===v.id?'on':''}" onclick="bvApply('${pid}', bvList('${pid}').find(x=>x.id==='${v.id}'))" title="${esc(v.user_id? 'Your view':'Pinned for everyone on this board')}">
-      ${v.user_id? '' : '<span class="vt-pin" title="Pinned for the board">📌</span>'}${esc(v.name)}${act&&act.id===v.id&&dirty? '<span class="vt-dirty" title="Changed since it was saved"></span>':''}
+      ${v.user_id? '' : PIN_ICON}${esc(v.name)}${act&&act.id===v.id&&dirty? '<span class="vt-dirty" title="Changed since it was saved"></span>':''}
       ${bvCanEdit(v)? `<span class="vt-dots" onclick="event.stopPropagation();bvMenu(this,'${pid}','${v.id}')">⋯</span>`:''}</button>`;
   const views = bvList(pid).slice().sort((a,b)=> (a.user_id?1:0)-(b.user_id?1:0) || (a.position-b.position) || (a.created_at||'').localeCompare(b.created_at||''));
   return `<div class="vtabs">
