@@ -575,19 +575,40 @@ td.tv-name .tv-open{padding-left:20px}
 }
 .tv-filechip{white-space:nowrap}
 
-/* login */
-#login-screen{position:fixed;inset:0;background:radial-gradient(1200px 700px at 18% -10%,#14403A 0%,#101114 58%);display:flex;align-items:center;justify-content:center;z-index:100}
-.login-card{background:#fff;border-radius:18px;padding:38px 36px;width:100%;max-width:400px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+/* login - dark, to April's mockup (10 Sep). The sign-in screen is its own fixed layer, so the
+   dark palette is scoped to #login-screen and the rest of the app stays light. Two soft teal
+   glows on near-black, the wordmark centred, underline inputs with small-caps labels, and one
+   full-width teal pill. No card: the form sits straight on the background. */
+#login-screen{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:#0B0F0E;
+  background-image:
+    radial-gradient(420px 420px at 10% 18%, rgba(20,150,132,.42) 0%, rgba(20,150,132,.10) 45%, transparent 70%),
+    radial-gradient(520px 520px at 92% 88%, rgba(20,150,132,.30) 0%, rgba(20,150,132,.08) 45%, transparent 70%);
+  color:#E6EAE8}
+.login-card{background:none;border-radius:0;padding:0;width:100%;max-width:300px;box-shadow:none}
 .login-card .logo-mark{width:44px;height:44px;font-size:19px;margin-bottom:16px}
-.login-card h1{font-size:21px;margin-bottom:4px}
-.login-card p{color:var(--ink2);font-size:13.5px;margin-bottom:10px}
+.login-card h1{font-size:21px;margin-bottom:4px;color:#fff}
+.login-card p{color:#AEB7B4;font-size:13.5px;margin-bottom:10px;text-align:center}
 .logo-img{height:26px;width:auto;display:block}
 .logo-co{font-size:9.5px;color:var(--ink3);font-weight:600;letter-spacing:1.6px;text-transform:uppercase}
-.login-logo{height:56px;width:auto;display:block;margin:0 auto 12px}
-.login-tag{text-align:center;color:var(--accent);font-weight:700;font-size:13px;letter-spacing:.3px;margin-bottom:14px}
-.login-err{background:var(--red-soft);color:var(--red);padding:9px 12px;border-radius:8px;font-size:13px;margin-top:14px;display:none}
-.login-err.ok{background:var(--green-soft,#E6F4EC);color:var(--green,#12915E)}
-.li-forgot{display:inline-block;margin-top:8px;color:var(--ink3)}
+.login-logo{height:48px;width:auto;display:block;margin:0 auto 12px}
+.login-tag{text-align:center;color:#24C3AA;font-weight:700;font-size:13.5px;letter-spacing:.2px;margin-bottom:4px}
+#li-sub{margin-bottom:26px}
+#login-screen label{display:block;color:#B7C0BD;font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;margin:18px 0 4px}
+#login-screen input{background:transparent;border:0;border-bottom:1px solid #2A3532;border-radius:0;padding:9px 0 10px;color:#F2F5F4;font-size:15px;box-shadow:none;transition:border-color .15s}
+#login-screen input::placeholder{color:#6F7A77}
+#login-screen input:focus{border-bottom-color:#1FB39B;box-shadow:none}
+#login-screen input:-webkit-autofill{-webkit-text-fill-color:#F2F5F4;box-shadow:0 0 0 1000px #0B0F0E inset}
+#login-screen .btn-primary{margin-top:30px;padding:13px;border-radius:24px;background:#159A8A;color:#062A25;font-weight:700;font-size:14px;border:0;box-shadow:0 8px 24px rgba(21,154,138,.25)}
+#login-screen .btn-primary:hover{background:#1AAE9B}
+#login-screen .btn-primary:disabled{opacity:.6}
+#login-screen p a{color:#24C3AA;font-weight:700}
+#login-screen .li-forgot{color:#8A9591;font-weight:500}
+.login-err{background:rgba(194,67,79,.16);color:#FF9AA4;border:1px solid rgba(194,67,79,.35);padding:9px 12px;border-radius:8px;font-size:13px;margin-top:14px;display:none}
+.login-err.ok{background:rgba(18,145,94,.16);color:#7FE0B0;border-color:rgba(18,145,94,.35)}
+.li-forgot{display:inline-block;margin-top:8px}
+/* the pick/enhanced-select button, if one ever appears here, follows the dark palette */
+#login-screen .pick.sel-pick{background:transparent;color:#F2F5F4;border-color:#2A3532}
 
 /* home */
 .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
@@ -700,8 +721,8 @@ td.tv-name .tv-open{padding-left:20px}
     <label id="li-pass-lbl">Password</label>
     <input id="li-pass" type="password" placeholder="••••••••" autocomplete="current-password">
     <div class="login-err" id="li-err"></div>
-    <button class="btn btn-primary" id="li-btn" style="width:100%;justify-content:center;margin-top:18px;padding:11px">Sign in</button>
-    <p style="margin-top:16px;font-size:12.5px;color:var(--ink3);text-align:center">
+    <button class="btn btn-primary" id="li-btn" style="width:100%;justify-content:center">Sign in</button>
+    <p style="margin-top:18px;font-size:13px;color:#AEB7B4;text-align:center">
       <span id="li-toggle-wrap">New company? <a href="#" id="li-toggle">Start a free 14-day trial</a></span>
       <br><a href="#" id="li-forgot" class="li-forgot">Forgot password?</a>
     </p>
