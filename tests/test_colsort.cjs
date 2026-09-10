@@ -101,6 +101,50 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  tick('Lazada'); r.platTwo=shown();
  tick('Empty');  r.platWithEmpty=shown();
  tvCloseMenu(); bfClear('p1');
+ // 7b. operators (April, 10 Sep): every column gets is / is not / is empty / is not empty,
+ //     text also contains, numbers greater-and-less-than, dates before / after / between.
+ const opsOf = ft => bfOpsFor(ft).map(o=>o.k).join(',');
+ r.opsText=opsOf('select'); r.opsNum=opsOf('number'); r.opsDate=opsOf('date');
+ // matching, driven through the real filter object rather than the menu
+ const withCol = (raw)=>{ const f=bfGet('p1'); f.cols={fs:raw}; const out=shown(); f.cols={}; return out; };
+ r.opIs      = withCol({op:'is',  v:['Late']});
+ r.opNotIs   = withCol({op:'nis', v:['Late']});
+ r.opEmpty   = withCol({op:'empty'});
+ r.opNotEmpty= withCol({op:'nempty'});
+ r.opHas     = withCol({op:'has', v:['dam']});          // case-insensitive, part of the word
+ r.opNotHas  = withCol({op:'nhas',v:['dam']});          // and an empty cell contains nothing
+ const withNum = (raw)=>{ const f=bfGet('p1'); f.cols={fx:raw}; const out=shown(); f.cols={}; return out; };
+ r.opGt = withNum({op:'gt', v:['10']});                 // a=30, b=5, c empty
+ r.opLt = withNum({op:'lt', v:['10']});
+ S._fields.push({id:'fd',project_id:'p1',label:'Ship by',ftype:'date',options:null});
+ S._tasks[0].custom.fd='2026-09-20'; S._tasks[1].custom.fd='2026-09-01';
+ const withDate = (raw)=>{ const f=bfGet('p1'); f.cols={fd:raw}; const out=shown(); f.cols={}; return out; };
+ r.opBefore  = withDate({op:'before', v:['2026-09-10']});
+ r.opAfter   = withDate({op:'after',  v:['2026-09-10']});
+ r.opBetween = withDate({op:'between',v:['2026-08-31','2026-09-05']});
+ // an operator picked but not yet filled in is not a filter at all
+ r.opHalf = JSON.stringify([bfColFilter({op:'has',v:['']}), bfColFilter({op:'between',v:['2026-09-01']}), bfColFilter({op:'nope',v:['x']})]);
+ r.opHalfShows = withCol({op:'has', v:['']});
+ // header labels stay short enough for a column head
+ const lbl = (raw)=>{ const f=bfGet('p1'); f.cols={fs:raw}; const out=tvColFilterLabel('p1','f:fs'); f.cols={}; return out; };
+ r.lblNotIs=lbl({op:'nis',v:['Late','Damaged']}); r.lblEmpty=lbl({op:'empty'}); r.lblNotEmpty=lbl({op:'nempty'});
+ r.lblHas=lbl({op:'has',v:['ref']}); r.lblGt=(()=>{const f=bfGet('p1');f.cols={fx:{op:'gt',v:['10']}};const o=tvColFilterLabel('p1','f:fx');f.cols={};return o;})();
+ r.lblBetween=(()=>{const f=bfGet('p1');f.cols={fd:{op:'between',v:['2026-09-01','2026-09-30']}};const o=tvColFilterLabel('p1','f:fd');f.cols={};return o;})();
+ // and through the menu: switching the operator writes it, keeps ticks between is and is not,
+ // and drops them when the new operator takes typing instead
+ bfClear('p1'); tvColFilterPick(anchor,'p1','f:fs');
+ const setOp=(k)=>{ const sel=document.querySelector('#tvmenu .mop'); sel.value=k; sel.dispatchEvent(new window.Event('change')); };
+ r.menuOps=[...document.querySelectorAll('#tvmenu .mop option')].map(o=>o.value).join(',');
+ tick('Late'); setOp('nis');
+ r.switchKept=JSON.stringify(bfGet('p1').cols.fs)+'/'+shown();
+ setOp('nempty'); r.switchNone=JSON.stringify(bfGet('p1').cols.fs)+'/'+shown();
+ setOp('has');    r.switchTyped=JSON.stringify(bfGet('p1').cols)+'/'+!!document.querySelector('#tvmenu .mval input');
+ // typing into the value box filters after a short pause, not on every keystroke
+ const vi=document.querySelector('#tvmenu .mval input'); vi.value='dam';
+ vi.dispatchEvent(new window.Event('input')); r.typedInstant=JSON.stringify(bfGet('p1').cols);
+ await new Promise(res=>setTimeout(res,360));
+ r.typedSettled=JSON.stringify(bfGet('p1').cols);
+ tvCloseMenu(); bfClear('p1'); S._fields=S._fields.filter(f=>f.id!=='fd'); seed();
  // a value saved as a plain string by an older view still filters
  bfGet('p1').cols={fs:'Late'}; r.legacyString=shown(); bfClear('p1');
  // a core column hands over to the filter bar's own slot, so bar and header agree
@@ -144,4 +188,18 @@ check('a value saved as a plain string by an older view still filters', r.legacy
 check('a core column goes through the filter bar slot', r.coreSlot==='done' && r.coreMark);
 check('Clear filters drops the column filters too', r.afterClear==='{}/0');
 check('a column empty on every task says so', r.emptyCol);
+check('every column offers is / is not / empty; text adds contains, numbers and dates their own',
+  r.opsText==='is,nis,empty,nempty,has,nhas' && r.opsNum==='is,nis,empty,nempty,gt,lt' && r.opsDate==='is,nis,empty,nempty,before,after,between');
+check('is and is not are opposites, and empty / not empty split the board', r.opIs==='a' && r.opNotIs==='bc' && r.opEmpty==='c' && r.opNotEmpty==='ab');
+check('contains matches part of the word, case-insensitively; an empty cell contains nothing', r.opHas==='b' && r.opNotHas==='ac');
+check('greater than and less than read the number out of the cell', r.opGt==='a' && r.opLt==='b');
+check('before, after and between compare dates', r.opBefore==='b' && r.opAfter==='a' && r.opBetween==='b');
+check('an operator with nothing filled in filters nothing', r.opHalf==='[null,null,null]' && r.opHalfShows==='abc');
+check('the header label names the operator and stays short',
+  r.lblNotIs==='not Late +1' && r.lblEmpty==='Empty' && r.lblNotEmpty==='Not empty' && r.lblHas==='\u201cref\u201d' && r.lblGt==='> 10' && r.lblBetween==='2026-09-01 \u2192 2026-09-30');
+check('the menu switches operator: ticks survive is -> is not, and go when typing takes over',
+  /^is,nis,empty,nempty,has,nhas$/.test(r.menuOps||'') && r.switchKept==='{"op":"nis","v":["Late"]}/bc'
+  && r.switchNone==='{"op":"nempty"}/ab' && r.switchTyped==='{}/true');
+check('typing a value filters after a pause, not on every keystroke',
+  r.typedInstant==='{}' && r.typedSettled==='{"fs":{"op":"has","v":["dam"]}}');
 if(!ok) process.exit(1); });
