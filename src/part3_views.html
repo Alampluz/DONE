@@ -719,6 +719,8 @@ function bfPickPerson(btn, pid){
    The active tab is remembered per board in localStorage, like the view type, so the board
    opens where the person left it. */
 const BV_BLANK = {q:'', status:'', priority:'', assignee:'', group:'', quick:''};
+/* A line-drawn pin in the app's icon style, not an emoji. */
+const PIN_ICON = '<svg class="vt-pin" viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Pinned for the board"><path d="M6 2.5h4M7 2.5v3.2L4.6 8.4a.6.6 0 0 0 .4 1h6a.6.6 0 0 0 .4-1L9 5.7V2.5M8 9.4v4.1"/></svg>';
 const vtabLoad = pid => { try{ return localStorage.getItem('workos.vtab.'+pid)||''; }catch(e){ return ''; } };
 const vtabSave = (pid, id) => { try{ id? localStorage.setItem('workos.vtab.'+pid, id) : localStorage.removeItem('workos.vtab.'+pid); }catch(e){} };
 const bvList = pid => (S._views||[]).filter(v=>v.project_id===pid);
@@ -753,7 +755,7 @@ function bvClear(pid){
 function viewTabsHTML(pid){
   const act = bvActive(pid), dirty = bvDirty(pid, act);
   const tab = v => `<button class="vtab ${act&&act.id===v.id?'on':''}" onclick="bvApply('${pid}', bvList('${pid}').find(x=>x.id==='${v.id}'))" title="${esc(v.user_id? 'Your view':'Pinned for everyone on this board')}">
-      ${v.user_id? '' : '<span class="vt-pin" title="Pinned for the board">📌</span>'}${esc(v.name)}${act&&act.id===v.id&&dirty? '<span class="vt-dirty" title="Changed since it was saved"></span>':''}
+      ${v.user_id? '' : PIN_ICON}${esc(v.name)}${act&&act.id===v.id&&dirty? '<span class="vt-dirty" title="Changed since it was saved"></span>':''}
       ${bvCanEdit(v)? `<span class="vt-dots" onclick="event.stopPropagation();bvMenu(this,'${pid}','${v.id}')">⋯</span>`:''}</button>`;
   const views = bvList(pid).slice().sort((a,b)=> (a.user_id?1:0)-(b.user_id?1:0) || (a.position-b.position) || (a.created_at||'').localeCompare(b.created_at||''));
   return `<div class="vtabs">
