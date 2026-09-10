@@ -4906,6 +4906,8 @@ async function projectMembersModal(pid){
   const people = ids.map(id=>prof(id)).filter(p=>p && p.active && !(p.email||'').startsWith('forms+'))
     .sort((a,b)=> (ownerIds.includes(b.id)) - (ownerIds.includes(a.id))
                   || (a.full_name||'').localeCompare(b.full_name||''));
+  const vis = board.visibility || 'collaborate';
+  const canGuest = vis === 'shareable';
   const peopleHTML = `
       ${searchBoxHTML('pm-q','Search by name, team, role, or email address')}
       ${canGuest? teamAddHTML('pm-team') : ''}
@@ -4922,8 +4924,6 @@ async function projectMembersModal(pid){
           ${ownerHeartHTML(ownerIds.includes(p.id), canSetOwner, `setBoardOwner('${pid}','${p.id}')`, 'board')}
         </div>`).join('')}</div>
       `;
-  const vis = board.visibility || 'collaborate';
-  const canGuest = vis === 'shareable';
   const m = modal(`<div class="modal-head"><h2>Board members (partner access)</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       ${peopleHTML}
@@ -4931,6 +4931,9 @@ async function projectMembersModal(pid){
       ${canGuest? '' : `<div style="margin-top:12px;padding:10px 12px;background:var(--gray-soft);border-radius:8px;font-size:12.5px;color:var(--ink2)">
         This board is <b>${VIS[vis].label}</b>, so outside guests can't be added. Switch it to <b>Shareable</b> first.
         ${canEdit()? `<button class="btn btn-ghost btn-sm" style="margin-left:8px" id="pm-tovis">Make Shareable</button>`:''}</div>`}
+      ${canGuest? `<label style="margin-top:14px">What partners can change on this board ${helpIcon('This applies to partner and freelancer accounts only - your own staff keep whatever the board\'s edit setting says. The database enforces it, so it holds even outside the app.')}</label>
+      <select id="pm-pedit">${[['assigned','Only tasks assigned to them, or that they raised'],['everything','Any task on this board'],['view','Nothing - they can read and comment only']]
+        .map(([k,l])=>`<option value="${k}" ${((board.partner_edit||'assigned')===k)?'selected':''}>${l}</option>`).join('')}</select>` : ''}
       ${externals.length? externals
         .sort((a,b)=> (memberIds.has(b.id)) - (memberIds.has(a.id)) || (a.full_name||'').localeCompare(b.full_name||''))
         .map(p=>`
@@ -4953,6 +4956,12 @@ async function projectMembersModal(pid){
     const rm=[...memberIds].filter(u=>!want.has(u));
     if(add.length){ const {error} = await db.from('project_members').insert(add); if(error) return toast(error.message, true); }
     if(rm.length){ const {error} = await db.from('project_members').delete().eq('project_id',pid).in('user_id',rm); if(error) return toast(error.message, true); }
+    const pe = m.querySelector('#pm-pedit');
+    if(pe && pe.value !== (board.partner_edit||'assigned')){
+      const {error} = await db.from('projects').update({partner_edit:pe.value}).eq('id',pid);
+      if(error) return toast(error.message, true);
+      board.partner_edit = pe.value;
+    }
     closeModals(); toast('Members updated');
   };
 }
@@ -5455,8 +5464,11 @@ function showAllHistory(){
   const box = document.getElementById('tv-history'); if(!box) return;
   box.innerHTML = historyHTML(S._taskHist||[], true);
 }
-/* The activity log stays folded until asked for — a click on the header opens it. */
+/* The activity log stays folded until asked for — a click on the header opens it.
+   Partners and freelancers never see it: the board's change history is internal, and the
+   database returns them nothing anyway (April, 10 Sep 2026). */
 function historySectionHTML(){
+  if(isExternal()) return '';
   const n = (S._taskHist||[]).length;
   return `<div class="hist-toggle" onclick="toggleHistoryPanel(this)">
       <label style="cursor:pointer;margin:0">Activity log</label>
