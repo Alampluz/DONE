@@ -105,6 +105,15 @@ table.tv{border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:10
 .tv th{white-space:nowrap;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink3);font-weight:700;padding:9px 14px;border-bottom:1px solid var(--line);background:#FBFBF8;position:sticky;top:0;z-index:2}
 .tv th.col-edit{cursor:pointer}
 .tv th.col-edit:hover{color:var(--accent)}
+/* Column header menu (Rename · Sort). The ⋯ shows on hover; a sorted column keeps its arrow. */
+.tv th .th-in{display:inline-flex;align-items:center;gap:4px;max-width:100%}
+.tv th .th-dots{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;color:var(--ink3);font-size:13px;line-height:1;opacity:0;cursor:pointer;letter-spacing:0;text-transform:none;transition:opacity .12s,background .12s}
+.tv th:hover .th-dots,.tv th .th-dots.on{opacity:1}
+.tv th .th-dots:hover,.tv th .th-dots.on{background:var(--gray-soft);color:var(--ink)}
+.tv th .th-sort{font-size:9px;color:var(--accent-ink);letter-spacing:0}
+.tv th.sorted{color:var(--accent-ink)}
+.tv-sortbar{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2);margin:0 0 8px 2px}
+.tv-sortbar b{color:var(--ink)} .tv-sortbar .clr{color:var(--accent-ink);cursor:pointer;font-weight:600}
 .tv td{padding:0;border-top:1px solid #F1F1EC;vertical-align:middle;min-width:132px;background:#fff}
 .tv td+td{border-left:1px solid #F6F6F1}
 .tv tbody tr:first-child td{border-top:none}
@@ -3886,10 +3895,105 @@ async function restoreTask(logId, pid){
   if(S.route.view==='project' && S.route.id===pid) renderProject(pid);
   else location.hash = '#/project/'+pid;
 }
+/* ---- column sort, per person ----
+   A sort is a way of looking at a board, not a property of it, so it is remembered per person
+   in localStorage (workos.sort.<pid>) and never written to the database: the drag order
+   (position) is untouched and comes back the moment the sort is cleared. Applies within each
+   group, as monday does. Keys: title · status · assignee · due_date · priority · ticket_no ·
+   f:<field id> for a custom column. */
+const tvSortLoad = pid => { try{ const v=JSON.parse(localStorage.getItem('workos.sort.'+pid)||'null'); return v && v.key? v : null; }catch(e){ return null; } };
+const tvSortSave = (pid, v) => { try{ v? localStorage.setItem('workos.sort.'+pid, JSON.stringify(v)) : localStorage.removeItem('workos.sort.'+pid); }catch(e){} };
+function tvSortSet(pid, key, dir){ tvSortSave(pid, key? {key, dir: dir||'asc'} : null); const y=scrollY; renderBoardBody(pid); scrollTo(0,y); }
+/* The value a column sorts by. Empty values sort last in both directions. */
+function tvSortValue(t, key){
+  if(key==='title')     return (t.title||'').toLowerCase();
+  if(key==='ticket_no') return t.ticket_no||'';
+  if(key==='status')    { const i=STATUSES.findIndex(s=>s.k===t.status);   return i<0? 99 : i; }
+  if(key==='priority')  { const i=PRIORITIES.findIndex(p=>p.k===t.priority); return i<0? 99 : i; }
+  if(key==='assignee')  { const p=prof(t.assignee_id); return p? (p.full_name||'').toLowerCase() : ''; }
+  if(key==='due_date')  return t.due_date||'';
+  if(key.startsWith('f:')){
+    const f=(S._fields||[]).find(x=>x.id===key.slice(2)); const v=(t.custom||{})[key.slice(2)];
+    if(v==null || v==='') return '';
+    if(!f) return String(v).toLowerCase();
+    if(f.ftype==='number')   { const n=parseFloat(v); return isNaN(n)? '' : n; }
+    if(f.ftype==='checkbox') return v? 0 : 1;
+    if(f.ftype==='person')   { const p=prof(v); return p? (p.full_name||'').toLowerCase() : ''; }
+    if(f.ftype==='file')     return (v&&v.name? v.name : '').toLowerCase();
+    return String(v).toLowerCase();
+  }
+  return '';
+}
+function tvSortFn(pid, fallback){
+  const srt = tvSortLoad(pid); if(!srt) return fallback;
+  const dir = srt.dir==='desc'? -1 : 1;
+  return (a,b)=>{
+    const va=tvSortValue(a,srt.key), vb=tvSortValue(b,srt.key);
+    const ea = va==='' , eb = vb==='';
+    if(ea!==eb) return ea? 1 : -1;                    // empties last, whichever direction
+    if(va<vb) return -dir; if(va>vb) return dir;
+    return fallback(a,b);
+  };
+}
+function tvSortLabel(pid, key){
+  if(key==='title') return 'Task'; if(key==='ticket_no') return 'Ticket';
+  if(key.startsWith('f:')) return ((S._fields||[]).find(x=>x.id===key.slice(2))||{}).label||'column';
+  return coreLabel(pid, key);
+}
+/* The ⋯ on a column header. Rename changes the board for everyone (owners only, as before);
+   Sort is this person's own. */
+function tvColMenu(btn, pid, key){
+  const srt = tvSortLoad(pid), on = srt && srt.key===key;
+  const isField = key.startsWith('f:'), core = ['status','priority','assignee','due_date'].includes(key);
+  const dateish = key==='due_date' || (isField && (((S._fields||[]).find(x=>x.id===key.slice(2))||{}).ftype==='date'));
+  const numish  = isField && (((S._fields||[]).find(x=>x.id===key.slice(2))||{}).ftype==='number');
+  const [up, down] = dateish? ['Oldest first','Newest first'] : numish? ['Lowest first','Highest first']
+                   : (key==='status'||key==='priority')? ['In order','Reverse order'] : ['Sort A → Z','Sort Z → A'];
+  const items = [];
+  if(canManageBoard(pid) && (isField || core)) items.push({label:'Rename', fn:()=>tvRenameColumn(pid, key)});
+  if(items.length) items.push('-');
+  items.push({label:(on&&srt.dir==='asc'? '✓ ':'')+up,   fn:()=>tvSortSet(pid,key,'asc')});
+  items.push({label:(on&&srt.dir==='desc'? '✓ ':'')+down, fn:()=>tvSortSet(pid,key,'desc')});
+  if(on) items.push({label:'Clear sort', fn:()=>tvSortSet(pid,null)});
+  ctxMenu(btn, items);
+}
+/* Rename in place: a custom column's label, or a standard field's per-board label. */
+function tvRenameColumn(pid, key){
+  const isField = key.startsWith('f:');
+  const cur = tvSortLabel(pid, key);
+  const m = modal(`<div class="modal-head"><h2>Rename column</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body"><label>Name</label><input id="rc-name" value="${esc(cur)}" maxlength="${isField?60:24}"></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="rc-save">Save</button></div>`);
+  const inp = m.querySelector('#rc-name'); inp.focus(); inp.select();
+  const save = async ()=>{
+    const name = inp.value.trim(); if(!name) return toast('Name is required', true);
+    let error;
+    if(isField){
+      ({error} = await db.from('project_fields').update({label:name}).eq('id', key.slice(2)));
+      if(!error){ const f=(S._fields||[]).find(x=>x.id===key.slice(2)); if(f) f.label=name; }
+    } else {
+      const p = projById(pid); const fc = {...((p&&p.field_config)||{})};
+      const def = (CORE_FIELDS.find(f=>f.k===key)||{}).label;
+      fc[key] = {...(fc[key]||{})}; if(name===def) delete fc[key].label; else fc[key].label = name;
+      if(!Object.keys(fc[key]).length) delete fc[key];
+      ({error} = await db.from('projects').update({field_config:fc}).eq('id', pid));
+      if(!error && p) p.field_config = fc;
+    }
+    if(error) return toast(error.message, true);
+    closeModals(); toast('Column renamed'); const y=scrollY; renderBoardBody(pid); scrollTo(0,y);
+  };
+  m.querySelector('#rc-save').onclick = save;
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') save(); });
+}
+/* One header cell: label, the ⋯, and the sort arrow when this column is the sorted one. */
+function tvTh(pid, key, label, extraCls, extraAttrs){
+  const srt = tvSortLoad(pid), on = srt && srt.key===key;
+  return `<th class="${extraCls||''}${on?' sorted':''}" ${extraAttrs||''}><span class="th-in">${esc(label)}${on? `<span class="th-sort">${srt.dir==='desc'?'▼':'▲'}</span>`:''}<span class="th-dots" title="Column options" onclick="event.stopPropagation();tvColMenu(this,'${pid}','${key}')">⋯</span></span></th>`;
+}
 function tvHeadHTML(id, flds, showAddCol, gid){
   return `<tr>
-    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}<th>Task</th><th>${esc(coreLabel(id,'status'))}</th>${coreHidden(id,'assignee')?'':`<th>${esc(coreLabel(id,'assignee'))}</th>`}${coreHidden(id,'due_date')?'':`<th>${esc(coreLabel(id,'due_date'))}</th>`}${coreHidden(id,'priority')?'':`<th>${esc(coreLabel(id,'priority'))}</th>`}
-    ${flds.map(f=>`<th class="${canManageBoard(id)?'col-edit':''}" ${canManageBoard(id)?`onclick="editColumnModal('${f.id}','${id}')" title="Edit column"`:''}>${esc(f.label)}</th>`).join('')}
+    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}${tvTh(id,'title','Task')}${tvTh(id,'status',coreLabel(id,'status'))}${coreHidden(id,'assignee')?'':tvTh(id,'assignee',coreLabel(id,'assignee'))}${coreHidden(id,'due_date')?'':tvTh(id,'due_date',coreLabel(id,'due_date'))}${coreHidden(id,'priority')?'':tvTh(id,'priority',coreLabel(id,'priority'))}
+    ${flds.map(f=>tvTh(id,'f:'+f.id,f.label, canManageBoard(id)?'col-edit':'', canManageBoard(id)?`onclick="editColumnModal('${f.id}','${id}')" title="Edit column"`:'')).join('')}
     ${isStaff()? (showAddCol&&canManageBoard(id)? `<th><span class="tv-addcol" onclick="addColumnModal('${id}')">＋ Column</span></th>`:'<th></th>'):''}
   </tr>`;
 }
@@ -3937,7 +4041,9 @@ function renderProjectTableView(id, rowSet, host){
   const flds = S._fields||[], groups = S._groups||[];
   tvBuildOpts(flds);
   const cols = 2+['assignee','due_date','priority'].filter(k=>!coreHidden(id,k)).length+(canEdit()?1:0)+flds.length+(isStaff()?1:0);
-  const byPos = (a,b)=> (a.position||0)-(b.position||0);
+  const byPos = tvSortFn(id, (a,b)=> (a.position||0)-(b.position||0));
+  const srt = tvSortLoad(id);
+  const sortBar = srt? `<div class="tv-sortbar">Sorted by <b>${esc(tvSortLabel(id,srt.key))}</b> ${srt.dir==='desc'?'▼':'▲'} · <span class="clr" onclick="tvSortSet('${id}',null)">Clear</span></div>` : '';
   const tableFor = (rows, gid, first, gc)=>{
     const key = gid||'__all__', lim = tvShown[key] ?? TV_CHUNK;
     const shown = rows.length > lim + 50 ? rows.slice(0, lim) : rows;   // never hide fewer than 50
@@ -3952,13 +4058,13 @@ function renderProjectTableView(id, rowSet, host){
   const archBar = (nArch||tvShowArch)? `<div class="tv-archbar" onclick="tvToggleArch()">${tvShowArch?'▾':'▸'} ${nArch} archived task${nArch===1?'':'s'} — ${tvShowArch?'hide':'show'}</div>` : '';
   if(!groups.length){
     const rows = [...SRC].sort(byPos);
-    C.innerHTML = tableFor(rows, null, true)
+    C.innerHTML = sortBar + tableFor(rows, null, true)
       + (canManageBoard(id)? `<div class="tv-addgroup" onclick="addGroupModal('${id}')" style="margin-top:14px">＋ Add group</div>`:'') + archBar;
     return;
   }
   const gids = new Set(groups.map(g=>g.id));
   const ungrouped = SRC.filter(t=>!t.group_id || !gids.has(t.group_id)).sort(byPos);
-  C.innerHTML = groups.map((g,i)=>{
+  C.innerHTML = sortBar + groups.map((g,i)=>{
     const rows = SRC.filter(t=>t.group_id===g.id).sort(byPos);
     const closed = tvCollapsed.has(g.id);
     return `<div class="tv-group ${closed?'collapsed':''}" id="tvg-${g.id}">
