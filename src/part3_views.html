@@ -711,6 +711,136 @@ function bfPickPerson(btn, pid){
   tvShowMenu(btn, opts, o=>`${o.v==='__none__'?'<span style="width:22px"></span>':avatar(prof(o.v),true)}<span>${esc(o.l)}</span>`,
     v=>{ bfGet(pid).assignee = v || ''; renderProject(pid); }, true, true);
 }
+/* ================= SAVED VIEWS (tabs) =================
+   A saved view is a view type + the filter bar + this person's sort, given a name and shown as
+   a tab above the board - "Last 7 days", "Assigned to me". Everyone has their own tabs; someone
+   who manages the board can also pin a view so the whole board sees it (user_id null). Rows
+   live in board_views; RLS keeps personal tabs personal and pinning to owners (10 Sep).
+   The active tab is remembered per board in localStorage, like the view type, so the board
+   opens where the person left it. */
+const BV_BLANK = {q:'', status:'', priority:'', assignee:'', group:'', quick:''};
+const vtabLoad = pid => { try{ return localStorage.getItem('workos.vtab.'+pid)||''; }catch(e){ return ''; } };
+const vtabSave = (pid, id) => { try{ id? localStorage.setItem('workos.vtab.'+pid, id) : localStorage.removeItem('workos.vtab.'+pid); }catch(e){} };
+const bvList = pid => (S._views||[]).filter(v=>v.project_id===pid);
+const bvActive = pid => bvList(pid).find(v=>v.id===vtabLoad(pid)) || null;
+const bvCanEdit = v => v.user_id? v.user_id===(S.me||{}).id : canManageBoard(v.project_id);
+/* What the board is showing right now, in the shape a view stores. */
+function bvSnapshot(pid){
+  const f = {...BV_BLANK, ...bfGet(pid)}; Object.keys(f).forEach(k=>{ if(!f[k]) delete f[k]; });
+  return {view: boardMode==='report'? 'report' : boardMode, filters:f, sort: tvSortLoad(pid)};
+}
+/* Has the person moved away from what the active tab saved? Shown as a small amber dot. */
+function bvDirty(pid, v){
+  if(!v) return false;
+  const now = bvSnapshot(pid), saved = {view:v.view||'table', filters:{...(v.filters||{})}, sort:v.sort||null};
+  Object.keys(saved.filters).forEach(k=>{ if(!saved.filters[k]) delete saved.filters[k]; });
+  return JSON.stringify(now) !== JSON.stringify(saved);
+}
+function bvApply(pid, v){
+  boardFilters[pid] = {...BV_BLANK, ...(v.filters||{})};
+  bfQuickSave(pid, boardFilters[pid].quick||'');
+  tvSortSave(pid, v.sort||null);
+  vtabSave(pid, v.id);
+  const mode = BOARD_VIEWS.some(x=>x[0]===v.view)? v.view : 'table';
+  boardMode = mode; viewSave(pid, mode); S._viewPid = pid;
+  renderBoardChrome(pid);
+}
+/* "All": no saved view - clear the filters and the sort, keep the view type. */
+function bvClear(pid){
+  boardFilters[pid] = {...BV_BLANK}; bfQuickSave(pid,''); tvSortSave(pid,null); vtabSave(pid,'');
+  renderBoardChrome(pid);
+}
+function viewTabsHTML(pid){
+  const act = bvActive(pid), dirty = bvDirty(pid, act);
+  const tab = v => `<button class="vtab ${act&&act.id===v.id?'on':''}" onclick="bvApply('${pid}', bvList('${pid}').find(x=>x.id==='${v.id}'))" title="${esc(v.user_id? 'Your view':'Pinned for everyone on this board')}">
+      ${v.user_id? '' : '<span class="vt-pin" title="Pinned for the board">📌</span>'}${esc(v.name)}${act&&act.id===v.id&&dirty? '<span class="vt-dirty" title="Changed since it was saved"></span>':''}
+      ${bvCanEdit(v)? `<span class="vt-dots" onclick="event.stopPropagation();bvMenu(this,'${pid}','${v.id}')">⋯</span>`:''}</button>`;
+  const views = bvList(pid).slice().sort((a,b)=> (a.user_id?1:0)-(b.user_id?1:0) || (a.position-b.position) || (a.created_at||'').localeCompare(b.created_at||''));
+  return `<div class="vtabs">
+    <button class="vtab ${act?'':'on'}" onclick="bvClear('${pid}')">All</button>
+    ${views.map(tab).join('')}
+    ${isStaff()? `<button class="vtab vtab-add" onclick="bvSaveModal('${pid}')">＋ Save view</button>`:''}
+  </div>`;
+}
+function bvMenu(btn, pid, id){
+  const v = bvList(pid).find(x=>x.id===id); if(!v) return;
+  const items = [
+    {label:'Update with what I see now', fn:()=>bvUpdate(pid, id)},
+    {label:'Rename', fn:()=>bvSaveModal(pid, id)},
+  ];
+  if(canManageBoard(pid)) items.push({label: v.user_id? 'Pin for everyone on this board' : 'Unpin (make it mine)', fn:()=>bvTogglePin(pid, id)});
+  items.push('-', {label:'Delete view', danger:true, fn:()=>bvDelete(pid, id)});
+  ctxMenu(btn, items);
+}
+function bvSaveModal(pid, id){
+  const v = id? bvList(pid).find(x=>x.id===id) : null;
+  const snap = bvSnapshot(pid);
+  const what = [BOARD_VIEWS.find(x=>x[0]===snap.view)?.[1]||'Table',
+    ...Object.entries(snap.filters).map(([k,val])=> k==='q'? `“${val}”` : k==='quick'? (BF_QUICK.find(x=>x.k===val)||{}).label||val : k==='assignee'? (val==='__none__'?'Unassigned':(prof(val)||{}).full_name||'person') : k==='group'? ((S._groups||[]).find(g=>g.id===val)||{}).name||'group' : k==='status'? statusLabel(val) : k==='priority'? prioLabel(val) : val),
+    ...(snap.sort? [`sorted by ${tvSortLabel(pid, snap.sort.key)}`] : [])].filter(Boolean).join(' · ');
+  const m = modal(`<div class="modal-head"><h2>${v? 'Rename view':'Save this view'} ${helpIcon('A saved view remembers the view type, the filters and your sort, and sits as a tab above the board. Yours unless you pin it, in which case everyone on the board sees it.')}</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <label>Name</label><input id="bv-name" value="${esc(v? v.name : '')}" placeholder="e.g. Last 7 days, Assigned to me" maxlength="40">
+      ${v? '' : `<div style="margin-top:10px;font-size:12.5px;color:var(--ink2)">Saves: <b>${esc(what)}</b></div>`}
+      ${!v && canManageBoard(pid)? `<div class="chk" style="margin-top:14px"><input type="checkbox" id="bv-pin"> <span>Pin for everyone on this board</span>${helpIcon('A pinned view shows as a tab for every person who opens the board. Only the board\'s owners can pin, change or remove one.')}</div>`:''}
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="bv-save">${v? 'Save':'Save view'}</button></div>`);
+  const inp = m.querySelector('#bv-name'); inp.focus(); if(v) inp.select();
+  const save = async ()=>{
+    const name = inp.value.trim(); if(!name) return toast('Give the view a name', true);
+    if(v){
+      const {error} = await db.from('board_views').update({name}).eq('id', v.id);
+      if(error) return toast(bvError(error), true);
+      v.name = name; closeModals(); toast('View renamed'); renderBoardChrome(pid); return;
+    }
+    const pin = !!(m.querySelector('#bv-pin')||{}).checked;
+    const row = {project_id:pid, user_id: pin? null : S.me.id, name, view:snap.view, filters:snap.filters, sort:snap.sort,
+                 position: bvList(pid).length};
+    const {data, error} = await db.from('board_views').insert(row).select().single();
+    if(error) return toast(bvError(error), true);
+    S._views = (S._views||[]).concat([data]); vtabSave(pid, data.id);
+    closeModals(); toast(pin? 'View saved and pinned for the board' : 'View saved'); renderBoardChrome(pid);
+  };
+  m.querySelector('#bv-save').onclick = save;
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') save(); });
+}
+async function bvUpdate(pid, id){
+  const v = bvList(pid).find(x=>x.id===id); if(!v) return;
+  const snap = bvSnapshot(pid);
+  const {error} = await db.from('board_views').update({view:snap.view, filters:snap.filters, sort:snap.sort}).eq('id', id);
+  if(error) return toast(bvError(error), true);
+  Object.assign(v, snap); vtabSave(pid, id); toast('View updated'); renderBoardChrome(pid);
+}
+async function bvTogglePin(pid, id){
+  const v = bvList(pid).find(x=>x.id===id); if(!v) return;
+  const user_id = v.user_id? null : S.me.id;
+  // RLS decides ownership by user_id, so a pin/unpin is a delete of the old row and an insert of the new one.
+  const {data, error} = await db.from('board_views').insert({project_id:pid, user_id, name:v.name, view:v.view, filters:v.filters, sort:v.sort, position:v.position}).select().single();
+  if(error) return toast(bvError(error), true);
+  const {error:e2} = await db.from('board_views').delete().eq('id', id);
+  if(e2){ toast(bvError(e2), true); }
+  S._views = (S._views||[]).filter(x=>x.id!==id).concat([data]);
+  if(vtabLoad(pid)===id) vtabSave(pid, data.id);
+  toast(user_id? 'Now your own view' : 'Pinned for everyone on this board'); renderBoardChrome(pid);
+}
+async function bvDelete(pid, id){
+  const v = bvList(pid).find(x=>x.id===id); if(!v) return;
+  if(!confirm(`Delete the view “${v.name}”${v.user_id? '' : ' for everyone on this board'}?`)) return;
+  const {error} = await db.from('board_views').delete().eq('id', id);
+  if(error) return toast(bvError(error), true);
+  S._views = (S._views||[]).filter(x=>x.id!==id);
+  if(vtabLoad(pid)===id){ vtabSave(pid,''); }
+  toast('View deleted'); renderBoardChrome(pid);
+}
+const bvError = e => /row-level security/i.test(e.message||'') ? 'Only the board\'s owners can change a pinned view' : e.message;
+/* Everything under the topbar, redrawn from the cache: tabs, notice, filter bar, body. */
+function renderBoardChrome(pid){
+  const C=$('#content'); if(!C) return;
+  if(boardMode==='report'){ C.innerHTML = viewTabsHTML(pid) + '<div id="board-body"></div>'; renderBoardReport(pid); return; }
+  widgetProjScope = null;
+  C.innerHTML = viewTabsHTML(pid) + presetNoticeHTML(pid) + filterBarHTML(pid) + '<div id="board-body"></div>';
+  renderBoardBody(pid);
+}
 function filterBarHTML(pid){
   const f = bfGet(pid), n = bfActiveCount(pid);
   const people = (S.profiles||[]).filter(p=>p.active);
@@ -842,12 +972,14 @@ async function renderProject(id){
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteProjectModal('${id}')">Delete board</button>`:''}
      ${(canEditOnBoard(id) || isRequester() && boardPreset(id)!=='view')? `<button class="btn btn-primary btn-sm" onclick="newTaskModal('${id}')">＋ New task</button>`:''}`);
   const C=$('#content'); C.innerHTML='<div class="empty">Loading…</div>';
-  const [{data:tasks, error},{data:sc},{data:fields},{data:groups}] = await Promise.all([
+  const [{data:tasks, error},{data:sc},{data:fields},{data:groups},{data:views}] = await Promise.all([
     allRows(()=>db.from('tasks').select('*').eq('project_id',id).order('position').order('id')),
     db.from('subtasks').select('task_id,status,tasks!inner(project_id)').eq('tasks.project_id', id),
     db.from('project_fields').select('*').eq('project_id',id).order('position').order('created_at'),
     db.from('project_groups').select('*').eq('project_id',id).order('position').order('created_at'),
+    db.from('board_views').select('*').eq('project_id',id).order('position').order('created_at'),
   ]);
+  S._views = (S._views||[]).filter(v=>v.project_id!==id).concat(Array.isArray(views)? views : []);
   if(error){ C.innerHTML=`<div class="card empty">${esc(error.message)}</div>`; return; }
   // Dependencies for the whole board in one go — powers the ⛓ marker per row.
   // Filter through the task's board rather than listing task ids: a 3,000-row board
@@ -861,14 +993,18 @@ async function renderProject(id){
   await loadLinkedData(S._tasksAll, S._fields);   // link/mirror columns need the linked rows
   S._subs = {};
   (sc||[]).forEach(s=>{ const o=S._subs[s.task_id]||(S._subs[s.task_id]={done:0,total:0}); o.total++; if(s.status==='done') o.done++; });
-  if(boardMode==='report'){
-    C.innerHTML = '<div id="board-body"></div>';
-    renderBoardReport(id);
-    return;
+  // A remembered tab is re-applied on open (the text/status/assignee filters live only in
+  // memory, so a reload would otherwise show the tab lit but the filters gone); one whose
+  // view has since been deleted is simply forgotten.
+  const act = bvActive(id);
+  if(vtabLoad(id) && !act) vtabSave(id,'');
+  if(act && !S._viewsApplied?.has(id)){
+    (S._viewsApplied = S._viewsApplied || new Set()).add(id);
+    boardFilters[id] = {...BV_BLANK, ...(act.filters||{})}; bfQuickSave(id, boardFilters[id].quick||'');
+    tvSortSave(id, act.sort||null);
+    if(BOARD_VIEWS.some(x=>x[0]===act.view) && act.view!==boardMode){ boardMode = act.view; viewSave(id, boardMode); }
   }
-  widgetProjScope = null;
-  C.innerHTML = presetNoticeHTML(id) + filterBarHTML(id) + '<div id="board-body"></div>';
-  renderBoardBody(id);
+  renderBoardChrome(id);
 }
 /* Re-renders only the content below the filter bar, so typing in the search
    box never steals focus from itself. */
