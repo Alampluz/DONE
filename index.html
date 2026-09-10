@@ -111,7 +111,8 @@ table.tv{border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:10
 .tv th:hover .th-dots,.tv th .th-dots.on{opacity:1}
 .tv th .th-dots:hover,.tv th .th-dots.on{background:var(--gray-soft);color:var(--ink)}
 .tv th .th-sort{font-size:9px;color:var(--accent-ink);letter-spacing:0}
-.tv th.sorted{color:var(--accent-ink)}
+.tv th.sorted,.tv th.filtered{color:var(--accent-ink)}
+.tv th .th-filt{display:inline-flex;color:var(--accent-ink);letter-spacing:0}
 .tv-sortbar{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2);margin:0 0 8px 2px}
 .tv-sortbar b{color:var(--ink)} .tv-sortbar .clr{color:var(--accent-ink);cursor:pointer;font-weight:600}
 /* Saved views: a tab strip above the filter bar, monday-style. */
@@ -2841,11 +2842,11 @@ const BF_QUICK = [
 const bfQuickOffered = (pid, x) => !(x.k==='overdue' && coreHidden(pid,'due_date'));
 function bfQuickLoad(pid){ try{ return localStorage.getItem('workos.quick.'+pid)||''; }catch(e){ return ''; } }
 function bfQuickSave(pid, k){ try{ k? localStorage.setItem('workos.quick.'+pid, k) : localStorage.removeItem('workos.quick.'+pid); }catch(e){} }
-const bfGet = pid => (boardFilters[pid] || (boardFilters[pid] = {q:'', status:'', priority:'', assignee:'', group:'', quick:bfQuickLoad(pid)}));
-function bfActiveCount(pid){ const f=bfGet(pid); return ['q','status','priority','assignee','group','quick'].filter(k=>f[k]).length; }
+const bfGet = pid => (boardFilters[pid] || (boardFilters[pid] = {q:'', status:'', priority:'', assignee:'', group:'', quick:bfQuickLoad(pid), cols:{}}));
+function bfActiveCount(pid){ const f=bfGet(pid); return ['q','status','priority','assignee','group','quick'].filter(k=>f[k]).length + Object.keys(f.cols||{}).length; }
 function bfSet(pid, key, val){ bfGet(pid)[key] = val; renderBoardBody(pid); }
 function bfQuick(pid, k){ const f=bfGet(pid); f.quick = (f.quick===k)? '' : k; bfQuickSave(pid, f.quick); renderProject(pid); }
-function bfClear(pid){ boardFilters[pid] = {q:'', status:'', priority:'', assignee:'', group:'', quick:''}; bfQuickSave(pid,''); renderProject(pid); }
+function bfClear(pid){ boardFilters[pid] = {q:'', status:'', priority:'', assignee:'', group:'', quick:'', cols:{}}; bfQuickSave(pid,''); renderProject(pid); }
 function bfApply(pid, rows){
   const f = bfGet(pid);
   const q = f.q.trim().toLowerCase();
@@ -2858,7 +2859,35 @@ function bfApply(pid, rows){
     && (!f.priority || t.priority===f.priority)
     && (!f.assignee || (f.assignee==='__none__' ? !t.assignee_id : t.assignee_id===f.assignee))
     && (!f.group    || (f.group==='__none__' ? !t.group_id : t.group_id===f.group))
+    && bfColsMatch(f, t)
   );
+}
+/* Per-column filters, set from a column's own ⋯ menu. Keyed by field id; '__none__' means
+   the cell is empty. A value is compared as the text the column shows, so a Dropdown, Brand,
+   Platform or text column all behave the same way from the person's point of view. */
+function bfColsMatch(f, t){
+  const cols = f.cols || {};
+  for(const fid in cols){
+    const want = cols[fid], fld = (S._fields||[]).find(x=>x.id===fid);
+    const have = fld? bfColValue(t, fld) : '';
+    if(want==='__none__'){ if(have!=='') return false; }
+    else if(fld && fld.ftype==='platform'){ const list=Array.isArray((t.custom||{})[fid])? (t.custom||{})[fid] : []; if(!list.includes(want)) return false; }
+    else if(have !== want) return false;
+  }
+  return true;
+}
+/* The text a column's cell amounts to - what a filter compares and what the picker lists. */
+function bfColValue(t, f){
+  const v = (t.custom||{})[f.id];
+  if(v==null || v==='') return '';
+  if(f.ftype==='person'){ const p=prof(v); return p? (p.full_name||'') : ''; }
+  if(f.ftype==='checkbox') return v? 'Ticked' : '';
+  if(f.ftype==='file') return (v&&v.name)? v.name : '';
+  if(f.ftype==='link'){ const lt=(S._linkedTasks||{})[v]; return lt? (lt.title||'') : ''; }
+  if(f.ftype==='mirror') return mirrorText(t, f) || '';
+  if(f.ftype==='platform') return Array.isArray(v)? v.join(', ') : String(v);
+  if(f.ftype==='formula'){ try{ return fxFormat(fxEval((f.options&&f.options.expr)||'', t)) || ''; }catch(e){ return ''; } }
+  return String(v);
 }
 /* People pickers are always searchable — a name is faster to type than to find. */
 function bfPickPerson(btn, pid){
@@ -2874,7 +2903,7 @@ function bfPickPerson(btn, pid){
    live in board_views; RLS keeps personal tabs personal and pinning to owners (10 Sep).
    The active tab is remembered per board in localStorage, like the view type, so the board
    opens where the person left it. */
-const BV_BLANK = {q:'', status:'', priority:'', assignee:'', group:'', quick:''};
+const BV_BLANK = {q:'', status:'', priority:'', assignee:'', group:'', quick:'', cols:{}};
 /* A line-drawn pin in the app's icon style, not an emoji. */
 const PIN_ICON = '<svg class="vt-pin" viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-label="Pinned for the board"><path d="M6 2.5h4M7 2.5v3.2L4.6 8.4a.6.6 0 0 0 .4 1h6a.6.6 0 0 0 .4-1L9 5.7V2.5M8 9.4v4.1"/></svg>';
 const vtabLoad = pid => { try{ return localStorage.getItem('workos.vtab.'+pid)||''; }catch(e){ return ''; } };
@@ -2884,7 +2913,10 @@ const bvActive = pid => bvList(pid).find(v=>v.id===vtabLoad(pid)) || null;
 const bvCanEdit = v => v.user_id? v.user_id===(S.me||{}).id : canManageBoard(v.project_id);
 /* What the board is showing right now, in the shape a view stores. */
 function bvSnapshot(pid){
-  const f = {...BV_BLANK, ...bfGet(pid)}; Object.keys(f).forEach(k=>{ if(!f[k]) delete f[k]; });
+  const f = {...BV_BLANK, ...bfGet(pid)};
+  Object.keys(f).forEach(k=>{ if(!f[k]) delete f[k]; });
+  // cols is an object, so it is never falsy - drop it only when no column is filtered
+  if(f.cols && !Object.keys(f.cols).length) delete f.cols;
   return {view: boardMode==='report'? 'report' : boardMode, filters:f, sort: tvSortLoad(pid)};
 }
 /* Has the person moved away from what the active tab saved? Shown as a small amber dot. */
@@ -2892,10 +2924,11 @@ function bvDirty(pid, v){
   if(!v) return false;
   const now = bvSnapshot(pid), saved = {view:v.view||'table', filters:{...(v.filters||{})}, sort:v.sort||null};
   Object.keys(saved.filters).forEach(k=>{ if(!saved.filters[k]) delete saved.filters[k]; });
+  if(saved.filters.cols && !Object.keys(saved.filters.cols).length) delete saved.filters.cols;
   return JSON.stringify(now) !== JSON.stringify(saved);
 }
 function bvApply(pid, v){
-  boardFilters[pid] = {...BV_BLANK, ...(v.filters||{})};
+  boardFilters[pid] = {...BV_BLANK, ...(v.filters||{}), cols:{...((v.filters||{}).cols||{})}};
   bfQuickSave(pid, boardFilters[pid].quick||'');
   tvSortSave(pid, v.sort||null);
   vtabSave(pid, v.id);
@@ -2905,7 +2938,7 @@ function bvApply(pid, v){
 }
 /* "All": no saved view - clear the filters and the sort, keep the view type. */
 function bvClear(pid){
-  boardFilters[pid] = {...BV_BLANK}; bfQuickSave(pid,''); tvSortSave(pid,null); vtabSave(pid,'');
+  boardFilters[pid] = {...BV_BLANK, cols:{}}; bfQuickSave(pid,''); tvSortSave(pid,null); vtabSave(pid,'');
   renderBoardChrome(pid);
 }
 function viewTabsHTML(pid){
@@ -3158,7 +3191,7 @@ async function renderProject(id){
   if(vtabLoad(id) && !act) vtabSave(id,'');
   if(act && !S._viewsApplied?.has(id)){
     (S._viewsApplied = S._viewsApplied || new Set()).add(id);
-    boardFilters[id] = {...BV_BLANK, ...(act.filters||{})}; bfQuickSave(id, boardFilters[id].quick||'');
+    boardFilters[id] = {...BV_BLANK, ...(act.filters||{}), cols:{...((act.filters||{}).cols||{})}}; bfQuickSave(id, boardFilters[id].quick||'');
     tvSortSave(id, act.sort||null);
     if(BOARD_VIEWS.some(x=>x[0]===act.view) && act.view!==boardMode){ boardMode = act.view; viewSave(id, boardMode); }
   }
@@ -4104,7 +4137,64 @@ function tvColMenu(btn, pid, key){
   items.push({label:(on&&srt.dir==='asc'? '✓ ':'')+up,   fn:()=>tvSortSet(pid,key,'asc')});
   items.push({label:(on&&srt.dir==='desc'? '✓ ':'')+down, fn:()=>tvSortSet(pid,key,'desc')});
   if(on) items.push({label:'Clear sort', fn:()=>tvSortSet(pid,null)});
+  if(tvColFilterable(key)){
+    items.push('-');
+    items.push({label: tvColFiltered(pid,key)? 'Filter: '+tvColFilterLabel(pid,key) : 'Filter…', fn:()=>tvColFilterPick(btn, pid, key)});
+  }
   ctxMenu(btn, items);
+}
+/* ---- filter from a column header ----
+   April asked for this next to Rename and Sort. Status, Priority, Assignee and Group reuse
+   the filter bar's own slots so the bar and the header can never disagree; a custom column
+   filters through bfGet(pid).cols. The picker offers the values actually present on the
+   board, so an empty option never appears and nothing is offered that would show nothing. */
+const tvColFilterable = key => key!=='title' && key!=='ticket_no' && key!=='due_date';
+const TV_CORE_SLOT = {status:'status', priority:'priority', assignee:'assignee'};
+function tvColFiltered(pid, key){
+  const f = bfGet(pid);
+  if(TV_CORE_SLOT[key]) return !!f[TV_CORE_SLOT[key]];
+  return key.startsWith('f:') && (f.cols||{})[key.slice(2)] !== undefined;
+}
+function tvColFilterLabel(pid, key){
+  const f = bfGet(pid);
+  if(key==='status')   return statusLabel(f.status);
+  if(key==='priority') return prioLabel(f.priority);
+  if(key==='assignee') return f.assignee==='__none__'? 'Unassigned' : ((prof(f.assignee)||{}).full_name||'someone');
+  const v = (f.cols||{})[key.slice(2)];
+  return v==='__none__'? 'Empty' : v;
+}
+function tvColFilterPick(btn, pid, key){
+  // Core columns: hand it to the filter bar's own slot.
+  if(TV_CORE_SLOT[key]){
+    const slot = TV_CORE_SLOT[key];
+    if(key==='assignee') return bfPickPerson(btn, pid);
+    const opts = (key==='status'? STATUSES : PRIORITIES).map(x=>({v:x.k, l:x.label, c:x.color}));
+    return tvShowMenu(btn, opts, o=>`<span class="cdot" style="background:${o.c}"></span><span>${esc(o.l)}</span>`,
+      v=>{ bfGet(pid)[slot] = v||''; renderProject(pid); }, false, true);
+  }
+  const fid = key.slice(2), fld = (S._fields||[]).find(x=>x.id===fid); if(!fld) return;
+  // Every distinct value on the board, most common first, plus Empty when there are any.
+  const counts = new Map(); let empties = 0;
+  (S._tasks||[]).forEach(t=>{
+    if(fld.ftype==='platform'){
+      const list = Array.isArray((t.custom||{})[fid])? (t.custom||{})[fid] : [];
+      if(!list.length){ empties++; return; }
+      list.forEach(x=> counts.set(x, (counts.get(x)||0)+1));
+      return;
+    }
+    const v = bfColValue(t, fld);
+    if(v==='') { empties++; return; }
+    counts.set(v, (counts.get(v)||0)+1);
+  });
+  let opts = [...counts.entries()].sort((a,b)=> b[1]-a[1] || String(a[0]).localeCompare(String(b[0])))
+    .map(([v,n])=>({v, l:v, n}));
+  // Offering only "Empty" would filter to every row, which is no filter at all.
+  if(!counts.size) return toast('Nothing to filter by — this column is empty on every task', true);
+  if(empties) opts.push({v:'__none__', l:'Empty', n:empties});
+  tvShowMenu(btn, opts, o=>`<span>${esc(o.l)}</span><span style="margin-left:auto;color:var(--ink3);font-size:11.5px">${o.n}</span>`,
+    v=>{ const f=bfGet(pid); f.cols = {...(f.cols||{})}; if(v===null||v==='') delete f.cols[fid]; else f.cols[fid]=v;
+         const y=scrollY; renderProject(pid); scrollTo(0,y); },
+    opts.length>7, true);
 }
 /* Rename in place: a custom column's label, or a standard field's per-board label. */
 function tvRenameColumn(pid, key){
@@ -4136,9 +4226,10 @@ function tvRenameColumn(pid, key){
 }
 /* One header cell: label, the ⋯, and the sort arrow when this column is the sorted one. */
 function tvTh(pid, key, label, extraCls, extraAttrs){
-  const srt = tvSortLoad(pid), on = srt && srt.key===key;
-  return `<th class="${extraCls||''}${on?' sorted':''}" ${extraAttrs||''}><span class="th-in">${esc(label)}${on? `<span class="th-sort">${srt.dir==='desc'?'▼':'▲'}</span>`:''}<span class="th-dots" title="Column options" onclick="event.stopPropagation();tvColMenu(this,'${pid}','${key}')">⋯</span></span></th>`;
+  const srt = tvSortLoad(pid), on = srt && srt.key===key, filt = tvColFiltered(pid, key);
+  return `<th class="${extraCls||''}${on?' sorted':''}${filt?' filtered':''}" ${extraAttrs||''}><span class="th-in">${esc(label)}${on? `<span class="th-sort">${srt.dir==='desc'?'▼':'▲'}</span>`:''}${filt? `<span class="th-filt" title="Filtered: ${esc(tvColFilterLabel(pid,key))}">${TH_FILT_ICON}</span>`:''}<span class="th-dots" title="Column options" onclick="event.stopPropagation();tvColMenu(this,'${pid}','${key}')">⋯</span></span></th>`;
 }
+const TH_FILT_ICON = '<svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11L9.2 8.6v4.3L6.8 11.6V8.6z"/></svg>';
 function tvHeadHTML(id, flds, showAddCol, gid){
   return `<tr>
     ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}${tvTh(id,'title','Task')}${tvTh(id,'status',coreLabel(id,'status'))}${coreHidden(id,'assignee')?'':tvTh(id,'assignee',coreLabel(id,'assignee'))}${coreHidden(id,'due_date')?'':tvTh(id,'due_date',coreLabel(id,'due_date'))}${coreHidden(id,'priority')?'':tvTh(id,'priority',coreLabel(id,'priority'))}
