@@ -2660,9 +2660,15 @@ async function deleteProjectModal(pid){
 }
 /* Roles that need to be granted a workspace explicitly. admin + management
    already see every workspace, so they are shown as "all workspaces" and
-   are not checkboxes. Anyone here can belong to as many workspaces as you like. */
-const ASSIGNABLE_ROLES = ['internal','requester','partner','freelancer'];
-const ROLE_LABEL = {internal:'Internal staff', requester:'Requester (view + raise + comment)', partner:'Partner (external)', freelancer:'Freelancer (external)'};
+   are not checkboxes. Anyone here can belong to as many workspaces as you like.
+   Partner and freelancer accounts are deliberately absent: an external account is
+   never a workspace member or a workspace owner, only a member of one Shareable
+   board at a time. The database refuses the row either way (April, 11 Sep 2026). */
+const ASSIGNABLE_ROLES = ['internal','requester'];
+const ROLE_LABEL = {internal:'Internal staff', requester:'Requester (view + raise + comment)'};
+const EXTERNAL_ROLES = ['partner','freelancer'];
+const isExternalRole = r => EXTERNAL_ROLES.includes(r);
+const EXTERNAL_WS_NOTE = 'Partners and freelancers are not added to workspaces. Open the board they need and use <b>Board members (partner access)</b> — that gives them that one board and nothing else.';
 async function setWsOwner(wid, uid){
   const w = wsById(wid); if(!w) return;
   if(!(isAdmin() || ownsWs(wid))) return toast('Only an owner of this workspace or an admin can change its owners', true);
@@ -2719,6 +2725,7 @@ async function teamMembersModal(wsId){
       ${supers.length? `<div style="margin-top:12px;padding:9px 12px;background:var(--gray-soft);border-radius:8px;font-size:12.5px;color:var(--ink2)">
         <b>Always has access:</b> ${supers.slice(0,4).map(p=>esc(p.full_name)).join(', ')}${supers.length>4? ` and ${supers.length-4} more`:''} — admin and management see every workspace.</div>`:''}
       ${ASSIGNABLE_ROLES.map(groupBlock).join('') || '<div class="empty">No assignable accounts yet. Create them in Admin → Users.</div>'}
+      <div style="margin-top:14px;padding:9px 12px;background:var(--gray-soft);border-radius:8px;font-size:12.5px;color:var(--ink2)">${EXTERNAL_WS_NOTE}</div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Close</button><button class="btn btn-primary" id="tm-save">Save</button></div>`);
   wireMemberSearch(m, 'tm-q');
@@ -2748,6 +2755,11 @@ async function userWorkspacesModal(uid){
   if(p.role==='admin'||p.role==='management'){
     return modal(`<div class="modal-head"><h2>${esc(p.full_name)}</h2><button class="x" onclick="closeModals()">✕</button></div>
       <div class="modal-body"><p style="font-size:13.5px;color:var(--ink2)"><b>${esc(p.full_name)}</b> is ${p.role==='admin'?'an admin':'management'} — they already see <b>every workspace</b>, current and future. There is nothing to assign.</p></div>
+      <div class="modal-foot"><button class="btn btn-primary" onclick="closeModals()">OK</button></div>`);
+  }
+  if(isExternalRole(p.role)){
+    return modal(`<div class="modal-head"><h2>${esc(p.full_name)}</h2><button class="x" onclick="closeModals()">✕</button></div>
+      <div class="modal-body"><p style="font-size:13.5px;color:var(--ink2)"><b>${esc(p.full_name)}</b> is ${p.role==='partner'?'a partner':'a freelancer'}, so they get access <b>one board at a time</b> and never a whole workspace. ${EXTERNAL_WS_NOTE}</p></div>
       <div class="modal-foot"><button class="btn btn-primary" onclick="closeModals()">OK</button></div>`);
   }
   const {data:mine} = await db.from('workspace_members').select('workspace_id').eq('user_id',uid);
@@ -6151,7 +6163,7 @@ function hbars(rows){
    next to the Admin heading, which follows whichever tab is open. */
 const ADMIN_HELP = {
   users:'<b>admin</b>: everything · <b>management</b>: sees all workspaces · <b>internal</b>: only the workspaces they are members of · <b>requester</b>: read-only in their workspaces, can raise tasks and tickets and comment but not edit · <b>partner / freelancer</b>: only boards they are added to, plus their own requests.',
-  workspaces:'Internal staff only see workspaces they are members of; admin and management see everything. Deleting a workspace also deletes its boards and tasks, so you will be asked to type the name to confirm.',
+  workspaces:'Internal staff only see workspaces they are members of; admin and management see everything. <b>Partners and freelancers are never workspace members</b> — they are added to one Shareable board at a time from Board members. Deleting a workspace also deletes its boards and tasks, so you will be asked to type the name to confirm.',
   teams:'A team is a saved group of people, a shortcut when picking workspace or board members. <b>Being in a team grants no access on its own</b>: adding someone here does not put them on any workspace, and removing them takes nothing away.',
   brands:'Seeded from the CS brand master list. Only active brands appear in request forms.',
   types:'Turn on “Public form link” to get a shareable URL — anyone can submit a ticket through it without an account. Submissions land in the Requests queue with a WO number and SLA timer.',
@@ -6185,6 +6197,8 @@ async function renderAdmin(){
     const byUser = {}; (wm||[]).forEach(r=>{ (byUser[r.user_id]||(byUser[r.user_id]=[])).push(r.workspace_id); });
     const wsCell = p=>{
       if(p.role==='admin'||p.role==='management') return '<span class="chip" style="background:var(--accent-soft);color:var(--accent-ink)">All workspaces</span>';
+      // An external account is never in a workspace — it reaches one Shareable board at a time.
+      if(isExternalRole(p.role)) return '<span class="chip" style="background:var(--gray-soft);color:var(--ink3)">Per board only</span>';
       const ids = byUser[p.id]||[];
       if(!ids.length) return '<span style="color:var(--ink3)">none yet</span>';
       const names = ids.map(i=>wsById(i)).filter(Boolean);
@@ -6992,15 +7006,21 @@ function inviteUserModal(){
       <label style="margin-top:14px">Workspaces they can open ${helpIcon('Tick as many as you need.')}</label>
       <div id="iu-ws">${S.workspaces.map(w=>`<div class="chk"><input type="checkbox" data-wid="${w.id}">
         <span class="ws-dot" style="display:inline-block;background:${w.color}"></span><span>${esc(w.name)}</span></div>`).join('') || '<div style="font-size:12.5px;color:var(--ink3)">No workspaces yet.</div>'}</div>
-      <p id="iu-wsnote" style="margin-top:8px;font-size:12px;color:var(--ink3);display:none">Admin and management see every workspace — these ticks are ignored for those roles.</p>
+      <p id="iu-wsnote" style="margin-top:8px;font-size:12px;color:var(--ink3);display:none"></p>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="iu-save">Create account</button></div>`);
   const roleSel = m.querySelector('#iu-role');
   const syncWsNote = ()=>{
     const sup = roleSel.value==='admin' || roleSel.value==='management';
-    m.querySelector('#iu-ws').style.opacity = sup? '.4':'1';
-    m.querySelectorAll('#iu-ws input').forEach(i=> i.disabled = sup);
-    m.querySelector('#iu-wsnote').style.display = sup? 'block':'none';
+    const ext = isExternalRole(roleSel.value);
+    const off = sup || ext;
+    m.querySelector('#iu-ws').style.opacity = off? '.4':'1';
+    m.querySelectorAll('#iu-ws input').forEach(i=>{ i.disabled = off; if(off) i.checked = false; });
+    const note = m.querySelector('#iu-wsnote');
+    note.style.display = off? 'block':'none';
+    note.innerHTML = ext
+      ? EXTERNAL_WS_NOTE
+      : 'Admin and management see every workspace — these ticks are ignored for those roles.';
   };
   roleSel.onchange = syncWsNote; syncWsNote();
   m.querySelector('#iu-save').onclick = async ()=>{
@@ -7017,7 +7037,7 @@ function inviteUserModal(){
       // roles the server does not yet know about are applied straight to the profile
       if(out.user_id && role==='requester') await db.from('profiles').update({role:'requester'}).eq('id', out.user_id);
       // assign every ticked workspace — one person, as many workspaces as needed
-      const wids = [...m.querySelectorAll('#iu-ws input[data-wid]:checked')].map(i=>i.dataset.wid);
+      const wids = isExternalRole(role)? [] : [...m.querySelectorAll('#iu-ws input[data-wid]:checked')].map(i=>i.dataset.wid);
       if(out.user_id && wids.length && role!=='admin' && role!=='management'){
         const {error:wmErr} = await db.from('workspace_members').insert(wids.map(workspace_id=>({workspace_id, user_id:out.user_id})));
         if(wmErr) toast('User created, but workspaces failed: '+wmErr.message, true);
@@ -7094,9 +7114,18 @@ async function toggleBrand(id, active){
   toast(active?'Brand reactivated':'Brand offboarded'); await refreshCore(); renderAdmin();
 }
 async function setRole(uid, role){
+  const p = prof(uid) || S.profiles.find(x=>x.id===uid) || {};
+  // Going external gives up every workspace: the database drops those rows on the role
+  // change, so say so before it happens rather than after.
+  if(isExternalRole(role) && !isExternalRole(p.role)){
+    const {count} = await db.from('workspace_members').select('workspace_id',{count:'exact',head:true}).eq('user_id',uid);
+    if(count && !confirm(`${p.full_name||'This person'} is in ${count} workspace${count>1?'s':''}. Making them a ${role} removes ${count>1?'all of them':'it'} — they will only see boards they are added to one by one. Continue?`)) {
+      renderAdmin(); return;
+    }
+  }
   const {error} = await db.from('profiles').update({role}).eq('id',uid);
   if(error) return toast(error.message, true);
-  toast('Role updated'); await refreshCore();
+  toast('Role updated'); await refreshCore(); renderAdmin();
 }
 async function toggleActive(uid, active){
   const {error} = await db.from('profiles').update({active}).eq('id',uid);
