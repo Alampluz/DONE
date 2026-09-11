@@ -13,10 +13,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
-  --bg:#F7F7F4; --panel:#FFFFFF; --ink:#16181D; --ink2:#5D6167; --ink3:#9DA1A7;
+  /* --ink3 was #9DA1A7 (2.6:1 on white — failed AA on column headers, section labels,
+     empty states and the job title). #6E7279 is 4.83:1 on white, 4.5:1 on --bg.
+     --red/--amber/--green are darkened just enough that they clear 4.5:1 as text on
+     their own -soft tint, which is how every .chip pill uses them. */
+  --bg:#F7F7F4; --panel:#FFFFFF; --ink:#16181D; --ink2:#5D6167; --ink3:#6E7279;
   --line:#E9E8E3; --accent:#0F766E; --accent-soft:#EAF3F1; --accent-ink:#0B5D57;
-  --green:#12915E; --green-soft:#E5F4EC; --red:#C2434F; --red-soft:#FAECEC;
-  --amber:#A8770E; --amber-soft:#FBF3DE; --blue:#2A6FB8; --blue-soft:#EAF1F9;
+  --green:#0F7D51; --green-soft:#E5F4EC; --red:#BC414D; --red-soft:#FAECEC;
+  --amber:#90660C; --amber-soft:#FBF3DE; --blue:#2A6FB8; --blue-soft:#EAF1F9;
   --purple:#6E56B8; --purple-soft:#F1EDFA; --gray-soft:#F0EFEA;
   --sidebar:#FFFFFF; --sidebar-ink:#5D6167; --sidebar-hover:#F2F2EE;
   --radius:14px; --shadow:0 1px 2px rgba(22,24,29,.05),0 10px 30px rgba(22,24,29,.05);
@@ -34,6 +38,14 @@ a{color:var(--accent-ink);text-decoration:none}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:#CDD0DE;border-radius:6px;border:2px solid transparent;background-clip:content-box}
 ::-webkit-scrollbar-track{background:transparent}
+
+/* Keyboard users get a visible ring on anything focusable, including the div-based
+   nav items that now carry role+tabindex. Mouse clicks are unaffected. */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;scroll-behavior:auto !important}
+}
 
 /* ---------- layout ---------- */
 #app{display:flex;height:100vh;overflow:hidden}
@@ -100,7 +112,11 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
 .tbl tr.rowlink:hover{background:#FAFAF6}
 
 /* table view (spreadsheet grid) */
-.tv-wrap{overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:12px}
+/* The header row has always carried position:sticky, but .tv-wrap only scrolled on x with no
+   height bound, so the sticky top never had a scrollport to stick to and the column labels
+   scrolled away after ~20 rows. Bounding the wrap gives it one. A short group simply renders
+   short — max-height does not force the box open. */
+.tv-wrap{overflow:auto;max-height:calc(100vh - 232px);background:#fff;border:1px solid var(--line);border-radius:12px}
 table.tv{border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:100%}
 .tv th{white-space:nowrap;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink3);font-weight:700;padding:9px 14px;border-bottom:1px solid var(--line);background:#FBFBF8;position:sticky;top:0;z-index:2}
 .tv th.col-edit{cursor:pointer}
@@ -377,6 +393,14 @@ td.tv-name .tv-open{padding-left:20px}
 .tv-fill-empty{background:#EDEDE7;color:#A9ADBD}
 .tv-fill.mini{min-height:0;padding:7px 10px;border-radius:7px;width:100%}
 .tv td.tv-check,.tv th.tv-check{min-width:38px;width:38px;text-align:center}
+/* Freeze the checkbox + Task columns. The board is ~1000px wider than the viewport on a
+   laptop; without this you scroll right to reach a column and lose which row you are on. */
+.tv th.tv-check,.tv td.tv-check{position:sticky;left:0}
+.tv th.tv-name,.tv td.tv-name{position:sticky;left:38px}
+.tv th.tv-name:first-child,.tv td.tv-name:first-child{left:0}
+.tv td.tv-check,.tv td.tv-name{z-index:1}
+.tv th.tv-check,.tv th.tv-name{z-index:4}
+.tv td.tv-name,.tv th.tv-name{box-shadow:1px 0 0 var(--line)}
 .tv td.tv-check input,.tv th.tv-check input{width:auto;margin:0;accent-color:var(--accent);cursor:pointer}
 .tv tbody tr.rowsel td{background:var(--accent-soft)}
 .tv tr.tv-row td:first-child{border-left:3px solid var(--gcol, transparent)}
@@ -503,12 +527,17 @@ td.tv-name .tv-open{padding-left:20px}
 .ca-sub{display:flex;flex-direction:column;gap:6px;flex:1 1 100%} .ca-sub input{width:100%}
 .ca-hint{font-size:12.5px;color:var(--ink3);padding:6px 2px}
 .ca-preview{margin-top:18px;padding:12px 14px;background:var(--gray-soft);border-radius:10px;font-size:13.5px;color:var(--ink2);line-height:1.5}
+body.modal-open{overflow:hidden}
 .modal-head{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
 .modal-head h2{font-size:16px;font-weight:700;flex:1}
 .modal-head .x{font-size:18px;color:var(--ink3);padding:4px 8px;border-radius:6px}
 .modal-head .x:hover{background:var(--gray-soft);color:var(--ink)}
 .modal-body{padding:6px 20px 20px}
-.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line)}
+.modal-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line)}
+/* Destructive actions live in the footer, away from ✕, and read as deliberate rather than
+   incidental. The old task Delete was 12px --ink3 (2.6:1) sitting next to the close button. */
+.btn-danger-ghost{color:var(--red);border-color:#EBD5D7}
+.btn-danger-ghost:hover{background:var(--red-soft);border-color:var(--red)}
 .mi-info{width:16px;height:16px;flex:none;border-radius:50%;background:var(--gray-soft);color:var(--ink3);font-size:11px;font-weight:700;line-height:16px;text-align:center;cursor:pointer}
 .mi-info:hover{background:var(--accent);color:#fff}
 .mi-hint{font-size:12px;color:var(--ink3);background:var(--gray-soft);border-radius:8px;padding:8px 10px;margin-bottom:10px}
@@ -667,10 +696,15 @@ td.tv-name .tv-open{padding-left:20px}
 .tcard.dragging{opacity:.4}
 .tcard .t{font-weight:600;font-size:13.5px;line-height:1.35;margin-bottom:8px}
 .tcard .meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* Global, so the board table gets the same lateness signal the lists have always had. */
+.due{color:var(--ink2)}
+.due.over{color:var(--red);font-weight:700}
+.due.soon{color:var(--amber);font-weight:700}
 .tcard .due{font-size:11.5px;color:var(--ink2);font-weight:600}
 .tcard .due.over{color:var(--red)}
 .tbl .due{font-weight:600}
 .tbl .due.over{color:var(--red)}
+.tcard .due.soon,.tbl .due.soon{color:var(--amber)}
 .add-card{margin:0 8px 10px;padding:7px;border-radius:8px;color:var(--ink2);font-weight:600;font-size:12.5px;text-align:left}
 .add-card:hover{background:#E6E5DF;color:var(--ink)}
 
@@ -714,7 +748,28 @@ td.tv-name .tv-open{padding-left:20px}
 .chk:hover .del{visibility:visible}
 
 .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
-@media(max-width:700px){.field-grid{grid-template-columns:1fr}#sidebar{display:none}}
+
+/* ---------- small screens ----------
+   The sidebar used to be display:none below 700px with nothing in its place, which left
+   a phone user stranded on My Work with no route to anything and no way to sign out.
+   It is now an off-canvas drawer opened by #navburger in the topbar. */
+#navburger{display:none;align-items:center;justify-content:center;width:38px;height:38px;
+  margin-left:-6px;border-radius:9px;color:var(--ink2);flex:none}
+#navburger:hover{background:var(--gray-soft);color:var(--ink)}
+#navscrim{display:none;position:fixed;inset:0;background:rgba(15,16,26,.42);z-index:150}
+@media(max-width:700px){
+  .field-grid{grid-template-columns:1fr}
+  #navburger{display:inline-flex}
+  #topbar{padding:0 14px;gap:8px}
+  #content{padding:16px 14px}
+  #sidebar{position:fixed;inset:0 auto 0 0;z-index:160;width:min(84vw,288px);min-width:0;
+    box-shadow:0 10px 40px rgba(22,24,29,.22);transform:translateX(-100%);
+    transition:transform .2s ease;visibility:hidden}
+  body.nav-open #sidebar{transform:none;visibility:visible}
+  body.nav-open #navscrim{display:block}
+  .modal{max-height:92vh}
+}
+@media(max-width:700px) and (prefers-reduced-motion:reduce){#sidebar{transition:none}}
 .kv{margin-bottom:8px;font-size:13.5px}
 .kv b{color:var(--ink2);font-weight:600;font-size:12px;display:block;text-transform:uppercase;letter-spacing:.4px}
 .hidden{display:none!important}
@@ -765,15 +820,20 @@ td.tv-name .tv-open{padding-left:20px}
 </div>
 
 <div id="app" class="hidden">
-  <div id="sidebar">
+  <div id="navscrim" onclick="navClose()"></div>
+  <nav id="sidebar" aria-label="Main">
     <div class="logo"><img class="logo-img" src="data:image/png;base64,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" alt="DONE"><span id="logo-co" class="logo-co">Operations</span></div>
     <div id="nav-main"></div>
     <div class="nav-section" id="ws-section-title" style="display:flex;align-items:center;justify-content:space-between">Workspaces</div>
     <div id="nav-ws"></div>
     <div id="sidebar-user"></div>
-  </div>
-  <div id="main">
+  </nav>
+  <main id="main">
     <div id="topbar">
+      <button id="navburger" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" onclick="navToggle()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+          <line x1="3.5" y1="7" x2="20.5" y2="7"/><line x1="3.5" y1="12" x2="20.5" y2="12"/><line x1="3.5" y1="17" x2="20.5" y2="17"/>
+        </svg></button>
       <div class="crumb" id="crumb">Home</div>
       <div class="topbar-right" id="topbar-actions"></div>
       <div id="bell-wrap"><button id="bell" title="Notifications" aria-label="Notifications" onclick="toggleNotifPanel(event)">
@@ -784,7 +844,7 @@ td.tv-name .tv-open{padding-left:20px}
     </div>
     <div id="ten-banner" class="hidden" style="padding:8px 24px;font-size:12.5px;font-weight:600;background:var(--amber-soft);color:var(--amber);border-bottom:1px solid var(--line)"></div>
     <div id="content"></div>
-  </div>
+  </main>
 </div>
 <div id="toasts"></div>
 <div id="modal-root"></div>
@@ -796,18 +856,27 @@ const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const ADMIN_API = SUPABASE_URL + "/functions/v1/admin-api";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
+/* Every colour here is white-text-safe at 4.5:1 as a table fill. The old set put
+   To Do at 3.05:1 and Review/High at ~3.6:1 — the two commonest values in the board
+   were the two that failed. */
+/* `color` is the fill and the dot; `ink` is the label when the chip is a 10% tint of its own
+   hue, where using `color` for both lands around 4:1. */
 const STATUSES = [
-  {k:'todo', label:'To Do', color:'#8E93A8'},
-  {k:'in_progress', label:'In Progress', color:'#2273C9'},
-  {k:'review', label:'Review', color:'#B97A08'},
-  {k:'blocked', label:'Blocked', color:'#D6455B'},
-  {k:'done', label:'Done', color:'#12915E'},
+  {k:'todo', label:'To Do', color:'#6F7384', ink:'#616473'},
+  {k:'in_progress', label:'In Progress', color:'#2273C9', ink:'#1E66B2'},
+  {k:'review', label:'Review', color:'#9F6907', ink:'#8B5C06'},
+  {k:'blocked', label:'Blocked', color:'#D04358', ink:'#B0394B'},
+  {k:'done', label:'Done', color:'#108456', ink:'#0E734B'},
 ];
+/* Priority reads by weight, not just hue: Urgent and High are saturated fills, Normal and
+   Low are neutral. Normal used to be the loudest colour on the board (saturated blue, on
+   most rows), which put the visual emphasis on the value that needs the least attention.
+   `fill`/`fillInk` drive the board's full-cell blocks; `soft`/`color` drive the list pills. */
 const PRIORITIES = [
-  {k:'urgent', label:'Urgent', color:'var(--red)', soft:'var(--red-soft)'},
-  {k:'high', label:'High', color:'var(--amber)', soft:'var(--amber-soft)'},
-  {k:'normal', label:'Normal', color:'var(--blue)', soft:'var(--blue-soft)'},
-  {k:'low', label:'Low', color:'var(--ink3)', soft:'var(--gray-soft)'},
+  {k:'urgent', label:'Urgent', color:'var(--red)',   soft:'var(--red-soft)',   fill:'var(--red)',   fillInk:'#fff'},
+  {k:'high',   label:'High',   color:'var(--amber)', soft:'var(--amber-soft)', fill:'var(--amber)', fillInk:'#fff'},
+  {k:'normal', label:'Normal', color:'var(--ink2)',  soft:'var(--gray-soft)',  fill:'#E7E7E0',      fillInk:'var(--ink)'},
+  {k:'low',    label:'Low',    color:'var(--ink2)',  soft:'#F6F6F1',           fill:'#F3F3EC',      fillInk:'var(--ink2)'},
 ];
 /* The four standard task fields every board has. A board can rename them and hide the ones it does
    not use (projects.field_config, 7 Sep) — an onboarding board has a "Store live" date, not a due date;
@@ -1091,12 +1160,18 @@ function xlsxFilename(name){
   return String(name||'export').replace(/[\\/:*?"<>|]+/g,'-').trim()
     + ' - ' + new Date().toISOString().slice(0,10) + '.xlsx';
 }
+/* One lateness rule for the whole app. Three states, not two: overdue is red, the next
+   48 hours are amber, everything else is ordinary text. The board used to render the same
+   dates as plain ink because .due.over was only styled under .tcard and .tbl. */
 function dueBadge(d, doneAlready){
   if(!d) return '';
   const n = daysDiff(d);
   const over = n<0 && !doneAlready;
+  const soon = !over && !doneAlready && n>=0 && n<=1;
   const txt = n===0 ? 'Today' : n===1 ? 'Tomorrow' : n===-1 ? 'Yesterday' : fmtDate(d);
-  return `<span class="due ${over?'over':''}">${txt}</span>`;
+  const cls = over? 'over' : soon? 'soon' : '';
+  const title = over? `Overdue by ${Math.abs(n)} day${Math.abs(n)===1?'':'s'}` : soon? 'Due soon' : '';
+  return `<span class="due ${cls}"${title?` title="${title}"`:''}>${txt}</span>`;
 }
 function slaBadge(sla, status, pausedAt){
   if(!sla) return '';
@@ -1110,7 +1185,7 @@ function slaBadge(sla, status, pausedAt){
 }
 function statusChip(k){
   const s = STATUSES.find(x=>x.k===k)||STATUSES[0];
-  return `<span class="chip" style="background:${s.color}1A;color:${s.color}"><span style="width:7px;height:7px;border-radius:50%;background:${s.color}"></span>${s.label}</span>`;
+  return `<span class="chip" style="background:${s.color}1A;color:${s.ink||s.color}"><span style="width:7px;height:7px;border-radius:50%;background:${s.color}"></span>${s.label}</span>`;
 }
 function prioChip(k){
   const p = PRIORITIES.find(x=>x.k===k)||PRIORITIES[2];
@@ -1120,13 +1195,58 @@ function reqStatusChip(k){
   const s = REQ_STATUSES.find(x=>x.k===k)||REQ_STATUSES[0];
   return `<span class="chip" style="background:${s.soft};color:${s.color}">${s.label}</span>`;
 }
+/* Every modal in the app is built here, so the dialog contract lives here too. The overlay
+   used to be a plain div: no role, no name, focus left on <body>, no trap (Tab walked
+   straight out into the ~145 controls behind it) and Escape did nothing. */
+const MODAL_FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+function modalFocusables(box){
+  return [...box.querySelectorAll(MODAL_FOCUSABLE)].filter(e=> e.offsetWidth || e.offsetHeight || e===document.activeElement);
+}
 function modal(html, wide=false){
-  const back = el(`<div class="modal-back"><div class="modal ${wide?'wide':''}">${html}</div></div>`);
-  back.addEventListener('mousedown', e=>{ if(e.target===back) back.remove(); });
+  const back = el(`<div class="modal-back"><div class="modal ${wide?'wide':''}" role="dialog" aria-modal="true" tabindex="-1">${html}</div></div>`);
+  const box = back.querySelector('.modal');
+  back._returnFocus = document.activeElement;
+  back.addEventListener('mousedown', e=>{ if(e.target===back) closeTopModal(); });
+  back.addEventListener('keydown', e=>{
+    if(e.key==='Escape'){
+      // an open picker/column popover owns Escape first; it closes itself and stops propagation
+      if(document.getElementById('pickmenu')||document.getElementById('tvmenu')) return;
+      e.preventDefault(); e.stopPropagation(); closeTopModal(); return;
+    }
+    if(e.key!=='Tab') return;
+    const f = modalFocusables(box); if(!f.length) return;
+    const first = f[0], last = f[f.length-1];
+    if(e.shiftKey && (document.activeElement===first || !box.contains(document.activeElement))){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+  });
   $('#modal-root').appendChild(back);
+  const h = box.querySelector('.modal-head h2');
+  if(h){ if(!h.id) h.id = 'mdl-t-'+Math.random().toString(36).slice(2,8); box.setAttribute('aria-labelledby', h.id); }
+  else box.setAttribute('aria-label','Dialog');
+  document.body.classList.add('modal-open');
+  // land on the first real control rather than the close button
+  const f = modalFocusables(box);
+  const target = f.find(e=> !e.classList.contains('x')) || f[0] || box;
+  setTimeout(()=>{ try{ target.focus({preventScroll:true}); }catch(e){} }, 0);
   return back;
 }
-function closeModals(){ $('#modal-root').innerHTML=''; }
+function restoreFocus(node){
+  try{ if(node && document.body.contains(node)) node.focus({preventScroll:true}); }catch(e){}
+}
+function closeTopModal(){
+  const root = $('#modal-root'); const top = root.lastElementChild; if(!top) return;
+  const ret = top._returnFocus;
+  top.remove();
+  if(!root.children.length) document.body.classList.remove('modal-open');
+  restoreFocus(ret);
+}
+function closeModals(){
+  const root = $('#modal-root');
+  const ret = root.firstElementChild && root.firstElementChild._returnFocus;
+  root.innerHTML='';
+  document.body.classList.remove('modal-open');
+  restoreFocus(ret);
+}
 /* Searchable picker — a drop-in replacement for a long <select>. Renders a button showing the
    current choice; clicking it opens a popover with a search box and the (optionally grouped)
    options. Type to filter, ↑↓ to move, Enter to choose, Esc to close.
@@ -1670,6 +1790,39 @@ function navigate(hash){
 }
 
 /* ================= SIDEBAR ================= */
+/* Enter/Space activate a div that carries role="link" or role="button" — the keyboard
+   half of the contract those roles promise. */
+function kbActivate(e){
+  if(e.key!=='Enter' && e.key!==' ' && e.key!=='Spacebar') return;
+  e.preventDefault();
+  e.currentTarget.click();
+}
+/* Below 700px the sidebar is an off-canvas drawer. Above it, these are no-ops. */
+function navOpen(){
+  document.body.classList.add('nav-open');
+  const b = $('#navburger'); if(b){ b.setAttribute('aria-expanded','true'); b.setAttribute('aria-label','Close navigation'); }
+  /* The drawer is visibility:hidden until .nav-open lands, and focus() is refused on an
+     element whose last-computed style is still hidden — so wait for the next frame, not a
+     zero timeout. */
+  const first = document.querySelector('#nav-main .nav-item');
+  if(first){ void first.offsetWidth; }   // flush the style change before asking for focus
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>{
+    try{ first && first.focus({preventScroll:true}); }catch(e){}
+  }); });
+}
+function navClose(restore){
+  if(!document.body.classList.contains('nav-open')) return;
+  document.body.classList.remove('nav-open');
+  const b = $('#navburger');
+  if(b){ b.setAttribute('aria-expanded','false'); b.setAttribute('aria-label','Open navigation'); }
+  if(restore!==false){ try{ b && b.focus({preventScroll:true}); }catch(e){} }
+}
+function navToggle(){ document.body.classList.contains('nav-open')? navClose() : navOpen(); }
+/* Following a link inside the drawer should close it. */
+function navGo(){ navClose(false); }
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && document.body.classList.contains('nav-open')) navClose();
+});
 function renderSidebar(){
   const v = S.route.view, id=S.route.id;
   const items = [
@@ -1680,8 +1833,10 @@ function renderSidebar(){
     {h:'#/admin', label:'Admin', show:isAdmin()},
     {h:'#/platform', label:'Platform', show:!!(S.me&&S.me.platform_admin)},
   ];
-  $('#nav-main').innerHTML = '<div class="nav-section">Menu</div>' + items.filter(i=>i.show).map(i=>
-    `<div class="nav-item ${('#/'+v)===i.h?'active':''}" onclick="location.hash='${i.h}'">${i.label}<span class="count hidden" id="badge-${i.badge||''}"></span></div>`).join('');
+  /* Real anchors, not click-handling divs: the hash routes already exist, so this buys
+     keyboard reach, screen-reader semantics and middle-click-to-new-tab in one go. */
+  $('#nav-main').innerHTML = '<div class="nav-section" id="nav-menu-label">Menu</div>' + items.filter(i=>i.show).map(i=>
+    `<a class="nav-item ${('#/'+v)===i.h?'active':''}" href="${i.h}" ${('#/'+v)===i.h?'aria-current="page"':''} onclick="navGo()">${i.label}<span class="count hidden" id="badge-${i.badge||''}"></span></a>`).join('');
   updateApprovalBadge();
 
   // teams: RLS already scopes what each user can see (internal = their teams only)
@@ -1693,10 +1848,14 @@ function renderSidebar(){
   const tt = $('#ws-section-title');
   tt.style.display = (wss.length || isStaff())? 'flex' : 'none';
   tt.innerHTML = 'Workspaces' + (isAdmin()? '<button onclick="newWorkspaceModal()" title="New workspace" style="color:var(--ink3);font-size:15px;line-height:1;padding:0 2px;border-radius:5px">+</button>':'');
+  /* A workspace row carries a nested ⋯ control, so per CLAUDE.md it stays a div with
+     role + tabindex rather than an anchor with interactive content inside it. */
   $('#nav-ws').innerHTML = wss.map(w=>
-    `<div class="ws-item ${v==='ws'&&id===w.id?'active':''}" onclick="location.hash='#/ws/${w.id}'">
+    `<div class="ws-item ${v==='ws'&&id===w.id?'active':''}" role="link" tabindex="0"
+       ${v==='ws'&&id===w.id?'aria-current="page"':''} aria-label="${esc(w.name)} workspace"
+       onclick="location.hash='#/ws/${w.id}';navGo()" onkeydown="kbActivate(event)">
       <span class="ws-dot" style="background:${w.color}"></span><span class="ws-name">${esc(w.name)}</span>
-      ${canEdit()? `<span class="ws-menu" title="Workspace options" onclick="event.stopPropagation();wsMenu(this,'${w.id}')">⋯</span>`:''}
+      ${canEdit()? `<span class="ws-menu" role="button" tabindex="0" aria-label="Options for ${esc(w.name)}" title="Workspace options" onclick="event.stopPropagation();wsMenu(this,'${w.id}')" onkeydown="event.stopPropagation();kbActivate(event)">⋯</span>`:''}
     </div>`).join('') || (isAdmin()? '<div style="padding:4px 22px;font-size:12px;color:var(--ink3)">No workspaces yet — press +</div>':'');
 
   const lc = $('#logo-co'); if(lc && S.company) lc.textContent = S.company.name;
@@ -2398,6 +2557,17 @@ function projMenu(anchor, pid){
             items.push({label:'Recurring tasks', fn:()=>recurringModal(pid)}); }
   if(mine){ items.push('-'); items.push({label:'Delete board', danger:true, fn:()=>deleteProjectModal(pid)}); }
   if(!items.length) items.push({label:`Owned by ${ownerNames(boardOwnerIds(pid))}`, fn:()=>{}});
+  ctxMenu(anchor, items);
+}
+/* Deleting a board used to be a bare red button in the board toolbar, one click from
+   wiping a 116-task board and sitting right beside Edit board. It now lives behind ⋯,
+   the same place the board card's own menu keeps it. The typed confirmation in
+   deleteProjectModal is unchanged. */
+function boardMoreMenu(anchor, pid){
+  const items = [{label:'Save as template', fn:()=>saveTemplateModal(pid)},
+                 {label:'Recurring tasks',  fn:()=>recurringModal(pid)},
+                 '-',
+                 {label:'Delete board', danger:true, fn:()=>deleteProjectModal(pid)}];
   ctxMenu(anchor, items);
 }
 /* ---- Board templates: snapshot groups/columns/tasks, replay onto a new board ---- */
@@ -3245,7 +3415,7 @@ async function renderProject(id){
      ${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="projectMembersModal('${id}')">Partner access</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" onclick="boardAutomationsModal('${id}')" title="Rules that watch this board and react on their own">Automate</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" onclick="editProjectModal('${id}')">Edit board</button>`:''}
-     ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteProjectModal('${id}')">Delete board</button>`:''}
+     ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" aria-label="More board actions" title="More board actions" onclick="boardMoreMenu(this,'${id}')">⋯</button>`:''}
      ${(canEditOnBoard(id) || isRequester() && boardPreset(id)!=='view')? `<button class="btn btn-primary btn-sm" onclick="newTaskModal('${id}')">＋ New task</button>`:''}`);
   const C=$('#content'); C.innerHTML='<div class="empty">Loading…</div>';
   const [{data:tasks, error},{data:sc},{data:fields},{data:groups},{data:views}] = await Promise.all([
@@ -3321,7 +3491,7 @@ function renderWorkload(id, rows, host){
   list.sort((a,b)=> (a.key==='__none__') - (b.key==='__none__') || b.open-a.open || b.total-a.total);
   const maxOpen = Math.max(WORKLOAD_CAP, ...list.map(b=>b.open), 1);
   const totalOpen = list.reduce((s,b)=>s+b.open,0), people = list.filter(b=>b.key!=='__none__').length;
-  const seg = b => STATUSES.map(s=> b.counts[s.k]? `<span class="wl-chip" style="background:${s.color}1C;color:${s.color}"><span class="cdot" style="background:${s.color}"></span>${s.label} ${b.counts[s.k]}</span>`:'').join('');
+  const seg = b => STATUSES.map(s=> b.counts[s.k]? `<span class="wl-chip" style="background:${s.color}1C;color:${s.ink||s.color}"><span class="cdot" style="background:${s.color}"></span>${s.label} ${b.counts[s.k]}</span>`:'').join('');
   const rowHTML = b=>{
     const none = b.key==='__none__';
     const p = none? null : prof(b.key);
@@ -3610,7 +3780,7 @@ function tvDisplay(kind, val, t){
     return `<span class="tv-empty">—</span>`;
   }
   if(kind==='status'){ const s=STATUSES.find(x=>x.k===val); return s? `<span class="tv-fill" style="background:${s.color}">${esc(s.label)}</span>` : esc(val); }
-  if(kind==='priority'){ const p=PRIORITIES.find(x=>x.k===val); return p? `<span class="tv-fill" style="background:${p.color}">${esc(p.label)}</span>` : esc(val); }
+  if(kind==='priority'){ const p=PRIORITIES.find(x=>x.k===val); return p? `<span class="tv-fill" style="background:${p.fill||p.color};color:${p.fillInk||'#fff'}">${esc(p.label)}</span>` : esc(val); }
   if(kind==='people'){ const p=prof(val); return p? `${avatar(p,true)}<span>${esc(p.full_name)}</span>` : `<span class="tv-empty">—</span>`; }
   if(kind==='due') return dueBadge(val, t?.status==='done') || esc(tvFmtDate(val));
   if(kind==='date') return esc(tvFmtDate(val));
@@ -4406,7 +4576,7 @@ function tvTh(pid, key, label, extraCls, extraAttrs){
 const TH_FILT_ICON = '<svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11L9.2 8.6v4.3L6.8 11.6V8.6z"/></svg>';
 function tvHeadHTML(id, flds, showAddCol, gid){
   return `<tr>
-    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}${tvTh(id,'title','Task')}${tvTh(id,'status',coreLabel(id,'status'))}${coreHidden(id,'assignee')?'':tvTh(id,'assignee',coreLabel(id,'assignee'))}${coreHidden(id,'due_date')?'':tvTh(id,'due_date',coreLabel(id,'due_date'))}${coreHidden(id,'priority')?'':tvTh(id,'priority',coreLabel(id,'priority'))}
+    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}${tvTh(id,'title','Task','tv-name')}${tvTh(id,'status',coreLabel(id,'status'))}${coreHidden(id,'assignee')?'':tvTh(id,'assignee',coreLabel(id,'assignee'))}${coreHidden(id,'due_date')?'':tvTh(id,'due_date',coreLabel(id,'due_date'))}${coreHidden(id,'priority')?'':tvTh(id,'priority',coreLabel(id,'priority'))}
     ${flds.map(f=>tvTh(id,'f:'+f.id,f.label, canManageBoard(id)?'col-edit':'', canManageBoard(id)?`onclick="editColumnModal('${f.id}','${id}')" title="Edit column"`:'')).join('')}
     ${isStaff()? (showAddCol&&canManageBoard(id)? `<th><span class="tv-addcol" onclick="addColumnModal('${id}')">＋ Column</span></th>`:'<th></th>'):''}
   </tr>`;
@@ -5051,8 +5221,7 @@ async function openTask(id){
   const p = projById(t.project_id);
   const m = modal(`<div class="modal-head">
       <h2>${ticketTag(t)}<span id="tv-title-view">${esc(t.title)}</span></h2>
-      ${isStaff()? `<button class="x" title="Delete task" onclick="deleteTask('${t.id}','${t.project_id}')" style="font-size:12px;font-weight:600">Delete</button>`:''}
-      <button class="x" onclick="closeModals()">✕</button></div>
+      <button class="x" aria-label="Close" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <div class="field-grid">
         <div><label>${esc(coreLabel(t.project_id,'status'))}</label><select id="tv-status" ${canEdit()?'':'disabled'}>${STATUSES.map(s=>`<option value="${s.k}" ${s.k===t.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
@@ -5082,7 +5251,10 @@ async function openTask(id){
       ${historySectionHTML()}
       <div style="margin-top:14px;font-size:11.5px;color:var(--ink3)">Created ${fmtDateTime(t.created_at)} by ${esc(prof(t.created_by)?.full_name||'—')} · in ${esc(p?.name||'')}</div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Close</button>${canEdit()? `<button class="btn btn-primary" id="tv-save">Save changes</button>`:''}</div>`, true);
+    <div class="modal-foot">
+      ${isStaff()? `<button class="btn btn-ghost btn-danger-ghost" onclick="deleteTask('${t.id}','${t.project_id}')">Delete task</button>`:''}
+      <span style="flex:1"></span>
+      <button class="btn btn-ghost" onclick="closeModals()">Close</button>${canEdit()? `<button class="btn btn-primary" id="tv-save">Save changes</button>`:''}</div>`, true);
 
   if(m.querySelector('#tv-save')) m.querySelector('#tv-save').onclick = async ()=>{
     const desc = m.querySelector('#tv-desc');
