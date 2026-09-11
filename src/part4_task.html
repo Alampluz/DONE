@@ -71,8 +71,7 @@ async function openTask(id){
   const p = projById(t.project_id);
   const m = modal(`<div class="modal-head">
       <h2>${ticketTag(t)}<span id="tv-title-view">${esc(t.title)}</span></h2>
-      ${isStaff()? `<button class="x" title="Delete task" onclick="deleteTask('${t.id}','${t.project_id}')" style="font-size:12px;font-weight:600">Delete</button>`:''}
-      <button class="x" onclick="closeModals()">✕</button></div>
+      <button class="x" aria-label="Close" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <div class="field-grid">
         <div><label>${esc(coreLabel(t.project_id,'status'))}</label><select id="tv-status" ${canEdit()?'':'disabled'}>${STATUSES.map(s=>`<option value="${s.k}" ${s.k===t.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
@@ -102,7 +101,10 @@ async function openTask(id){
       ${historySectionHTML()}
       <div style="margin-top:14px;font-size:11.5px;color:var(--ink3)">Created ${fmtDateTime(t.created_at)} by ${esc(prof(t.created_by)?.full_name||'—')} · in ${esc(p?.name||'')}</div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Close</button>${canEdit()? `<button class="btn btn-primary" id="tv-save">Save changes</button>`:''}</div>`, true);
+    <div class="modal-foot">
+      ${isStaff()? `<button class="btn btn-ghost btn-danger-ghost" onclick="deleteTask('${t.id}','${t.project_id}')">Delete task</button>`:''}
+      <span style="flex:1"></span>
+      <button class="btn btn-ghost" onclick="closeModals()">Close</button>${canEdit()? `<button class="btn btn-primary" id="tv-save">Save changes</button>`:''}</div>`, true);
 
   if(m.querySelector('#tv-save')) m.querySelector('#tv-save').onclick = async ()=>{
     const desc = m.querySelector('#tv-desc');

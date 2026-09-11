@@ -229,6 +229,17 @@ function projMenu(anchor, pid){
   if(!items.length) items.push({label:`Owned by ${ownerNames(boardOwnerIds(pid))}`, fn:()=>{}});
   ctxMenu(anchor, items);
 }
+/* Deleting a board used to be a bare red button in the board toolbar, one click from
+   wiping a 116-task board and sitting right beside Edit board. It now lives behind ⋯,
+   the same place the board card's own menu keeps it. The typed confirmation in
+   deleteProjectModal is unchanged. */
+function boardMoreMenu(anchor, pid){
+  const items = [{label:'Save as template', fn:()=>saveTemplateModal(pid)},
+                 {label:'Recurring tasks',  fn:()=>recurringModal(pid)},
+                 '-',
+                 {label:'Delete board', danger:true, fn:()=>deleteProjectModal(pid)}];
+  ctxMenu(anchor, items);
+}
 /* ---- Board templates: snapshot groups/columns/tasks, replay onto a new board ---- */
 async function saveTemplateModal(pid){
   const p = projById(pid); if(!p) return;
@@ -1074,7 +1085,7 @@ async function renderProject(id){
      ${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="projectMembersModal('${id}')">Partner access</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" onclick="boardAutomationsModal('${id}')" title="Rules that watch this board and react on their own">Automate</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" onclick="editProjectModal('${id}')">Edit board</button>`:''}
-     ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteProjectModal('${id}')">Delete board</button>`:''}
+     ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" aria-label="More board actions" title="More board actions" onclick="boardMoreMenu(this,'${id}')">⋯</button>`:''}
      ${(canEditOnBoard(id) || isRequester() && boardPreset(id)!=='view')? `<button class="btn btn-primary btn-sm" onclick="newTaskModal('${id}')">＋ New task</button>`:''}`);
   const C=$('#content'); C.innerHTML='<div class="empty">Loading…</div>';
   const [{data:tasks, error},{data:sc},{data:fields},{data:groups},{data:views}] = await Promise.all([
@@ -1150,7 +1161,7 @@ function renderWorkload(id, rows, host){
   list.sort((a,b)=> (a.key==='__none__') - (b.key==='__none__') || b.open-a.open || b.total-a.total);
   const maxOpen = Math.max(WORKLOAD_CAP, ...list.map(b=>b.open), 1);
   const totalOpen = list.reduce((s,b)=>s+b.open,0), people = list.filter(b=>b.key!=='__none__').length;
-  const seg = b => STATUSES.map(s=> b.counts[s.k]? `<span class="wl-chip" style="background:${s.color}1C;color:${s.color}"><span class="cdot" style="background:${s.color}"></span>${s.label} ${b.counts[s.k]}</span>`:'').join('');
+  const seg = b => STATUSES.map(s=> b.counts[s.k]? `<span class="wl-chip" style="background:${s.color}1C;color:${s.ink||s.color}"><span class="cdot" style="background:${s.color}"></span>${s.label} ${b.counts[s.k]}</span>`:'').join('');
   const rowHTML = b=>{
     const none = b.key==='__none__';
     const p = none? null : prof(b.key);
@@ -1439,7 +1450,7 @@ function tvDisplay(kind, val, t){
     return `<span class="tv-empty">—</span>`;
   }
   if(kind==='status'){ const s=STATUSES.find(x=>x.k===val); return s? `<span class="tv-fill" style="background:${s.color}">${esc(s.label)}</span>` : esc(val); }
-  if(kind==='priority'){ const p=PRIORITIES.find(x=>x.k===val); return p? `<span class="tv-fill" style="background:${p.color}">${esc(p.label)}</span>` : esc(val); }
+  if(kind==='priority'){ const p=PRIORITIES.find(x=>x.k===val); return p? `<span class="tv-fill" style="background:${p.fill||p.color};color:${p.fillInk||'#fff'}">${esc(p.label)}</span>` : esc(val); }
   if(kind==='people'){ const p=prof(val); return p? `${avatar(p,true)}<span>${esc(p.full_name)}</span>` : `<span class="tv-empty">—</span>`; }
   if(kind==='due') return dueBadge(val, t?.status==='done') || esc(tvFmtDate(val));
   if(kind==='date') return esc(tvFmtDate(val));
@@ -2235,7 +2246,7 @@ function tvTh(pid, key, label, extraCls, extraAttrs){
 const TH_FILT_ICON = '<svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11L9.2 8.6v4.3L6.8 11.6V8.6z"/></svg>';
 function tvHeadHTML(id, flds, showAddCol, gid){
   return `<tr>
-    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}${tvTh(id,'title','Task')}${tvTh(id,'status',coreLabel(id,'status'))}${coreHidden(id,'assignee')?'':tvTh(id,'assignee',coreLabel(id,'assignee'))}${coreHidden(id,'due_date')?'':tvTh(id,'due_date',coreLabel(id,'due_date'))}${coreHidden(id,'priority')?'':tvTh(id,'priority',coreLabel(id,'priority'))}
+    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}${tvTh(id,'title','Task','tv-name')}${tvTh(id,'status',coreLabel(id,'status'))}${coreHidden(id,'assignee')?'':tvTh(id,'assignee',coreLabel(id,'assignee'))}${coreHidden(id,'due_date')?'':tvTh(id,'due_date',coreLabel(id,'due_date'))}${coreHidden(id,'priority')?'':tvTh(id,'priority',coreLabel(id,'priority'))}
     ${flds.map(f=>tvTh(id,'f:'+f.id,f.label, canManageBoard(id)?'col-edit':'', canManageBoard(id)?`onclick="editColumnModal('${f.id}','${id}')" title="Edit column"`:'')).join('')}
     ${isStaff()? (showAddCol&&canManageBoard(id)? `<th><span class="tv-addcol" onclick="addColumnModal('${id}')">＋ Column</span></th>`:'<th></th>'):''}
   </tr>`;
