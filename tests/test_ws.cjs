@@ -44,11 +44,13 @@ window.__run = async function(){
     });
     refreshCore = async()=>{}; renderSidebar=()=>{}; renderAdmin=async()=>{};
 
-    // --- A. workspace Members modal now includes requesters/partners, not just internal
+    // --- A. workspace Members modal includes requesters as well as internal staff.
+    //        Partners and freelancers are NOT here — an external account is a board
+    //        grant only; test_wspartner.cjs is the suite that asserts that.
     window.__rows['workspace_members']=[{user_id:'u2',workspace_id:'w1'},{user_id:'u3',workspace_id:'w1'},{user_id:'u3',workspace_id:'w2'}];
     await teamMembersModal('w1');
     const boxes=[...document.querySelectorAll('.modal input[data-uid]')];
-    r.memberCheckboxUsers = boxes.map(b=>b.dataset.uid).sort();     // expect u2,u3,u4
+    r.memberCheckboxUsers = boxes.map(b=>b.dataset.uid).sort();     // expect u2,u3
     r.memberCheckedHere = boxes.filter(b=>b.checked).map(b=>b.dataset.uid).sort(); // u2,u3
     r.showsOtherWsChip = /\\+1 other workspace/.test(document.querySelector('.modal-body').textContent);
     r.showsAlwaysAccess = /Always has access/.test(document.querySelector('.modal-body').textContent);
