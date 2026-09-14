@@ -59,7 +59,53 @@ a{color:var(--accent-ink);text-decoration:none}
 .logo b{font-size:16px;letter-spacing:.2px;font-weight:700}
 .logo span{display:block;font-size:9.5px;color:var(--ink3);font-weight:600;letter-spacing:1.6px;text-transform:uppercase;margin-top:1px}
 
-.nav-section{padding:14px 20px 6px;font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3)}
+.nav-section{padding:14px 20px 6px;font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);
+  display:flex;align-items:center;justify-content:space-between;gap:6px}
+/* Section headers collapse per user. The whole label is the button, not a lone caret. */
+.nav-sec-toggle{display:flex;align-items:center;gap:5px;font:inherit;color:inherit;letter-spacing:inherit;
+  text-transform:inherit;padding:2px 0;border-radius:5px;flex:1;text-align:left}
+.nav-sec-toggle:hover{color:var(--ink)}
+.nav-caret{font-size:9px;width:9px;display:inline-block;color:var(--ink3)}
+.nav-group{display:flex;flex-direction:column}
+/* "Customize menu" sits just above the user block, the way monday puts it. */
+/* this one takes the slack, so #sidebar-user gives up its own margin-top:auto below */
+#nav-customize{margin-top:auto;padding:6px 10px 2px}
+#sidebar:has(#nav-customize) #sidebar-user{margin-top:0}
+.nav-customize{display:flex;align-items:center;gap:9px;width:100%;padding:8px 12px;border-radius:9px;
+  color:var(--ink3);font-size:12.5px;font-weight:500;text-align:left}
+.nav-customize:hover{background:var(--sidebar-hover);color:var(--ink)}
+
+/* Import mapping screen */
+.imp-note{font-size:13px;color:var(--ink2);background:var(--gray-soft);border-radius:8px;padding:9px 11px;margin-bottom:12px}
+.imp-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line-2,#F1F1EC)}
+.imp-row:first-child{border-top:0}
+.imp-col{flex:1;min-width:0}
+.imp-head{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imp-sample{font-size:11.5px;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.imp-arrow{color:var(--ink3);font-size:13px;flex:none}
+.imp-to{flex:0 0 248px;display:flex;flex-direction:column;gap:5px}
+.imp-to select{padding:6px 9px;font-size:13px}
+.imp-to .imp-type{font-size:12.5px;color:var(--ink2)}
+.imp-warn{margin-top:12px;font-size:12.5px;color:var(--amber)}
+@media(max-width:700px){ .imp-row{flex-wrap:wrap} .imp-arrow{display:none} .imp-to{flex:1 1 100%} }
+
+/* Customize menu modal */
+.cm-note{font-size:12.5px;color:var(--ink2);background:var(--gray-soft);border-radius:8px;padding:9px 11px;margin-bottom:14px}
+.cm-block + .cm-block{margin-top:18px}
+.cm-title{font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.cm-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border:1px solid transparent;border-radius:9px;background:var(--panel)}
+.cm-row:hover{background:var(--gray-soft)}
+.cm-row.off .cm-label{color:var(--ink3);text-decoration:line-through}
+.cm-row.dragging{opacity:.45}
+.cm-row.dragover{border-color:var(--accent);background:var(--accent-soft)}
+.cm-grip{display:inline-flex;color:var(--ink3);cursor:grab}
+.cm-label{flex:1;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;
+  color:var(--ink3);font-size:13px;flex:none}
+.cm-btn:hover:not(:disabled){background:var(--panel);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink)}
+.cm-btn.on{color:var(--amber)}
+.cm-btn.on svg{fill:var(--amber-soft)}
+.cm-btn:disabled{opacity:.3;cursor:default}
 .nav-item{display:flex;align-items:center;gap:10px;margin:1px 10px;padding:8px 12px;border-radius:9px;color:var(--sidebar-ink);font-weight:500;font-size:13.5px;cursor:pointer;user-select:none;transition:all .12s}
 .nav-item:hover{background:var(--sidebar-hover);color:var(--ink)}
 .nav-item.active{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
@@ -824,8 +870,9 @@ body.modal-open{overflow:hidden}
   <nav id="sidebar" aria-label="Main">
     <div class="logo"><img class="logo-img" src="data:image/png;base64,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" alt="DONE"><span id="logo-co" class="logo-co">Operations</span></div>
     <div id="nav-main"></div>
-    <div class="nav-section" id="ws-section-title" style="display:flex;align-items:center;justify-content:space-between">Workspaces</div>
+    <div id="ws-section-title"></div>
     <div id="nav-ws"></div>
+    <div id="nav-customize"></div>
     <div id="sidebar-user"></div>
   </nav>
   <main id="main">
@@ -1107,9 +1154,17 @@ function toastUndo(msg, fn){
   $('#toasts').appendChild(t); setTimeout(()=>t.remove(), 7000);
 }
 function initials(name){ return (name||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+function avatarImgFailed(img){
+  const sp = img.parentNode; if(!sp) return;
+  const name = sp.getAttribute('title') || '';
+  img.remove();
+  sp.textContent = initials(name);
+}
 function avatar(p, sm=false){
   if(!p) return `<span class="avatar ${sm?'sm':''}" style="background:#C6C9D8" title="Unassigned">–</span>`;
-  if(p.avatar_url) return `<span class="avatar ${sm?'sm':''}" style="background:${p.avatar_color}" title="${esc(p.full_name)}"><img src="${esc(p.avatar_url)}" alt=""></span>`;
+  /* If the photo fails to load, fall back to initials. Without this a broken image just shows
+     the avatar_color circle — which is how a dead avatar URL went unnoticed for over a week. */
+  if(p.avatar_url) return `<span class="avatar ${sm?'sm':''}" style="background:${p.avatar_color}" title="${esc(p.full_name)}"><img src="${esc(p.avatar_url)}" alt="" onerror="avatarImgFailed(this)"></span>`;
   return `<span class="avatar ${sm?'sm':''}" style="background:${p.avatar_color}" title="${esc(p.full_name)}">${initials(p.full_name)}</span>`;
 }
 const prof = id => S.profiles.find(p=>p.id===id);
@@ -1688,7 +1743,71 @@ function fileSize(b){
   if(b < 1048576) return (b/1024).toFixed(0)+' KB';
   return (b/1048576).toFixed(1)+' MB';
 }
-function attUrl(path){ return db.storage.from('attachments').getPublicUrl(path).data.publicUrl; }
+/* ---- file URLs ----
+   The `attachments` bucket is PRIVATE, so getPublicUrl() on it returns a link that answers
+   400 "Bucket not found" — every attachment and avatar link in the app was dead for that
+   reason. Client artwork should stay private, so links are signed on demand instead.
+   Markup carries `data-sign="<path>"` and attResolve() fills in href/src once signed. */
+const ATT_SIGN_SECS = 3600;
+const _attSigned = new Map();        // path -> {url, exp}
+function attCached(path){
+  const hit = _attSigned.get(path);
+  return (hit && hit.exp > Date.now() + 60000) ? hit.url : null;
+}
+/* Never throws. This runs from a MutationObserver and from a click handler, so a rejection
+   here would surface as an unhandled rejection in the browser (and kills the node test
+   process outright). A failure just leaves the link unresolved for a later pass to retry. */
+async function attSignMany(paths){
+  const want = [...new Set(paths)].filter(p=>p && !attCached(p));
+  if(!want.length) return;
+  try{
+    const store = db.storage.from('attachments');
+    if(!store || typeof store.createSignedUrls !== 'function') return;
+    const {data, error} = await store.createSignedUrls(want, ATT_SIGN_SECS);
+    if(error || !data) return;
+    data.forEach(d=>{
+      if(d && d.signedUrl && !d.error)
+        _attSigned.set(d.path, {url:d.signedUrl, exp: Date.now() + ATT_SIGN_SECS*1000});
+    });
+  }catch(e){ /* leave it unresolved; attResolve clears the pending flag so it retries */ }
+}
+async function attSignOne(path){
+  const c = attCached(path); if(c) return c;
+  try{ await attSignMany([path]); }catch(e){}
+  return attCached(path);
+}
+/* Fill in every unresolved data-sign node under `root`. Safe to call repeatedly. */
+async function attResolve(root){
+  let els;
+  try{ els = [...(root||document).querySelectorAll('[data-sign]:not([data-signed])')]; }catch(e){ return; }
+  if(!els.length) return;
+  els.forEach(e=> e.setAttribute('data-signed','pending'));
+  await attSignMany(els.map(e=>e.getAttribute('data-sign')));
+  els.forEach(e=>{
+    const url = attCached(e.getAttribute('data-sign'));
+    if(!url){ e.removeAttribute('data-signed'); return; }   // let a later pass retry
+    if(e.tagName==='IMG') e.src = url; else e.href = url;
+    e.setAttribute('data-signed','1');
+  });
+}
+/* A click that lands before the signing round-trip finishes still has to work. */
+document.addEventListener('click', async e=>{
+  const a = e.target.closest && e.target.closest('a[data-sign]');
+  if(!a || (a.getAttribute('href')||'#') !== '#') return;
+  e.preventDefault();
+  let url = null;
+  try{ url = await attSignOne(a.getAttribute('data-sign')); }catch(err){}
+  if(!url) return toast('Could not open that file — try again in a moment', true);
+  a.href = url; a.setAttribute('data-signed','1');
+  window.open(url, '_blank', 'noopener');
+}, true);
+/* Attachments are drawn from a dozen render paths. Watching for the nodes beats chasing
+   every call site, and it keeps working when a new one is added. */
+if(typeof MutationObserver !== 'undefined'){
+  new MutationObserver(ms=>{
+    if(ms.some(m=>m.addedNodes && m.addedNodes.length)) attResolve(document).catch(()=>{});
+  }).observe(document.documentElement, {childList:true, subtree:true});
+}
 
 /* Uploads a list of File objects and returns the attachment rows that stuck. */
 async function uploadFiles(entity_type, entity_id, files){
@@ -1715,15 +1834,15 @@ async function uploadAttachments(entity_type, entity_id, fileInput){
   return made.length;
 }
 function attLink(a, opts={}){
-  const url = attUrl(a.storage_path);
+  const sign = esc(a.storage_path);
   const rm = opts.canRemove
     ? `<button class="att-x" title="Remove" onclick="event.preventDefault();event.stopPropagation();removeAttachment('${a.id}','${a.storage_path.replace(/'/g,"\\'")}')">✕</button>` : '';
   if(isImageName(a.file_name)){
     return `<span class="att att-img" data-aid="${a.id}">
-      <a href="${url}" target="_blank" rel="noopener" title="${esc(a.file_name)}"><img src="${url}" alt="${esc(a.file_name)}" loading="lazy"></a>${rm}</span>`;
+      <a href="#" data-sign="${sign}" target="_blank" rel="noopener" title="${esc(a.file_name)}"><img data-sign="${sign}" alt="${esc(a.file_name)}" loading="lazy"></a>${rm}</span>`;
   }
   return `<span class="att att-file" data-aid="${a.id}">
-    <a href="${url}" target="_blank" rel="noopener" title="${esc(a.file_name)}">
+    <a href="#" data-sign="${sign}" target="_blank" rel="noopener" title="${esc(a.file_name)}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
       <span class="att-n">${esc(a.file_name)}</span><span class="att-s">${fileSize(a.size_bytes)}</span></a>${rm}</span>`;
 }
@@ -1823,40 +1942,129 @@ function navGo(){ navClose(false); }
 document.addEventListener('keydown', e=>{
   if(e.key==='Escape' && document.body.classList.contains('nav-open')) navClose();
 });
-function renderSidebar(){
-  const v = S.route.view, id=S.route.id;
-  const items = [
-    {h:'#/home', label:'My Work', show:true},
-    {h:'#/requests', label:'Requests', show:true},
-    {h:'#/approvals', label:'Approvals', show:true, badge:'appr'},
-    {h:'#/dashboard', label:'Dashboard', show:isStaff()||isRequester()},
-    {h:'#/admin', label:'Admin', show:isAdmin()},
-    {h:'#/platform', label:'Platform', show:!!(S.me&&S.me.platform_admin)},
-  ];
-  /* Real anchors, not click-handling divs: the hash routes already exist, so this buys
-     keyboard reach, screen-reader semantics and middle-click-to-new-tab in one go. */
-  $('#nav-main').innerHTML = '<div class="nav-section" id="nav-menu-label">Menu</div>' + items.filter(i=>i.show).map(i=>
-    `<a class="nav-item ${('#/'+v)===i.h?'active':''}" href="${i.h}" ${('#/'+v)===i.h?'aria-current="page"':''} onclick="navGo()">${i.label}<span class="count hidden" id="badge-${i.badge||''}"></span></a>`).join('');
-  updateApprovalBadge();
-
-  // teams: RLS already scopes what each user can see (internal = their teams only)
-  let wss = S.workspaces;
+/* ---- per-user sidebar (profiles.nav_prefs) ----
+   Each person pins their own favourites, hides what they never open, reorders the rest and
+   collapses sections. It is COSMETIC ONLY: hiding a workspace does not remove access, and the
+   route still opens by URL. What a person is allowed to see is RLS's job, not this. */
+function navPrefs(){
+  const p = (S.me && S.me.nav_prefs) || {};
+  return {
+    fav: Array.isArray(p.fav)? p.fav : [],
+    hidden: Array.isArray(p.hidden)? p.hidden : [],
+    order: (p.order && typeof p.order==='object')? p.order : {},
+    collapsed: (p.collapsed && typeof p.collapsed==='object')? p.collapsed : {},
+  };
+}
+let _navSaveTimer = null;
+function navPrefsSet(mut){
+  const p = navPrefs(); mut(p);
+  S.me.nav_prefs = p;
+  renderSidebar();
+  if(document.getElementById('cm-list')) cmRender();
+  clearTimeout(_navSaveTimer);
+  _navSaveTimer = setTimeout(async ()=>{
+    const {error} = await db.from('profiles').update({nav_prefs: p}).eq('id', S.me.id);
+    if(error) toast('Could not save your menu: '+error.message, true);
+  }, 500);
+}
+const navKeyFav    = k => navPrefs().fav.includes(k);
+const navKeyHidden = k => navPrefs().hidden.includes(k);
+function navToggleFav(k){ navPrefsSet(p=>{ const i=p.fav.indexOf(k); i<0? p.fav.push(k) : p.fav.splice(i,1); }); }
+function navToggleHide(k){ navPrefsSet(p=>{ const i=p.hidden.indexOf(k); i<0? p.hidden.push(k) : p.hidden.splice(i,1); }); }
+function navToggleGroup(g){ navPrefsSet(p=>{ p.collapsed[g] = !p.collapsed[g]; }); }
+function navMove(kind, key, delta){
+  navPrefsSet(p=>{
+    const all = navItems()[kind==='menu'?'menu':'ws'].map(i=>i.key);
+    const cur = navApplyOrder(all, p.order[kind]);
+    const i = cur.indexOf(key), j = i + delta;
+    if(i<0 || j<0 || j>=cur.length) return;
+    cur.splice(j, 0, cur.splice(i,1)[0]);
+    p.order[kind] = cur;
+  });
+}
+/* A saved order can go stale — a workspace is added or deleted. Keep what still exists, in the
+   saved order, then append anything new at the end. */
+function navApplyOrder(keys, saved){
+  if(!Array.isArray(saved)) return keys.slice();
+  const set = new Set(keys);
+  const kept = saved.filter(k=>set.has(k));
+  return kept.concat(keys.filter(k=>!kept.includes(k)));
+}
+/* The one source of truth for what may appear in the sidebar, before prefs are applied. */
+function navItems(){
+  const menu = [
+    {key:'menu:home',      h:'#/home',      label:'My Work',   show:true},
+    {key:'menu:requests',  h:'#/requests',  label:'Requests',  show:true},
+    {key:'menu:approvals', h:'#/approvals', label:'Approvals', show:true, badge:'appr'},
+    {key:'menu:dashboard', h:'#/dashboard', label:'Dashboard', show:isStaff()||isRequester()},
+    {key:'menu:admin',     h:'#/admin',     label:'Admin',     show:isAdmin()},
+    {key:'menu:platform',  h:'#/platform',  label:'Platform',  show:!!(S.me&&S.me.platform_admin)},
+  ].filter(i=>i.show);
+  // RLS already scopes what each user can see (internal = their teams only)
+  let wss = S.workspaces||[];
   if(isExternal()){
-    const myWs = new Set(S.projects.map(p=>p.workspace_id));
-    wss = wss.filter(w=>myWs.has(w.id));
+    const mine = new Set((S.projects||[]).map(p=>p.workspace_id));
+    wss = wss.filter(w=>mine.has(w.id));
   }
-  const tt = $('#ws-section-title');
-  tt.style.display = (wss.length || isStaff())? 'flex' : 'none';
-  tt.innerHTML = 'Workspaces' + (isAdmin()? '<button onclick="newWorkspaceModal()" title="New workspace" style="color:var(--ink3);font-size:15px;line-height:1;padding:0 2px;border-radius:5px">+</button>':'');
+  const ws = wss.map(w=>({key:'ws:'+w.id, h:'#/ws/'+w.id, label:w.name, color:w.color, id:w.id}));
+  return {menu, ws};
+}
+function navOrdered(kind){
+  const list = navItems()[kind];
+  const order = navApplyOrder(list.map(i=>i.key), navPrefs().order[kind]);
+  return order.map(k=>list.find(i=>i.key===k)).filter(Boolean);
+}
+function navItemHTML(it, v, id){
+  const on = it.key.startsWith('ws:') ? (v==='ws' && id===it.id) : ('#/'+v)===it.h;
+  if(it.key.startsWith('menu:'))
+    return `<a class="nav-item ${on?'active':''}" href="${it.h}" ${on?'aria-current="page"':''} onclick="navGo()">${esc(it.label)}<span class="count hidden" id="badge-${it.badge||''}"></span></a>`;
   /* A workspace row carries a nested ⋯ control, so per CLAUDE.md it stays a div with
      role + tabindex rather than an anchor with interactive content inside it. */
-  $('#nav-ws').innerHTML = wss.map(w=>
-    `<div class="ws-item ${v==='ws'&&id===w.id?'active':''}" role="link" tabindex="0"
-       ${v==='ws'&&id===w.id?'aria-current="page"':''} aria-label="${esc(w.name)} workspace"
-       onclick="location.hash='#/ws/${w.id}';navGo()" onkeydown="kbActivate(event)">
-      <span class="ws-dot" style="background:${w.color}"></span><span class="ws-name">${esc(w.name)}</span>
-      ${canEdit()? `<span class="ws-menu" role="button" tabindex="0" aria-label="Options for ${esc(w.name)}" title="Workspace options" onclick="event.stopPropagation();wsMenu(this,'${w.id}')" onkeydown="event.stopPropagation();kbActivate(event)">⋯</span>`:''}
-    </div>`).join('') || (isAdmin()? '<div style="padding:4px 22px;font-size:12px;color:var(--ink3)">No workspaces yet — press +</div>':'');
+  return `<div class="ws-item ${on?'active':''}" role="link" tabindex="0"
+     ${on?'aria-current="page"':''} aria-label="${esc(it.label)} workspace"
+     onclick="location.hash='${it.h}';navGo()" onkeydown="kbActivate(event)">
+    <span class="ws-dot" style="background:${it.color}"></span><span class="ws-name">${esc(it.label)}</span>
+    ${canEdit()? `<span class="ws-menu" role="button" tabindex="0" aria-label="Options for ${esc(it.label)}" title="Workspace options" onclick="event.stopPropagation();wsMenu(this,'${it.id}')" onkeydown="event.stopPropagation();kbActivate(event)">⋯</span>`:''}
+  </div>`;
+}
+function navSectionHead(g, label, extra){
+  const open = !navPrefs().collapsed[g];
+  return `<div class="nav-section">
+    <button type="button" class="nav-sec-toggle" aria-expanded="${open}" onclick="navToggleGroup('${g}')">
+      <span class="nav-caret" aria-hidden="true">${open?'▾':'▸'}</span>${esc(label)}</button>${extra||''}</div>`;
+}
+function renderSidebar(){
+  const v = S.route.view, id=S.route.id;
+  const pf = navPrefs();
+  const visible = list => list.filter(i=>!pf.hidden.includes(i.key));
+  const menu = visible(navOrdered('menu'));
+  const wss  = visible(navOrdered('ws'));
+  const favKeys = pf.fav;
+  const all = [...navOrdered('menu'), ...navOrdered('ws')];
+  const favs = favKeys.map(k=>all.find(i=>i.key===k)).filter(Boolean).filter(i=>!pf.hidden.includes(i.key));
+
+  const favHTML = favs.length
+    ? navSectionHead('fav','Favourites')
+      + (pf.collapsed.fav? '' : `<div class="nav-group">${favs.map(i=>navItemHTML(i,v,id)).join('')}</div>`)
+    : '';
+
+  $('#nav-main').innerHTML = favHTML + navSectionHead('menu','Menu')
+    + (pf.collapsed.menu? '' : `<div class="nav-group">${menu.map(i=>navItemHTML(i,v,id)).join('')}</div>`);
+  updateApprovalBadge();
+
+  const tt = $('#ws-section-title');
+  tt.style.display = (wss.length || isStaff())? 'block' : 'none';
+  tt.innerHTML = navSectionHead('ws','Workspaces',
+    isAdmin()? '<button onclick="newWorkspaceModal()" title="New workspace" aria-label="New workspace" style="color:var(--ink3);font-size:15px;line-height:1;padding:0 2px;border-radius:5px">+</button>':'');
+  $('#nav-ws').innerHTML = pf.collapsed.ws? ''
+    : (wss.map(i=>navItemHTML(i,v,id)).join('')
+       || (isAdmin()? '<div style="padding:4px 22px;font-size:12px;color:var(--ink3)">No workspaces yet — press +</div>':''));
+  $('#nav-customize').innerHTML =
+    `<button type="button" class="nav-customize" onclick="customizeMenuModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <line x1="4" y1="8" x2="20" y2="8"/><circle cx="10" cy="8" r="2.2" fill="var(--sidebar)"/>
+        <line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2.2" fill="var(--sidebar)"/>
+      </svg>Customize menu</button>`;
 
   const lc = $('#logo-co'); if(lc && S.company) lc.textContent = S.company.name;
   const icoKey = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>';
@@ -1868,6 +2076,105 @@ function renderSidebar(){
     <button title="Change password" onclick="changePasswordModal()">${icoKey}</button>
     <button title="Sign out" onclick="db.auth.signOut()">${icoOut}</button>`;
 }
+/* ---- Customize menu ----
+   One row per item: star to pin it to Favourites, eye to hide it from your own sidebar,
+   ↑/↓ or drag to reorder. Drag is the nice path; the arrows are the real one, because a
+   drag-only reorder is unusable by keyboard. */
+const CM_STAR  = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3.6l2.6 5.3 5.8.85-4.2 4.1 1 5.75L12 16.9l-5.2 2.7 1-5.75-4.2-4.1 5.8-.85z"/></svg>';
+const CM_EYE   = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="2.6"/></svg>';
+const CM_EYEOFF= '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M2 12s3.6-6.5 10-6.5c1.7 0 3.2.35 4.5.9M22 12s-3.6 6.5-10 6.5c-1.7 0-3.2-.35-4.5-.9"/><line x1="3.5" y1="3.5" x2="20.5" y2="20.5"/></svg>';
+const CM_GRIP  = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>';
+function customizeMenuModal(){
+  modal(`<div class="modal-head"><h2>Customize menu</h2><button class="x" aria-label="Close" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <p class="cm-note">This is your sidebar only — nobody else's changes, and nothing here
+        changes what you are allowed to open. Hidden items still work from a link.</p>
+      <div id="cm-list">${cmListHTML()}</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="cmReset()">Reset to default</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-primary" onclick="closeModals()">Done</button>
+    </div>`);
+}
+function cmReset(){
+  navPrefsSet(p=>{ p.fav=[]; p.hidden=[]; p.order={}; p.collapsed={}; });
+  toast('Menu reset to default');
+}
+function cmRender(){
+  const host = document.getElementById('cm-list'); if(!host) return;
+  /* keep the caret where it was — the list redraws on every star/eye/arrow click */
+  const focusKey = document.activeElement && document.activeElement.closest
+    ? (document.activeElement.closest('.cm-row')||{}).dataset : null;
+  const lbl = document.activeElement && document.activeElement.getAttribute
+    ? document.activeElement.getAttribute('aria-label') : null;
+  host.innerHTML = cmListHTML();
+  if(focusKey && focusKey.key){
+    const row = host.querySelector(`.cm-row[data-key="${CSS.escape(focusKey.key)}"]`);
+    const btn = row && (lbl
+      ? [...row.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')||'').split(' ')[0]===lbl.split(' ')[0])
+      : null);
+    try{ (btn||row)?.focus?.({preventScroll:true}); }catch(e){}
+  }
+}
+function cmListHTML(){
+  const pf = navPrefs();
+  const block = (kind, title) => {
+    const list = navOrdered(kind);
+    if(!list.length) return '';
+    return `<div class="cm-block"><div class="cm-title">${title}</div>` + list.map((it,idx)=>{
+      const fav = pf.fav.includes(it.key), hid = pf.hidden.includes(it.key);
+      return `<div class="cm-row${hid?' off':''}" draggable="true" data-kind="${kind}" data-key="${esc(it.key)}"
+          ondragstart="cmDragStart(event)" ondragover="cmDragOver(event)" ondrop="cmDrop(event)" ondragend="cmDragEnd(event)">
+        <span class="cm-grip" aria-hidden="true">${CM_GRIP}</span>
+        ${it.color? `<span class="ws-dot" style="background:${it.color}"></span>`:''}
+        <span class="cm-label">${esc(it.label)}</span>
+        <button type="button" class="cm-btn${fav?' on':''}" aria-pressed="${fav}"
+          aria-label="${fav?'Unpin':'Pin'} ${esc(it.label)} from favourites" title="${fav?'Unpin from favourites':'Pin to favourites'}"
+          onclick="navToggleFav('${esc(it.key)}')">${CM_STAR}</button>
+        <button type="button" class="cm-btn" aria-pressed="${hid}"
+          aria-label="${hid?'Show':'Hide'} ${esc(it.label)} in my sidebar" title="${hid?'Show in my sidebar':'Hide from my sidebar'}"
+          onclick="navToggleHide('${esc(it.key)}')">${hid?CM_EYEOFF:CM_EYE}</button>
+        <button type="button" class="cm-btn" aria-label="Move ${esc(it.label)} up" title="Move up"
+          ${idx===0?'disabled':''} onclick="navMove('${kind}','${esc(it.key)}',-1)">↑</button>
+        <button type="button" class="cm-btn" aria-label="Move ${esc(it.label)} down" title="Move down"
+          ${idx===list.length-1?'disabled':''} onclick="navMove('${kind}','${esc(it.key)}',1)">↓</button>
+      </div>`;
+    }).join('') + '</div>';
+  };
+  return block('menu','Menu') + block('ws','Workspaces');
+}
+let _cmDrag = null;
+function cmDragStart(e){
+  const row = e.target.closest('.cm-row');
+  _cmDrag = {kind:row.dataset.kind, key:row.dataset.key};
+  row.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+  try{ e.dataTransfer.setData('text/plain', row.dataset.key); }catch(err){}
+}
+function cmDragOver(e){
+  const row = e.target.closest('.cm-row');
+  if(!row || !_cmDrag || row.dataset.kind!==_cmDrag.kind) return;   // no dragging a board into Menu
+  e.preventDefault(); e.dataTransfer.dropEffect='move';
+  row.classList.add('dragover');
+  setTimeout(()=>row.classList.remove('dragover'), 250);
+}
+function cmDrop(e){
+  const row = e.target.closest('.cm-row');
+  if(!row || !_cmDrag || row.dataset.kind!==_cmDrag.kind) return;
+  e.preventDefault();
+  const kind=_cmDrag.kind, from=_cmDrag.key, to=row.dataset.key;
+  if(from===to) return;
+  navPrefsSet(p=>{
+    const cur = navApplyOrder(navItems()[kind==='menu'?'menu':'ws'].map(i=>i.key), p.order[kind]);
+    const i = cur.indexOf(from); if(i<0) return;
+    cur.splice(i,1);
+    cur.splice(cur.indexOf(to), 0, from);
+    p.order[kind] = cur;
+  });
+}
+function cmDragEnd(){ _cmDrag=null; document.querySelectorAll('.cm-row.dragging').forEach(r=>r.classList.remove('dragging')); }
+
 async function updateApprovalBadge(){
   const {count} = await db.from('approvals').select('id',{count:'exact',head:true}).eq('approver_id',S.me.id).eq('status','pending');
   const b = $('#badge-appr'); if(!b) return;
@@ -1986,10 +2293,14 @@ async function pfUploadPhoto(file){
   if(!file || !pfCanEdit()) return;
   const bad = pfPhotoCheck(file); if(bad) return toast(bad, true);
   const ext = file.name.split('.').pop().toLowerCase();
-  const path = `avatars/${pfUser.id}/${Date.now()}.${ext}`;
-  const {error} = await db.storage.from('attachments').upload(path, file, {upsert:true, contentType:PF_PHOTO_TYPES[ext]});
+  /* The `avatars` bucket is public and already limited to 2 MB and image types — which is
+     what a profile photo wants, since every colleague sees it anyway. Uploads used to go to
+     the private `attachments` bucket and then store a /object/public/ URL for it, which
+     always answered 400, so the photo silently rendered as the bare avatar_color circle. */
+  const path = `${pfUser.id}/${Date.now()}.${ext}`;
+  const {error} = await db.storage.from('avatars').upload(path, file, {upsert:true, contentType:PF_PHOTO_TYPES[ext]});
   if(error) return toast(error.message, true);
-  await pfSave('avatar_url', attUrl(path));
+  await pfSave('avatar_url', db.storage.from('avatars').getPublicUrl(path).data.publicUrl);
   pfRender();
 }
 function changePasswordModal(recovery=false){
@@ -3791,7 +4102,7 @@ function tvDisplay(kind, val, t){
   }
   if(kind==='platform'){ const p=PLATFORMS.find(x=>x.k===val); const c=p?p.color:'#8E93A8'; return `<span class="tv-chip" style="background:${c}1C;color:${c}"><span class="cdot" style="background:${c}"></span>${esc(val)}</span>`; }
   if(kind==='file'){ if(!val||!val.path) return `<span class="tv-empty">—</span>`;
-    return `<a class="tv-link tv-filechip" href="${esc(attUrl(val.path))}" target="_blank" rel="noopener" title="${esc(val.name||'file')}" onclick="event.stopPropagation()">📎 ${esc((val.name||'file').length>18?(val.name.slice(0,17)+'…'):val.name)}</a>`; }
+    return `<a class="tv-link tv-filechip" href="#" data-sign="${esc(val.path)}" target="_blank" rel="noopener" title="${esc(val.name||'file')}" onclick="event.stopPropagation()">📎 ${esc((val.name||'file').length>18?(val.name.slice(0,17)+'…'):val.name)}</a>`; }
   if(kind==='brand'||kind.startsWith('f_')) return `<span class="tv-chip" style="background:var(--gray-soft);color:var(--ink)">${esc(val)}</span>`;
   return esc(val);
 }
@@ -4201,7 +4512,12 @@ function exportBoardCSV(pid){
   ]));
   downloadXLSX(xlsxFilename(p? p.name : 'Board'), out);
 }
-/* ---- Import Excel: first sheet, header row with a "Task" column, columns matched by name ---- */
+/* ---- Import Excel ----
+   The old version demanded a column spelled exactly "Task" and silently dropped every header
+   the board didn't already have — so importing a 12-column sheet into a blank board kept the
+   task names and threw away the rest. Now: find the header row whatever it is called, guess a
+   target for every column, then show the mapping so it can be corrected. Anything with no
+   home gets "Add as a new column", with the type read off the data underneath it. */
 function importExcel(pid){
   if(typeof XLSX === 'undefined') return toast('The Excel engine is still loading — try again in a second', true);
   const inp = document.createElement('input');
@@ -4211,31 +4527,210 @@ function importExcel(pid){
     try{
       const wb = XLSX.read(await f.arrayBuffer(), {cellDates:true});
       const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:true, defval:''});
-      const res = mapImportRows(aoa, pid);
-      if(!res.tasks.length) return toast('Nothing to import — the first sheet needs a header row with a "Task" column and at least one row under it', true);
-      importPreviewModal(pid, res);
+      const sheet = importReadSheet(aoa);
+      if(!sheet) return toast('That sheet looks empty — the first sheet needs a header row and at least one row under it', true);
+      if(!sheet.rows.length) return toast('Found the header row but no data under it', true);
+      importMappingModal(pid, sheet, importGuessMapping(sheet, pid));
     }catch(e){ toast('Could not read that file: '+e.message, true); }
   };
   inp.click();
 }
-/* Pure mapping: array-of-arrays -> task rows + warnings. Kept separate so it is testable. */
-function mapImportRows(aoa, pid){
-  const warnings = []; const tasks = []; let skipped = 0;
-  const hi = (aoa||[]).findIndex(r=> (r||[]).some(c=> String(c).trim().toLowerCase()==='task'));
-  if(hi < 0) return {tasks, warnings:['No "Task" column found in the header row'], skipped};
-  const head = aoa[hi].map(c=> String(c).trim());
-  const low  = head.map(h=> h.toLowerCase());
-  const col  = name => low.indexOf(name);
-  const flds = S._fields||[], groups = S._groups||[];
-  const fieldByLabel = {}; flds.forEach(f=>{ fieldByLabel[f.label.trim().toLowerCase()] = f; });
-  const known = new Set(['task','group','status','priority','assignee','due date','created']);
-  const unknown = [];
-  head.forEach((h,i)=>{ if(h && !known.has(low[i]) && !fieldByLabel[low[i]]) unknown.push(h); });
-  if(unknown.length) warnings.push(`Ignored column${unknown.length>1?'s':''}: ${unknown.join(', ')}`);
-  if(head.some((h,i)=> fieldByLabel[low[i]] && fieldByLabel[low[i]].ftype==='formula'))
-    warnings.push('Formula columns are computed automatically and were skipped');
-  if(head.some((h,i)=> fieldByLabel[low[i]] && ['link','mirror','file'].includes(fieldByLabel[low[i]].ftype)))
-    warnings.push('Link, Mirror and File columns can\'t be imported and were skipped');
+/* The header row is the first row with two or more labelled cells that has data under it —
+   not "the row containing the word Task". Sheets often open with a title or a blank line. */
+function importReadSheet(aoa){
+  const rows = aoa||[];
+  const filled = r => (r||[]).filter(c=> String(c??'').trim()!=='').length;
+  let hi = -1;
+  for(let i=0; i<Math.min(rows.length, 20); i++){
+    if(filled(rows[i]) < 2) continue;
+    if(rows.slice(i+1).some(r=>filled(r) > 0)){ hi = i; break; }
+  }
+  if(hi < 0) return null;
+  const raw = rows[hi].map(c=> String(c??'').trim());
+  const width = raw.reduce((w,c,i)=> c? i+1 : w, 0);
+  const headers = [];
+  for(let i=0; i<width; i++) headers.push({i, label: raw[i] || ('Column '+(i+1))});
+  const body = rows.slice(hi+1).filter(r=> filled(r) > 0);
+  return {hi, headers, rows:body};
+}
+const IMPORT_ALIASES = {
+  title:    ['task','task name','taskname','name','title','subject','item','item name','summary','งาน','ชื่องาน'],
+  status:   ['status','state','สถานะ'],
+  priority: ['priority','ความสำคัญ'],
+  assignee: ['assignee','owner','assigned to','assigned','person','responsible','ผู้รับผิดชอบ'],
+  due_date: ['due date','due','deadline','due on','end date','กำหนดส่ง'],
+  group:    ['group','section','กลุ่ม'],
+};
+const importColValues = (sheet, ci) => sheet.rows.map(r=> r[ci]).filter(v=> String(v??'').trim()!=='');
+/* Read the column's own data to pick a type. Dates and numbers are safe to detect; a small
+   set of repeated values is a dropdown; everything else is text. */
+function importGuessType(values){
+  const vs = values.slice(0, 200);
+  if(!vs.length) return {ftype:'text', options:[]};
+  const isDate = v => v instanceof Date ? !isNaN(v)
+    : (typeof v === 'number' ? v > 20000 && v < 60000 : !isNaN(new Date(String(v).trim())) && /[-/.]|\s\w{3}\s/.test(String(v)));
+  const isNum  = v => typeof v === 'number' || (String(v).trim()!=='' && !isNaN(Number(String(v).replace(/,/g,''))));
+  const isBool = v => /^(yes|no|true|false|y|n|1|0|✓|✗)$/i.test(String(v).trim());
+  if(vs.every(isBool)) return {ftype:'checkbox', options:[]};
+  if(vs.every(isDate)) return {ftype:'date', options:[]};
+  if(vs.every(isNum))  return {ftype:'number', options:[]};
+  const distinct = [...new Set(vs.map(v=>String(v).trim()))];
+  /* A dropdown is "few short values, repeated". With a handful of rows everything looks
+     unique, so below ~8 values judge on the count alone rather than the ratio. Either way the
+     mapping screen lets the type be changed, so lean towards Dropdown and let it be corrected. */
+  const fewEnough = vs.length < 8 ? distinct.length <= 6 : distinct.length <= Math.round(vs.length*0.6);
+  if(distinct.length <= 12 && fewEnough && distinct.every(d=>d.length<=40))
+    return {ftype:'select', options:distinct.sort()};
+  return {ftype:'text', options:[]};
+}
+function importGuessMapping(sheet, pid){
+  const flds = (S._fields||[]).filter(f=>!['formula','link','mirror','file'].includes(f.ftype));
+  const byLabel = {}; flds.forEach(f=> byLabel[f.label.trim().toLowerCase()] = f);
+  const used = new Set();
+  const map = sheet.headers.map(h=>{
+    const low = h.label.trim().toLowerCase();
+    for(const [core, names] of Object.entries(IMPORT_ALIASES)){
+      if(names.includes(low) && !used.has(core)){ used.add(core); return {ci:h.i, label:h.label, target:core}; }
+    }
+    if(byLabel[low]) return {ci:h.i, label:h.label, target:'field:'+byLabel[low].id};
+    const guess = importGuessType(importColValues(sheet, h.i));
+    return {ci:h.i, label:h.label, target:'new', ftype:guess.ftype, options:guess.options};
+  });
+  /* No column called anything like a task name? Take the first text column that is mostly
+     filled and mostly unique — that is what a task list looks like. */
+  if(!map.some(m=>m.target==='title')){
+    /* A reference or ID column is unique and text-like too, so uniqueness alone picks the
+       wrong one. Prefer the column that reads like a sentence, and demote id-ish headers. */
+    const ID_ISH = /^(ref|ref no\.?|id|no\.?|code|ticket|ticket no\.?|item no\.?|sku|key|#)$/i;
+    let best = null, bestScore = 0;
+    map.forEach(m=>{
+      const vs = importColValues(sheet, m.ci);
+      if(!vs.length) return;
+      const unique = new Set(vs.map(v=>String(v).trim())).size / vs.length;
+      const fill   = vs.length / sheet.rows.length;
+      const texty  = vs.filter(v=> isNaN(Number(v)) && !(v instanceof Date)).length / vs.length;
+      const avgLen = vs.reduce((a,v)=>a+String(v).trim().length, 0) / vs.length;
+      let score = unique * fill * texty * (Math.min(avgLen, 40) / 40);
+      if(ID_ISH.test(m.label.trim())) score *= 0.2;
+      if(score > bestScore){ bestScore = score; best = m; }
+    });
+    if(best){ best.target = 'title'; delete best.ftype; delete best.options; }
+  }
+  return map;
+}
+/* The mapping screen. One row per column in the sheet: what it is, a sample of its data, and
+   where it should land. "Add as a new column" is offered for anything with no home, so a file
+   from monday or a plain tracker can set up a blank board instead of being thrown away. */
+function importMappingModal(pid, sheet, mapping){
+  S._pendingImport = {pid, sheet, mapping};
+  const p = projById(pid);
+  modal(`<div class="modal-head"><h2>Import into ${esc(p? p.name:'this board')}</h2>
+      <button class="x" aria-label="Close" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <p class="imp-note"><b>${sheet.rows.length}</b> row${sheet.rows.length===1?'':'s'} found.
+        Check where each column should go — anything DONE doesn't have yet can be added as a new column.</p>
+      <div id="imp-map"></div>
+      <div id="imp-warn"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" id="imp-go" onclick="doImportExcel()">Import</button></div>`, true);
+  impRender();
+  /* modal() moves focus when it opens, and #imp-map is still empty at that point, so focus
+     would settle on Cancel. Put it on the first mapping dropdown instead — that is the thing
+     you came here to check. modal() queues its focus on a zero timeout, so queue ours after
+     it: same delay, so it runs second. */
+  setTimeout(()=>{
+    try{ document.querySelector('#imp-map select')?.focus({preventScroll:true}); }catch(e){}
+  }, 0);
+}
+const IMP_TYPES = [['text','Text'],['number','Number'],['date','Date'],['select','Dropdown'],['checkbox','Checkbox'],['person','Person'],['brand','Brand'],['platform','Platform']];
+function impRender(){
+  const im = S._pendingImport; if(!im) return;
+  const host = document.getElementById('imp-map'); if(!host) return;
+  const {sheet, mapping, pid} = im;
+  const flds = (S._fields||[]).filter(f=>!['formula','link','mirror','file'].includes(f.ftype));
+  const taken = t => mapping.filter(m=>m.target===t).length;
+  host.innerHTML = mapping.map((m,idx)=>{
+    const sample = importColValues(sheet, m.ci).slice(0,3)
+      .map(v=> v instanceof Date? v.toISOString().slice(0,10) : String(v)).join(' · ');
+    const opt = (v,l,sel)=>`<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+    return `<div class="imp-row">
+      <div class="imp-col">
+        <div class="imp-head">${esc(m.label)}</div>
+        <div class="imp-sample">${esc(sample||'—')}</div>
+      </div>
+      <span class="imp-arrow" aria-hidden="true">→</span>
+      <div class="imp-to">
+        <select aria-label="Where ${esc(m.label)} should go" onchange="impSetTarget(${idx}, this.value)">
+          <optgroup label="Task fields">
+            ${opt('title','Task name', m.target==='title')}
+            ${opt('status', coreLabel(pid,'status'), m.target==='status')}
+            ${opt('priority', coreLabel(pid,'priority'), m.target==='priority')}
+            ${opt('assignee', coreLabel(pid,'assignee'), m.target==='assignee')}
+            ${opt('due_date', coreLabel(pid,'due_date'), m.target==='due_date')}
+            ${opt('group','Group', m.target==='group')}
+          </optgroup>
+          ${flds.length? `<optgroup label="Existing columns">${flds.map(f=>opt('field:'+f.id, f.label, m.target==='field:'+f.id)).join('')}</optgroup>`:''}
+          <optgroup label="Not on this board yet">
+            ${opt('new','＋ Add as a new column', m.target==='new')}
+            ${opt('skip','Skip this column', m.target==='skip')}
+          </optgroup>
+        </select>
+        ${m.target==='new'? `<select class="imp-type" aria-label="Type for the new ${esc(m.label)} column" onchange="impSetType(${idx}, this.value)">
+          ${IMP_TYPES.map(([k,l])=>opt(k,l,m.ftype===k)).join('')}</select>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const warn = [];
+  const titles = taken('title');
+  if(titles === 0) warn.push('Pick which column holds the task name — nothing imports without one.');
+  if(titles > 1)   warn.push('Two columns are set to Task name. Only one can be.');
+  ['status','priority','assignee','due_date','group'].forEach(k=>{
+    if(taken(k) > 1) warn.push(`Two columns are set to the same field. Only one can be.`);
+  });
+  const newSel = mapping.filter(m=>m.target==='new' && m.ftype==='select');
+  if(newSel.length) warn.push(`New dropdown column${newSel.length>1?'s':''} will be created with the values found in the file.`);
+  const dup = {}; mapping.filter(m=>m.target==='new').forEach(m=>{ const k=m.label.trim().toLowerCase(); dup[k]=(dup[k]||0)+1; });
+  if(Object.values(dup).some(n=>n>1)) warn.push('Two new columns would have the same name — rename one in the file or skip it.');
+  const wh = document.getElementById('imp-warn');
+  if(wh) wh.innerHTML = warn.length? `<div class="imp-warn">${warn.map(w=>`<div>⚠ ${esc(w)}</div>`).join('')}</div>` : '';
+  const go = document.getElementById('imp-go');
+  if(go){
+    const blocked = titles !== 1 || Object.values(dup).some(n=>n>1)
+      || ['status','priority','assignee','due_date','group'].some(k=>taken(k)>1);
+    go.disabled = blocked;
+    const n = blocked? 0 : importBuildTasks(im).length;
+    go.textContent = blocked? 'Import' : `Import ${n} task${n===1?'':'s'}`;
+  }
+}
+function impSetTarget(idx, v){
+  const im = S._pendingImport; if(!im) return;
+  const m = im.mapping[idx];
+  m.target = v;
+  if(v==='new' && !m.ftype){
+    const g = importGuessType(importColValues(im.sheet, m.ci));
+    m.ftype = g.ftype; m.options = g.options;
+  }
+  impRender();
+}
+function impSetType(idx, v){
+  const im = S._pendingImport; if(!im) return;
+  const m = im.mapping[idx];
+  m.ftype = v;
+  m.options = v==='select'? importGuessType(importColValues(im.sheet, m.ci)).options : [];
+  if(v==='select' && !m.options.length)
+    m.options = [...new Set(importColValues(im.sheet, m.ci).map(x=>String(x).trim()))].filter(Boolean).slice(0,50).sort();
+  impRender();
+}
+/* Pure: mapping + rows -> task payloads. `newIds` maps a column index to the field id it was
+   just created as, so the same function serves the preview count and the real import. */
+function importBuildTasks(im, newIds){
+  const {sheet, mapping, pid} = im;
+  const at = t => mapping.find(m=>m.target===t);
+  const groups = S._groups||[];
+  const fieldFor = m => m.target.startsWith('field:') ? m.target.slice(6)
+    : (m.target==='new' && newIds ? newIds[m.ci] : null);
   const statusOf = v=>{ const s=String(v).trim().toLowerCase(); if(!s) return 'todo';
     const m = STATUSES.find(x=> x.k===s || x.label.toLowerCase()===s); return m? m.k : 'todo'; };
   const prioOf = v=>{ const s=String(v).trim().toLowerCase(); if(!s) return 'normal';
@@ -4247,55 +4742,65 @@ function mapImportRows(aoa, pid){
   const dateOf = v=>{
     if(v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
     if(typeof v === 'number' && v > 20000) return new Date(Math.round((v-25569)*86400000)).toISOString().slice(0,10);
-    const s = String(v).trim(); if(!s) return null;
+    const s = String(v??'').trim(); if(!s) return null;
     const d = new Date(s); return isNaN(d)? null : d.toISOString().slice(0,10);
   };
-  let misses = 0;
-  for(let i=hi+1; i<aoa.length; i++){
-    const r = aoa[i]||[];
-    const title = String(r[col('task')]??'').trim();
-    if(!title){ skipped++; continue; }
-    const t = {project_id:pid, title, status:'todo', priority:'normal', assignee_id:null, group_id:null, due_date:null, custom:{}, created_by:S.me.id};
-    if(col('status')>=0)   t.status = statusOf(r[col('status')]);
-    if(col('priority')>=0) t.priority = prioOf(r[col('priority')]);
-    if(col('assignee')>=0){ t.assignee_id = personOf(r[col('assignee')]);
-      if(!t.assignee_id && String(r[col('assignee')]).trim()) misses++; }
-    if(col('group')>=0)    t.group_id = groupOf(r[col('group')]);
-    if(col('due date')>=0) t.due_date = dateOf(r[col('due date')]);
-    head.forEach((h,ci)=>{
-      const f = fieldByLabel[low[ci]]; if(!f || ['formula','link','mirror','file'].includes(f.ftype)) return;
-      const v = r[ci]; if(v===''||v==null) return;
-      t.custom[f.id] = f.ftype==='checkbox'? /^(yes|true|1|y|✓)$/i.test(String(v).trim())
-        : f.ftype==='date'? (dateOf(v)||'') : String(v instanceof Date? v.toISOString().slice(0,10) : v);
+  const tCol = at('title');
+  if(!tCol) return [];
+  const out = [];
+  for(const r of sheet.rows){
+    const title = String(r[tCol.ci]??'').trim();
+    if(!title) continue;
+    const t = {project_id:pid, title, status:'todo', priority:'normal', assignee_id:null,
+               group_id:null, due_date:null, custom:{}, created_by:S.me.id};
+    if(at('status'))   t.status   = statusOf(r[at('status').ci]);
+    if(at('priority')) t.priority = prioOf(r[at('priority').ci]);
+    if(at('assignee')) t.assignee_id = personOf(r[at('assignee').ci]);
+    if(at('group'))    t.group_id = groupOf(r[at('group').ci]);
+    if(at('due_date')) t.due_date = dateOf(r[at('due_date').ci]);
+    mapping.forEach(m=>{
+      const fid = fieldFor(m); if(!fid) return;
+      const v = r[m.ci]; if(v===''||v==null) return;
+      const f = (S._fields||[]).find(x=>x.id===fid);
+      const ftype = f? f.ftype : m.ftype;
+      t.custom[fid] = ftype==='checkbox' ? /^(yes|true|1|y|✓)$/i.test(String(v).trim())
+        : ftype==='date' ? (dateOf(v)||'')
+        : ftype==='number' ? String(v).replace(/,/g,'').trim()
+        : String(v instanceof Date? v.toISOString().slice(0,10) : v).trim();
     });
-    tasks.push(t);
+    out.push(t);
   }
-  if(misses) warnings.push(`${misses} assignee name${misses>1?'s':''} didn't match anyone — those rows import unassigned`);
-  return {tasks, warnings, skipped};
-}
-function importPreviewModal(pid, res){
-  S._pendingImport = {pid, tasks:res.tasks};
-  const p = projById(pid);
-  modal(`<div class="modal-head"><h2>Import into ${esc(p? p.name:'this board')}</h2><button class="x" onclick="closeModals()">✕</button></div>
-    <div class="modal-body">
-      <p style="font-size:14px"><b>${res.tasks.length}</b> task${res.tasks.length>1?'s':''} ready to import${res.skipped? ` · ${res.skipped} empty row${res.skipped>1?'s':''} skipped`:''}.</p>
-      <div style="background:var(--gray-soft);border-radius:10px;padding:10px 14px;margin-top:10px;font-size:13px;color:var(--ink2)">
-        ${res.tasks.slice(0,6).map(t=>`<div>· ${esc(t.title)}</div>`).join('')}
-        ${res.tasks.length>6? `<div style="color:var(--ink3)">…and ${res.tasks.length-6} more</div>`:''}
-      </div>
-      ${res.warnings.length? `<div style="margin-top:12px;font-size:12.5px;color:var(--amber)">${res.warnings.map(w=>`<div>⚠ ${esc(w)}</div>`).join('')}</div>`:''}
-    </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
-      <button class="btn btn-primary" id="imp-go" onclick="doImportExcel()">Import ${res.tasks.length} task${res.tasks.length>1?'s':''}</button></div>`);
+  return out;
 }
 async function doImportExcel(){
-  const im = S._pendingImport; if(!im || !im.tasks.length) return;
-  const btn = document.getElementById('imp-go'); if(btn){ btn.disabled = true; btn.textContent = 'Importing…'; }
-  const base = Math.max(0, ...(S._tasks||[]).map(t=>t.position||0));
-  const payload = im.tasks.map((t,i)=> ({...t, position: base + i + 1}));
-  const {error} = await db.from('tasks').insert(payload);
-  if(error){ if(btn){ btn.disabled=false; btn.textContent='Import'; } return toast(error.message, true); }
-  toast(`${payload.length} task${payload.length>1?'s':''} imported`);
+  const im = S._pendingImport; if(!im) return;
+  const btn = document.getElementById('imp-go');
+  const stop = msg =>{ if(btn){ btn.disabled=false; btn.textContent='Import'; } toast(msg, true); };
+  if(btn){ btn.disabled = true; btn.textContent = 'Importing…'; }
+
+  /* New columns first — the tasks reference them by id. If this half fails, nothing is
+     inserted, so the board is left as it was rather than half-imported. */
+  const newIds = {};
+  const toMake = im.mapping.filter(m=>m.target==='new');
+  if(toMake.length){
+    const base = (S._fields||[]).length;
+    const payload = toMake.map((m,i)=>({project_id:im.pid, label:m.label.trim().slice(0,60),
+      ftype:m.ftype||'text', options:(m.ftype==='select'? (m.options||[]) : []),
+      position: base + i, created_by:S.me.id}));
+    const {data, error} = await db.from('project_fields').insert(payload).select();
+    if(error) return stop('Could not add the new columns: '+error.message);
+    (data||[]).forEach(f=>{
+      const m = toMake.find(x=> x.label.trim().slice(0,60) === f.label);
+      if(m) newIds[m.ci] = f.id;
+    });
+  }
+  const tasks = importBuildTasks(im, newIds);
+  if(!tasks.length) return stop('No rows had a task name to import');
+  const basePos = Math.max(0, ...(S._tasks||[]).map(t=>t.position||0));
+  const {error} = await db.from('tasks').insert(tasks.map((t,i)=>({...t, position: basePos + i + 1})));
+  if(error) return stop(error.message);
+  const made = toMake.length;
+  toast(`${tasks.length} task${tasks.length===1?'':'s'} imported${made? ` · ${made} new column${made===1?'':'s'} added`:''}`);
   S._pendingImport = null;
   closeModals(); renderProject(im.pid);
 }
