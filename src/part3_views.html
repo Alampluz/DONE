@@ -1461,7 +1461,7 @@ function tvDisplay(kind, val, t){
   }
   if(kind==='platform'){ const p=PLATFORMS.find(x=>x.k===val); const c=p?p.color:'#8E93A8'; return `<span class="tv-chip" style="background:${c}1C;color:${c}"><span class="cdot" style="background:${c}"></span>${esc(val)}</span>`; }
   if(kind==='file'){ if(!val||!val.path) return `<span class="tv-empty">—</span>`;
-    return `<a class="tv-link tv-filechip" href="${esc(attUrl(val.path))}" target="_blank" rel="noopener" title="${esc(val.name||'file')}" onclick="event.stopPropagation()">📎 ${esc((val.name||'file').length>18?(val.name.slice(0,17)+'…'):val.name)}</a>`; }
+    return `<a class="tv-link tv-filechip" href="#" data-sign="${esc(val.path)}" target="_blank" rel="noopener" title="${esc(val.name||'file')}" onclick="event.stopPropagation()">📎 ${esc((val.name||'file').length>18?(val.name.slice(0,17)+'…'):val.name)}</a>`; }
   if(kind==='brand'||kind.startsWith('f_')) return `<span class="tv-chip" style="background:var(--gray-soft);color:var(--ink)">${esc(val)}</span>`;
   return esc(val);
 }
@@ -1871,7 +1871,12 @@ function exportBoardCSV(pid){
   ]));
   downloadXLSX(xlsxFilename(p? p.name : 'Board'), out);
 }
-/* ---- Import Excel: first sheet, header row with a "Task" column, columns matched by name ---- */
+/* ---- Import Excel ----
+   The old version demanded a column spelled exactly "Task" and silently dropped every header
+   the board didn't already have — so importing a 12-column sheet into a blank board kept the
+   task names and threw away the rest. Now: find the header row whatever it is called, guess a
+   target for every column, then show the mapping so it can be corrected. Anything with no
+   home gets "Add as a new column", with the type read off the data underneath it. */
 function importExcel(pid){
   if(typeof XLSX === 'undefined') return toast('The Excel engine is still loading — try again in a second', true);
   const inp = document.createElement('input');
@@ -1881,31 +1886,210 @@ function importExcel(pid){
     try{
       const wb = XLSX.read(await f.arrayBuffer(), {cellDates:true});
       const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, raw:true, defval:''});
-      const res = mapImportRows(aoa, pid);
-      if(!res.tasks.length) return toast('Nothing to import — the first sheet needs a header row with a "Task" column and at least one row under it', true);
-      importPreviewModal(pid, res);
+      const sheet = importReadSheet(aoa);
+      if(!sheet) return toast('That sheet looks empty — the first sheet needs a header row and at least one row under it', true);
+      if(!sheet.rows.length) return toast('Found the header row but no data under it', true);
+      importMappingModal(pid, sheet, importGuessMapping(sheet, pid));
     }catch(e){ toast('Could not read that file: '+e.message, true); }
   };
   inp.click();
 }
-/* Pure mapping: array-of-arrays -> task rows + warnings. Kept separate so it is testable. */
-function mapImportRows(aoa, pid){
-  const warnings = []; const tasks = []; let skipped = 0;
-  const hi = (aoa||[]).findIndex(r=> (r||[]).some(c=> String(c).trim().toLowerCase()==='task'));
-  if(hi < 0) return {tasks, warnings:['No "Task" column found in the header row'], skipped};
-  const head = aoa[hi].map(c=> String(c).trim());
-  const low  = head.map(h=> h.toLowerCase());
-  const col  = name => low.indexOf(name);
-  const flds = S._fields||[], groups = S._groups||[];
-  const fieldByLabel = {}; flds.forEach(f=>{ fieldByLabel[f.label.trim().toLowerCase()] = f; });
-  const known = new Set(['task','group','status','priority','assignee','due date','created']);
-  const unknown = [];
-  head.forEach((h,i)=>{ if(h && !known.has(low[i]) && !fieldByLabel[low[i]]) unknown.push(h); });
-  if(unknown.length) warnings.push(`Ignored column${unknown.length>1?'s':''}: ${unknown.join(', ')}`);
-  if(head.some((h,i)=> fieldByLabel[low[i]] && fieldByLabel[low[i]].ftype==='formula'))
-    warnings.push('Formula columns are computed automatically and were skipped');
-  if(head.some((h,i)=> fieldByLabel[low[i]] && ['link','mirror','file'].includes(fieldByLabel[low[i]].ftype)))
-    warnings.push('Link, Mirror and File columns can\'t be imported and were skipped');
+/* The header row is the first row with two or more labelled cells that has data under it —
+   not "the row containing the word Task". Sheets often open with a title or a blank line. */
+function importReadSheet(aoa){
+  const rows = aoa||[];
+  const filled = r => (r||[]).filter(c=> String(c??'').trim()!=='').length;
+  let hi = -1;
+  for(let i=0; i<Math.min(rows.length, 20); i++){
+    if(filled(rows[i]) < 2) continue;
+    if(rows.slice(i+1).some(r=>filled(r) > 0)){ hi = i; break; }
+  }
+  if(hi < 0) return null;
+  const raw = rows[hi].map(c=> String(c??'').trim());
+  const width = raw.reduce((w,c,i)=> c? i+1 : w, 0);
+  const headers = [];
+  for(let i=0; i<width; i++) headers.push({i, label: raw[i] || ('Column '+(i+1))});
+  const body = rows.slice(hi+1).filter(r=> filled(r) > 0);
+  return {hi, headers, rows:body};
+}
+const IMPORT_ALIASES = {
+  title:    ['task','task name','taskname','name','title','subject','item','item name','summary','งาน','ชื่องาน'],
+  status:   ['status','state','สถานะ'],
+  priority: ['priority','ความสำคัญ'],
+  assignee: ['assignee','owner','assigned to','assigned','person','responsible','ผู้รับผิดชอบ'],
+  due_date: ['due date','due','deadline','due on','end date','กำหนดส่ง'],
+  group:    ['group','section','กลุ่ม'],
+};
+const importColValues = (sheet, ci) => sheet.rows.map(r=> r[ci]).filter(v=> String(v??'').trim()!=='');
+/* Read the column's own data to pick a type. Dates and numbers are safe to detect; a small
+   set of repeated values is a dropdown; everything else is text. */
+function importGuessType(values){
+  const vs = values.slice(0, 200);
+  if(!vs.length) return {ftype:'text', options:[]};
+  const isDate = v => v instanceof Date ? !isNaN(v)
+    : (typeof v === 'number' ? v > 20000 && v < 60000 : !isNaN(new Date(String(v).trim())) && /[-/.]|\s\w{3}\s/.test(String(v)));
+  const isNum  = v => typeof v === 'number' || (String(v).trim()!=='' && !isNaN(Number(String(v).replace(/,/g,''))));
+  const isBool = v => /^(yes|no|true|false|y|n|1|0|✓|✗)$/i.test(String(v).trim());
+  if(vs.every(isBool)) return {ftype:'checkbox', options:[]};
+  if(vs.every(isDate)) return {ftype:'date', options:[]};
+  if(vs.every(isNum))  return {ftype:'number', options:[]};
+  const distinct = [...new Set(vs.map(v=>String(v).trim()))];
+  /* A dropdown is "few short values, repeated". With a handful of rows everything looks
+     unique, so below ~8 values judge on the count alone rather than the ratio. Either way the
+     mapping screen lets the type be changed, so lean towards Dropdown and let it be corrected. */
+  const fewEnough = vs.length < 8 ? distinct.length <= 6 : distinct.length <= Math.round(vs.length*0.6);
+  if(distinct.length <= 12 && fewEnough && distinct.every(d=>d.length<=40))
+    return {ftype:'select', options:distinct.sort()};
+  return {ftype:'text', options:[]};
+}
+function importGuessMapping(sheet, pid){
+  const flds = (S._fields||[]).filter(f=>!['formula','link','mirror','file'].includes(f.ftype));
+  const byLabel = {}; flds.forEach(f=> byLabel[f.label.trim().toLowerCase()] = f);
+  const used = new Set();
+  const map = sheet.headers.map(h=>{
+    const low = h.label.trim().toLowerCase();
+    for(const [core, names] of Object.entries(IMPORT_ALIASES)){
+      if(names.includes(low) && !used.has(core)){ used.add(core); return {ci:h.i, label:h.label, target:core}; }
+    }
+    if(byLabel[low]) return {ci:h.i, label:h.label, target:'field:'+byLabel[low].id};
+    const guess = importGuessType(importColValues(sheet, h.i));
+    return {ci:h.i, label:h.label, target:'new', ftype:guess.ftype, options:guess.options};
+  });
+  /* No column called anything like a task name? Take the first text column that is mostly
+     filled and mostly unique — that is what a task list looks like. */
+  if(!map.some(m=>m.target==='title')){
+    /* A reference or ID column is unique and text-like too, so uniqueness alone picks the
+       wrong one. Prefer the column that reads like a sentence, and demote id-ish headers. */
+    const ID_ISH = /^(ref|ref no\.?|id|no\.?|code|ticket|ticket no\.?|item no\.?|sku|key|#)$/i;
+    let best = null, bestScore = 0;
+    map.forEach(m=>{
+      const vs = importColValues(sheet, m.ci);
+      if(!vs.length) return;
+      const unique = new Set(vs.map(v=>String(v).trim())).size / vs.length;
+      const fill   = vs.length / sheet.rows.length;
+      const texty  = vs.filter(v=> isNaN(Number(v)) && !(v instanceof Date)).length / vs.length;
+      const avgLen = vs.reduce((a,v)=>a+String(v).trim().length, 0) / vs.length;
+      let score = unique * fill * texty * (Math.min(avgLen, 40) / 40);
+      if(ID_ISH.test(m.label.trim())) score *= 0.2;
+      if(score > bestScore){ bestScore = score; best = m; }
+    });
+    if(best){ best.target = 'title'; delete best.ftype; delete best.options; }
+  }
+  return map;
+}
+/* The mapping screen. One row per column in the sheet: what it is, a sample of its data, and
+   where it should land. "Add as a new column" is offered for anything with no home, so a file
+   from monday or a plain tracker can set up a blank board instead of being thrown away. */
+function importMappingModal(pid, sheet, mapping){
+  S._pendingImport = {pid, sheet, mapping};
+  const p = projById(pid);
+  modal(`<div class="modal-head"><h2>Import into ${esc(p? p.name:'this board')}</h2>
+      <button class="x" aria-label="Close" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <p class="imp-note"><b>${sheet.rows.length}</b> row${sheet.rows.length===1?'':'s'} found.
+        Check where each column should go — anything DONE doesn't have yet can be added as a new column.</p>
+      <div id="imp-map"></div>
+      <div id="imp-warn"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" id="imp-go" onclick="doImportExcel()">Import</button></div>`, true);
+  impRender();
+  /* modal() moves focus when it opens, and #imp-map is still empty at that point, so focus
+     would settle on Cancel. Put it on the first mapping dropdown instead — that is the thing
+     you came here to check. modal() queues its focus on a zero timeout, so queue ours after
+     it: same delay, so it runs second. */
+  setTimeout(()=>{
+    try{ document.querySelector('#imp-map select')?.focus({preventScroll:true}); }catch(e){}
+  }, 0);
+}
+const IMP_TYPES = [['text','Text'],['number','Number'],['date','Date'],['select','Dropdown'],['checkbox','Checkbox'],['person','Person'],['brand','Brand'],['platform','Platform']];
+function impRender(){
+  const im = S._pendingImport; if(!im) return;
+  const host = document.getElementById('imp-map'); if(!host) return;
+  const {sheet, mapping, pid} = im;
+  const flds = (S._fields||[]).filter(f=>!['formula','link','mirror','file'].includes(f.ftype));
+  const taken = t => mapping.filter(m=>m.target===t).length;
+  host.innerHTML = mapping.map((m,idx)=>{
+    const sample = importColValues(sheet, m.ci).slice(0,3)
+      .map(v=> v instanceof Date? v.toISOString().slice(0,10) : String(v)).join(' · ');
+    const opt = (v,l,sel)=>`<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+    return `<div class="imp-row">
+      <div class="imp-col">
+        <div class="imp-head">${esc(m.label)}</div>
+        <div class="imp-sample">${esc(sample||'—')}</div>
+      </div>
+      <span class="imp-arrow" aria-hidden="true">→</span>
+      <div class="imp-to">
+        <select aria-label="Where ${esc(m.label)} should go" onchange="impSetTarget(${idx}, this.value)">
+          <optgroup label="Task fields">
+            ${opt('title','Task name', m.target==='title')}
+            ${opt('status', coreLabel(pid,'status'), m.target==='status')}
+            ${opt('priority', coreLabel(pid,'priority'), m.target==='priority')}
+            ${opt('assignee', coreLabel(pid,'assignee'), m.target==='assignee')}
+            ${opt('due_date', coreLabel(pid,'due_date'), m.target==='due_date')}
+            ${opt('group','Group', m.target==='group')}
+          </optgroup>
+          ${flds.length? `<optgroup label="Existing columns">${flds.map(f=>opt('field:'+f.id, f.label, m.target==='field:'+f.id)).join('')}</optgroup>`:''}
+          <optgroup label="Not on this board yet">
+            ${opt('new','＋ Add as a new column', m.target==='new')}
+            ${opt('skip','Skip this column', m.target==='skip')}
+          </optgroup>
+        </select>
+        ${m.target==='new'? `<select class="imp-type" aria-label="Type for the new ${esc(m.label)} column" onchange="impSetType(${idx}, this.value)">
+          ${IMP_TYPES.map(([k,l])=>opt(k,l,m.ftype===k)).join('')}</select>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const warn = [];
+  const titles = taken('title');
+  if(titles === 0) warn.push('Pick which column holds the task name — nothing imports without one.');
+  if(titles > 1)   warn.push('Two columns are set to Task name. Only one can be.');
+  ['status','priority','assignee','due_date','group'].forEach(k=>{
+    if(taken(k) > 1) warn.push(`Two columns are set to the same field. Only one can be.`);
+  });
+  const newSel = mapping.filter(m=>m.target==='new' && m.ftype==='select');
+  if(newSel.length) warn.push(`New dropdown column${newSel.length>1?'s':''} will be created with the values found in the file.`);
+  const dup = {}; mapping.filter(m=>m.target==='new').forEach(m=>{ const k=m.label.trim().toLowerCase(); dup[k]=(dup[k]||0)+1; });
+  if(Object.values(dup).some(n=>n>1)) warn.push('Two new columns would have the same name — rename one in the file or skip it.');
+  const wh = document.getElementById('imp-warn');
+  if(wh) wh.innerHTML = warn.length? `<div class="imp-warn">${warn.map(w=>`<div>⚠ ${esc(w)}</div>`).join('')}</div>` : '';
+  const go = document.getElementById('imp-go');
+  if(go){
+    const blocked = titles !== 1 || Object.values(dup).some(n=>n>1)
+      || ['status','priority','assignee','due_date','group'].some(k=>taken(k)>1);
+    go.disabled = blocked;
+    const n = blocked? 0 : importBuildTasks(im).length;
+    go.textContent = blocked? 'Import' : `Import ${n} task${n===1?'':'s'}`;
+  }
+}
+function impSetTarget(idx, v){
+  const im = S._pendingImport; if(!im) return;
+  const m = im.mapping[idx];
+  m.target = v;
+  if(v==='new' && !m.ftype){
+    const g = importGuessType(importColValues(im.sheet, m.ci));
+    m.ftype = g.ftype; m.options = g.options;
+  }
+  impRender();
+}
+function impSetType(idx, v){
+  const im = S._pendingImport; if(!im) return;
+  const m = im.mapping[idx];
+  m.ftype = v;
+  m.options = v==='select'? importGuessType(importColValues(im.sheet, m.ci)).options : [];
+  if(v==='select' && !m.options.length)
+    m.options = [...new Set(importColValues(im.sheet, m.ci).map(x=>String(x).trim()))].filter(Boolean).slice(0,50).sort();
+  impRender();
+}
+/* Pure: mapping + rows -> task payloads. `newIds` maps a column index to the field id it was
+   just created as, so the same function serves the preview count and the real import. */
+function importBuildTasks(im, newIds){
+  const {sheet, mapping, pid} = im;
+  const at = t => mapping.find(m=>m.target===t);
+  const groups = S._groups||[];
+  const fieldFor = m => m.target.startsWith('field:') ? m.target.slice(6)
+    : (m.target==='new' && newIds ? newIds[m.ci] : null);
   const statusOf = v=>{ const s=String(v).trim().toLowerCase(); if(!s) return 'todo';
     const m = STATUSES.find(x=> x.k===s || x.label.toLowerCase()===s); return m? m.k : 'todo'; };
   const prioOf = v=>{ const s=String(v).trim().toLowerCase(); if(!s) return 'normal';
@@ -1917,55 +2101,65 @@ function mapImportRows(aoa, pid){
   const dateOf = v=>{
     if(v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
     if(typeof v === 'number' && v > 20000) return new Date(Math.round((v-25569)*86400000)).toISOString().slice(0,10);
-    const s = String(v).trim(); if(!s) return null;
+    const s = String(v??'').trim(); if(!s) return null;
     const d = new Date(s); return isNaN(d)? null : d.toISOString().slice(0,10);
   };
-  let misses = 0;
-  for(let i=hi+1; i<aoa.length; i++){
-    const r = aoa[i]||[];
-    const title = String(r[col('task')]??'').trim();
-    if(!title){ skipped++; continue; }
-    const t = {project_id:pid, title, status:'todo', priority:'normal', assignee_id:null, group_id:null, due_date:null, custom:{}, created_by:S.me.id};
-    if(col('status')>=0)   t.status = statusOf(r[col('status')]);
-    if(col('priority')>=0) t.priority = prioOf(r[col('priority')]);
-    if(col('assignee')>=0){ t.assignee_id = personOf(r[col('assignee')]);
-      if(!t.assignee_id && String(r[col('assignee')]).trim()) misses++; }
-    if(col('group')>=0)    t.group_id = groupOf(r[col('group')]);
-    if(col('due date')>=0) t.due_date = dateOf(r[col('due date')]);
-    head.forEach((h,ci)=>{
-      const f = fieldByLabel[low[ci]]; if(!f || ['formula','link','mirror','file'].includes(f.ftype)) return;
-      const v = r[ci]; if(v===''||v==null) return;
-      t.custom[f.id] = f.ftype==='checkbox'? /^(yes|true|1|y|✓)$/i.test(String(v).trim())
-        : f.ftype==='date'? (dateOf(v)||'') : String(v instanceof Date? v.toISOString().slice(0,10) : v);
+  const tCol = at('title');
+  if(!tCol) return [];
+  const out = [];
+  for(const r of sheet.rows){
+    const title = String(r[tCol.ci]??'').trim();
+    if(!title) continue;
+    const t = {project_id:pid, title, status:'todo', priority:'normal', assignee_id:null,
+               group_id:null, due_date:null, custom:{}, created_by:S.me.id};
+    if(at('status'))   t.status   = statusOf(r[at('status').ci]);
+    if(at('priority')) t.priority = prioOf(r[at('priority').ci]);
+    if(at('assignee')) t.assignee_id = personOf(r[at('assignee').ci]);
+    if(at('group'))    t.group_id = groupOf(r[at('group').ci]);
+    if(at('due_date')) t.due_date = dateOf(r[at('due_date').ci]);
+    mapping.forEach(m=>{
+      const fid = fieldFor(m); if(!fid) return;
+      const v = r[m.ci]; if(v===''||v==null) return;
+      const f = (S._fields||[]).find(x=>x.id===fid);
+      const ftype = f? f.ftype : m.ftype;
+      t.custom[fid] = ftype==='checkbox' ? /^(yes|true|1|y|✓)$/i.test(String(v).trim())
+        : ftype==='date' ? (dateOf(v)||'')
+        : ftype==='number' ? String(v).replace(/,/g,'').trim()
+        : String(v instanceof Date? v.toISOString().slice(0,10) : v).trim();
     });
-    tasks.push(t);
+    out.push(t);
   }
-  if(misses) warnings.push(`${misses} assignee name${misses>1?'s':''} didn't match anyone — those rows import unassigned`);
-  return {tasks, warnings, skipped};
-}
-function importPreviewModal(pid, res){
-  S._pendingImport = {pid, tasks:res.tasks};
-  const p = projById(pid);
-  modal(`<div class="modal-head"><h2>Import into ${esc(p? p.name:'this board')}</h2><button class="x" onclick="closeModals()">✕</button></div>
-    <div class="modal-body">
-      <p style="font-size:14px"><b>${res.tasks.length}</b> task${res.tasks.length>1?'s':''} ready to import${res.skipped? ` · ${res.skipped} empty row${res.skipped>1?'s':''} skipped`:''}.</p>
-      <div style="background:var(--gray-soft);border-radius:10px;padding:10px 14px;margin-top:10px;font-size:13px;color:var(--ink2)">
-        ${res.tasks.slice(0,6).map(t=>`<div>· ${esc(t.title)}</div>`).join('')}
-        ${res.tasks.length>6? `<div style="color:var(--ink3)">…and ${res.tasks.length-6} more</div>`:''}
-      </div>
-      ${res.warnings.length? `<div style="margin-top:12px;font-size:12.5px;color:var(--amber)">${res.warnings.map(w=>`<div>⚠ ${esc(w)}</div>`).join('')}</div>`:''}
-    </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
-      <button class="btn btn-primary" id="imp-go" onclick="doImportExcel()">Import ${res.tasks.length} task${res.tasks.length>1?'s':''}</button></div>`);
+  return out;
 }
 async function doImportExcel(){
-  const im = S._pendingImport; if(!im || !im.tasks.length) return;
-  const btn = document.getElementById('imp-go'); if(btn){ btn.disabled = true; btn.textContent = 'Importing…'; }
-  const base = Math.max(0, ...(S._tasks||[]).map(t=>t.position||0));
-  const payload = im.tasks.map((t,i)=> ({...t, position: base + i + 1}));
-  const {error} = await db.from('tasks').insert(payload);
-  if(error){ if(btn){ btn.disabled=false; btn.textContent='Import'; } return toast(error.message, true); }
-  toast(`${payload.length} task${payload.length>1?'s':''} imported`);
+  const im = S._pendingImport; if(!im) return;
+  const btn = document.getElementById('imp-go');
+  const stop = msg =>{ if(btn){ btn.disabled=false; btn.textContent='Import'; } toast(msg, true); };
+  if(btn){ btn.disabled = true; btn.textContent = 'Importing…'; }
+
+  /* New columns first — the tasks reference them by id. If this half fails, nothing is
+     inserted, so the board is left as it was rather than half-imported. */
+  const newIds = {};
+  const toMake = im.mapping.filter(m=>m.target==='new');
+  if(toMake.length){
+    const base = (S._fields||[]).length;
+    const payload = toMake.map((m,i)=>({project_id:im.pid, label:m.label.trim().slice(0,60),
+      ftype:m.ftype||'text', options:(m.ftype==='select'? (m.options||[]) : []),
+      position: base + i, created_by:S.me.id}));
+    const {data, error} = await db.from('project_fields').insert(payload).select();
+    if(error) return stop('Could not add the new columns: '+error.message);
+    (data||[]).forEach(f=>{
+      const m = toMake.find(x=> x.label.trim().slice(0,60) === f.label);
+      if(m) newIds[m.ci] = f.id;
+    });
+  }
+  const tasks = importBuildTasks(im, newIds);
+  if(!tasks.length) return stop('No rows had a task name to import');
+  const basePos = Math.max(0, ...(S._tasks||[]).map(t=>t.position||0));
+  const {error} = await db.from('tasks').insert(tasks.map((t,i)=>({...t, position: basePos + i + 1})));
+  if(error) return stop(error.message);
+  const made = toMake.length;
+  toast(`${tasks.length} task${tasks.length===1?'':'s'} imported${made? ` · ${made} new column${made===1?'':'s'} added`:''}`);
   S._pendingImport = null;
   closeModals(); renderProject(im.pid);
 }

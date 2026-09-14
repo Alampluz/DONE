@@ -59,7 +59,53 @@ a{color:var(--accent-ink);text-decoration:none}
 .logo b{font-size:16px;letter-spacing:.2px;font-weight:700}
 .logo span{display:block;font-size:9.5px;color:var(--ink3);font-weight:600;letter-spacing:1.6px;text-transform:uppercase;margin-top:1px}
 
-.nav-section{padding:14px 20px 6px;font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3)}
+.nav-section{padding:14px 20px 6px;font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);
+  display:flex;align-items:center;justify-content:space-between;gap:6px}
+/* Section headers collapse per user. The whole label is the button, not a lone caret. */
+.nav-sec-toggle{display:flex;align-items:center;gap:5px;font:inherit;color:inherit;letter-spacing:inherit;
+  text-transform:inherit;padding:2px 0;border-radius:5px;flex:1;text-align:left}
+.nav-sec-toggle:hover{color:var(--ink)}
+.nav-caret{font-size:9px;width:9px;display:inline-block;color:var(--ink3)}
+.nav-group{display:flex;flex-direction:column}
+/* "Customize menu" sits just above the user block, the way monday puts it. */
+/* this one takes the slack, so #sidebar-user gives up its own margin-top:auto below */
+#nav-customize{margin-top:auto;padding:6px 10px 2px}
+#sidebar:has(#nav-customize) #sidebar-user{margin-top:0}
+.nav-customize{display:flex;align-items:center;gap:9px;width:100%;padding:8px 12px;border-radius:9px;
+  color:var(--ink3);font-size:12.5px;font-weight:500;text-align:left}
+.nav-customize:hover{background:var(--sidebar-hover);color:var(--ink)}
+
+/* Import mapping screen */
+.imp-note{font-size:13px;color:var(--ink2);background:var(--gray-soft);border-radius:8px;padding:9px 11px;margin-bottom:12px}
+.imp-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line-2,#F1F1EC)}
+.imp-row:first-child{border-top:0}
+.imp-col{flex:1;min-width:0}
+.imp-head{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.imp-sample{font-size:11.5px;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.imp-arrow{color:var(--ink3);font-size:13px;flex:none}
+.imp-to{flex:0 0 248px;display:flex;flex-direction:column;gap:5px}
+.imp-to select{padding:6px 9px;font-size:13px}
+.imp-to .imp-type{font-size:12.5px;color:var(--ink2)}
+.imp-warn{margin-top:12px;font-size:12.5px;color:var(--amber)}
+@media(max-width:700px){ .imp-row{flex-wrap:wrap} .imp-arrow{display:none} .imp-to{flex:1 1 100%} }
+
+/* Customize menu modal */
+.cm-note{font-size:12.5px;color:var(--ink2);background:var(--gray-soft);border-radius:8px;padding:9px 11px;margin-bottom:14px}
+.cm-block + .cm-block{margin-top:18px}
+.cm-title{font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.cm-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border:1px solid transparent;border-radius:9px;background:var(--panel)}
+.cm-row:hover{background:var(--gray-soft)}
+.cm-row.off .cm-label{color:var(--ink3);text-decoration:line-through}
+.cm-row.dragging{opacity:.45}
+.cm-row.dragover{border-color:var(--accent);background:var(--accent-soft)}
+.cm-grip{display:inline-flex;color:var(--ink3);cursor:grab}
+.cm-label{flex:1;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;
+  color:var(--ink3);font-size:13px;flex:none}
+.cm-btn:hover:not(:disabled){background:var(--panel);box-shadow:inset 0 0 0 1px var(--line);color:var(--ink)}
+.cm-btn.on{color:var(--amber)}
+.cm-btn.on svg{fill:var(--amber-soft)}
+.cm-btn:disabled{opacity:.3;cursor:default}
 .nav-item{display:flex;align-items:center;gap:10px;margin:1px 10px;padding:8px 12px;border-radius:9px;color:var(--sidebar-ink);font-weight:500;font-size:13.5px;cursor:pointer;user-select:none;transition:all .12s}
 .nav-item:hover{background:var(--sidebar-hover);color:var(--ink)}
 .nav-item.active{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
