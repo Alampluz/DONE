@@ -1062,7 +1062,7 @@ function navigate(hash){
   S.route = {view, id:parts[1], tab:parts[2]};
   renderSidebar();
   const C = $('#content'); C.scrollTop=0;
-  const map = {home:renderHome, ws:renderWorkspace, project:renderProject, task:openTaskRoute, requests:renderRequests, approvals:renderApprovals, dashboard:renderDashboard, admin:renderAdmin, platform:renderPlatform};
+  const map = {home:renderHome, ws:renderWorkspace, project:renderProject, task:openTaskRoute, requests:renderRequests, approvals:renderApprovals, campaigns:renderCampaigns, dashboard:renderDashboard, admin:renderAdmin, platform:renderPlatform};
   (map[view]||renderHome)(parts[1], parts[2]);
 }
 
@@ -1154,6 +1154,7 @@ function navItems(){
     {key:'menu:home',      h:'#/home',      label:'My Work',   show:true},
     {key:'menu:requests',  h:'#/requests',  label:'Requests',  show:true},
     {key:'menu:approvals', h:'#/approvals', label:'Approvals', show:true, badge:'appr'},
+    {key:'menu:campaigns', h:'#/campaigns', label:'Campaigns', show:isStaff()},
     {key:'menu:dashboard', h:'#/dashboard', label:'Dashboard', show:isStaff()||isRequester()},
     {key:'menu:admin',     h:'#/admin',     label:'Admin',     show:isAdmin()},
     {key:'menu:platform',  h:'#/platform',  label:'Platform',  show:!!(S.me&&S.me.platform_admin)},
