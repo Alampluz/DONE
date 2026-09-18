@@ -1904,7 +1904,7 @@ function navigate(hash){
   S.route = {view, id:parts[1], tab:parts[2]};
   renderSidebar();
   const C = $('#content'); C.scrollTop=0;
-  const map = {home:renderHome, ws:renderWorkspace, project:renderProject, task:openTaskRoute, requests:renderRequests, approvals:renderApprovals, dashboard:renderDashboard, admin:renderAdmin, platform:renderPlatform};
+  const map = {home:renderHome, ws:renderWorkspace, project:renderProject, task:openTaskRoute, requests:renderRequests, approvals:renderApprovals, campaigns:renderCampaigns, dashboard:renderDashboard, admin:renderAdmin, platform:renderPlatform};
   (map[view]||renderHome)(parts[1], parts[2]);
 }
 
@@ -1996,6 +1996,7 @@ function navItems(){
     {key:'menu:home',      h:'#/home',      label:'My Work',   show:true},
     {key:'menu:requests',  h:'#/requests',  label:'Requests',  show:true},
     {key:'menu:approvals', h:'#/approvals', label:'Approvals', show:true, badge:'appr'},
+    {key:'menu:campaigns', h:'#/campaigns', label:'Campaigns', show:isStaff()},
     {key:'menu:dashboard', h:'#/dashboard', label:'Dashboard', show:isStaff()||isRequester()},
     {key:'menu:admin',     h:'#/admin',     label:'Admin',     show:isAdmin()},
     {key:'menu:platform',  h:'#/platform',  label:'Platform',  show:!!(S.me&&S.me.platform_admin)},
@@ -8048,5 +8049,993 @@ async function deleteTeamModal(tid){
   const {error} = await db.from('teams').delete().eq('id', tid);
   if(error) return toast(error.message, true);
   toast('Team deleted'); await refreshCore(); renderAdmin();
+}
+</script>
+<style>
+/* ================= CAMPAIGN PLANNING ================= */
+/* Channel colours sit on the existing palette so they clear 4.5:1 as text on their
+   own -soft tint, the same contract every .chip pill in part1 keeps. */
+:root{
+  --cp-navy:#313A7E; --cp-navy-soft:#EAEBF6; --cp-purple:#7A3E9C;
+  --cp-shopee:#C2410C; --cp-shopee-soft:#FBEDE6;
+  --cp-lazada:#2B2FA0; --cp-lazada-soft:#E9EAF7;
+  --cp-tiktok:#0A6E78; --cp-tiktok-soft:#E2F1F3;
+  --cp-brand:#7A3E9C;  --cp-brand-soft:#F2E9F7;
+}
+.cp-tl{overflow-x:auto}
+.cp-tl-inner{min-width:1080px}
+.cp-head{display:grid;grid-template-columns:226px 1fr;border-bottom:1px solid var(--line);background:#FBFBF8}
+.cp-head .cp-lab{padding:9px 14px;border-right:1px solid var(--line);font-size:11.5px;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--ink3);font-weight:700;align-self:center}
+.cp-months{display:flex}
+.cp-month{border-right:1px solid var(--line);padding:5px 0 3px}
+.cp-month:last-child{border-right:none}
+.cp-month b{display:block;padding:0 10px;font-size:11.5px;font-weight:700;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--ink2)}
+.cp-days{display:flex;padding-top:2px}
+.cp-day{flex:1;text-align:center;font-size:9px;color:var(--ink3)}
+.cp-grp{display:grid;grid-template-columns:226px 1fr;background:#FBFBF8;border-bottom:1px solid var(--line)}
+.cp-grp span{padding:6px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);font-weight:700}
+.cp-row{display:grid;grid-template-columns:226px 1fr;border-bottom:1px solid var(--line);min-height:44px}
+.cp-row:last-child{border-bottom:none}
+.cp-row:hover{background:#FAFAF6}
+.cp-name{padding:8px 12px 8px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;
+  gap:2px;justify-content:center}
+.cp-name b{font-size:12.5px;font-weight:600;line-height:1.25}
+.cp-name .s{font-size:10.5px;color:var(--ink3)}
+.cp-track{position:relative;padding:9px 0}
+.cp-lines{position:absolute;inset:0;display:flex;pointer-events:none}
+.cp-lines span{flex:1}
+.cp-lines span.w{border-right:1px solid #F1F0EB}
+.cp-lines span.m{border-left:1px solid var(--line)}
+.cp-today{position:absolute;top:0;bottom:0;width:2px;background:var(--red);opacity:.7;pointer-events:none;z-index:3}
+.cp-today.lab::after{content:"TODAY";position:absolute;top:-18px;left:50%;transform:translateX(-50%);
+  font-size:8.5px;font-weight:800;letter-spacing:.08em;color:var(--red);background:var(--red-soft);
+  padding:1px 5px;border-radius:4px;white-space:nowrap}
+.cp-bar{position:absolute;height:26px;border-radius:7px;display:flex;align-items:center;gap:6px;padding:0 9px;
+  font-size:11.5px;font-weight:700;color:#fff;overflow:hidden;white-space:nowrap;cursor:pointer;z-index:2;
+  box-shadow:0 1px 2px rgba(22,24,29,.14)}
+.cp-bar:hover{filter:brightness(1.08)}
+.cp-bar .f{margin-left:auto;font-size:10px;font-weight:700;background:rgba(255,255,255,.24);
+  padding:1px 5px;border-radius:5px}
+.cp-bar.shopee{background:var(--cp-shopee)} .cp-bar.lazada{background:var(--cp-lazada)}
+.cp-bar.tiktok{background:var(--cp-tiktok)} .cp-bar.brand{background:var(--cp-brand)}
+.cp-bar.multi{background:linear-gradient(97deg,var(--cp-navy),var(--cp-purple))}
+.cp-bar.draft{background:var(--gray-soft);color:var(--ink2);border:1px dashed #CFCEC7;box-shadow:none}
+.cp-barlab{position:absolute;height:26px;display:flex;align-items:center;gap:7px;font-size:11.5px;
+  font-weight:600;color:var(--ink2);white-space:nowrap;pointer-events:none;z-index:2}
+.cp-barlab .f{font-size:10px;font-weight:700;color:var(--ink3);background:var(--gray-soft);
+  padding:1px 5px;border-radius:5px}
+.cp-legend{display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line);
+  background:#FBFBF8;font-size:11.5px;color:var(--ink3)}
+.cp-legend b{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ink2)}
+.cp-sw{width:14px;height:8px;border-radius:3px;display:inline-block}
+.cp-meter{height:5px;border-radius:99px;background:var(--gray-soft);overflow:hidden}
+.cp-meter i{display:block;height:100%;border-radius:99px;background:var(--cp-navy)}
+.cp-meter i.green{background:var(--green)} .cp-meter i.amber{background:var(--amber)} .cp-meter i.red{background:var(--red)}
+.cp-tick{width:16px;height:16px;border-radius:5px;border:1.5px solid #D6D5CE;flex:none;display:grid;
+  place-items:center;font-size:10px;color:#fff;background:#fff}
+.cp-tick.done{background:var(--green);border-color:var(--green)}
+.cp-tick.prog{border-color:var(--amber);background:var(--amber-soft);color:var(--amber)}
+.cp-task{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 14px;
+  border-bottom:1px solid var(--line)}
+.cp-task:last-child{border-bottom:none}
+.cp-task:hover{background:#FAFAF6}
+.cp-task.fresh{background:var(--green-soft)}
+.cp-task b{font-size:12.8px;font-weight:600;display:block}
+.cp-task .m{font-size:11.2px;color:var(--ink3);display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.cp-task .r{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.cp-assets{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:12px}
+.cp-asset{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+.cp-asset .th{aspect-ratio:16/10;max-width:100%;background:var(--gray-soft);display:grid;place-items:center;
+  border-bottom:1px solid var(--line);position:relative}
+.cp-asset .th .t{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:700}
+.cp-asset .th .v{position:absolute;top:7px;left:7px;font-size:10px;font-weight:700;background:#fff;
+  border:1px solid var(--line);padding:1px 6px;border-radius:6px;color:var(--ink2)}
+.cp-asset .mt{padding:10px 12px;display:flex;flex-direction:column;gap:5px}
+.cp-asset .mt b{font-size:12.5px;font-weight:600}
+.cp-asset .mt .d{font-size:11px;color:var(--ink3)}
+.cp-asset .ac{display:flex;gap:6px;padding:0 12px 11px;flex-wrap:wrap}
+.cp-stat{display:flex;flex-direction:column}
+.cp-stat .cp-l{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink3);
+  font-weight:700;margin-bottom:5px}
+.cp-stat .n{font-family:'Fraunces',Georgia,serif;font-size:25px;font-weight:600;line-height:1.1;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.cp-stat .n.navy{color:var(--cp-navy)}
+.cp-stat .sub{margin-top:4px}
+.cp-kv{display:flex;justify-content:space-between;gap:12px;font-size:12.8px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.cp-kv:last-child{border-bottom:none}
+.cp-kv span:first-child{color:var(--ink3)}
+.cp-kv span:last-child{font-weight:600;text-align:right}
+.cp-grid2{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start}
+.cp-mech{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#FBFBF8}
+.cp-mech b{font-size:12.8px}
+.cp-mech p{margin:3px 0 0;font-size:11.8px;color:var(--ink3)}
+.cp-prev{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.cp-prev .h{display:flex;padding:8px 12px;background:#FBFBF8;border-bottom:1px solid var(--line);
+  font-size:11px;letter-spacing:.5px;text-transform:uppercase;font-weight:700;color:var(--ink3)}
+.cp-prev ul{list-style:none;margin:0;padding:0;max-height:270px;overflow:auto}
+.cp-prev li{display:grid;grid-template-columns:1fr auto;gap:10px;padding:8px 12px;
+  border-bottom:1px solid var(--line);font-size:12.6px;align-items:center}
+.cp-prev li:last-child{border-bottom:none}
+.cp-prev li small{display:block;color:var(--ink3);font-size:11px;margin-top:1px}
+.cp-prev li .du{font-size:11px;color:var(--ink3);white-space:nowrap;text-align:right}
+@media(max-width:760px){ .cp-grid2{grid-template-columns:1fr} }
+</style>
+<script>
+/* ================= CAMPAIGN PLANNING =================
+   Cross-platform campaign planning: one window across Shopee, Lazada, TikTok Shop and
+   Brand.com, the brief expanded into tickets on the division boards, the GMV/budget line,
+   and the creative deliverables waiting for sign-off.
+
+   SEED DATA ONLY. Nothing here reads or writes Supabase yet — S.campaigns is filled from
+   CP_SEED the first time the view opens and lives for the session. When the tables land,
+   cpLoad() is the only function that has to change. */
+
+const CP_CHANNELS = {
+  shopee:{label:'Shopee', cls:'shopee'},
+  lazada:{label:'Lazada', cls:'lazada'},
+  tiktok:{label:'TikTok Shop', cls:'tiktok'},
+  brand: {label:'Brand.com', cls:'brand'}
+};
+const CP_STATUSES = [
+  {k:'draft',    label:'Draft',        color:'#6E7279'},
+  {k:'planning', label:'Planning',     color:'#2A6FB8'},
+  {k:'briefed',  label:'Briefed',      color:'#6E56B8'},
+  {k:'exec',     label:'In execution', color:'#90660C'},
+  {k:'live',     label:'Live',         color:'#0F7D51'},
+  {k:'wrap',     label:'Wrap-up',      color:'#0B5D57'},
+  {k:'closed',   label:'Closed',       color:'#6E7279'}
+];
+const CP_ASTATES = {
+  approved:{label:'Approved',          bg:'var(--green-soft)', ink:'var(--green)'},
+  review:  {label:'In review',         bg:'var(--blue-soft)',  ink:'var(--blue)'},
+  changes: {label:'Changes requested', bg:'var(--red-soft)',   ink:'var(--red)'},
+  draft:   {label:'Not started',       bg:'var(--gray-soft)',  ink:'var(--ink2)'}
+};
+
+/* A playbook is the shape of the work a kind of campaign always needs. `off` is how many
+   days before go-live the ticket is due; the due date is then walked back over working
+   days only, so a D-7 ticket never lands on a Sunday. */
+const CP_PLAYBOOKS = {
+  mega:{ name:'Marketplace mega campaign',
+    note:'Double-date campaigns (9.9 / 10.10 / 11.11) on Shopee, Lazada or TikTok Shop.',
+    items:[
+      {t:'Campaign KV — master artwork',     div:'Creative',         off:21},
+      {t:'Main banner set (web + app)',      div:'Creative',         off:18},
+      {t:'Section banners ×4',               div:'Creative',         off:16},
+      {t:'Voucher tiles — New Buyer / BMO',  div:'Creative',         off:14},
+      {t:'Flash sale frames ×6 slots',       div:'Creative',         off:12},
+      {t:'New SKU listing batch',            div:'Product Listing',  off:14},
+      {t:'Content update pass — hero SKUs',  div:'Product Listing',  off:9},
+      {t:'Campaign frame upload',            div:'Product Listing',  off:7},
+      {t:'Flash sale slot registration',     div:'Store Operations', off:9},
+      {t:'Price & TB setup (maker–checker)', div:'Store Operations', off:7},
+      {t:'Voucher configuration',            div:'Store Operations', off:5},
+      {t:'GWP setup + stock allocation',     div:'Store Operations', off:5},
+      {t:'Campaign FAQ brief to CS',         div:'Customer Service', off:3},
+      {t:'Live-day standby roster',          div:'Customer Service', off:2}
+    ]},
+  brandday:{ name:'Brand day / brand-owned campaign',
+    note:'Single-brand takeover on one platform.',
+    items:[
+      {t:'Brand day KV + store decoration',  div:'Creative',         off:16},
+      {t:'In-shop banner set',               div:'Creative',         off:12},
+      {t:'Bundle / set visuals ×3',          div:'Creative',         off:10},
+      {t:'Store decoration upload',          div:'Product Listing',  off:6},
+      {t:'Bundle deal configuration',        div:'Store Operations', off:5},
+      {t:'Price & TB setup (maker–checker)', div:'Store Operations', off:5},
+      {t:'Voucher configuration',            div:'Store Operations', off:4},
+      {t:'Campaign FAQ brief to CS',         div:'Customer Service', off:2}
+    ]},
+  npd:{ name:'NPD launch',
+    note:'New product introduction across owned and marketplace channels.',
+    items:[
+      {t:'NPD highlight KV',                 div:'Creative',         off:18},
+      {t:'PDP image set (7 frames)',         div:'Creative',         off:14},
+      {t:'CPAS creative pack',               div:'Creative',         off:10},
+      {t:'New SKU creation + attributes',    div:'Product Listing',  off:12},
+      {t:'PDP copy — TH localisation',       div:'Product Listing',  off:9},
+      {t:'Launch price & RSP check',         div:'Store Operations', off:6},
+      {t:'Sampling / GWP setup',             div:'Store Operations', off:5},
+      {t:'CS product training note',         div:'Customer Service', off:3},
+      {t:'Onboarding checklist sign-off',    div:'CX Onboarding',    off:2}
+    ]},
+  payday:{ name:'Payday campaign',
+    note:'Short monthly payday burst, light creative load.',
+    items:[
+      {t:'Payday banner refresh',            div:'Creative',         off:9},
+      {t:'Voucher tiles',                    div:'Creative',         off:7},
+      {t:'Campaign frame upload',            div:'Product Listing',  off:4},
+      {t:'Price & TB setup (maker–checker)', div:'Store Operations', off:4},
+      {t:'Voucher configuration',            div:'Store Operations', off:3},
+      {t:'CS talking points',                div:'Customer Service', off:2}
+    ]}
+};
+const CP_ASSETS = {
+  mega:[
+    {n:'Campaign KV — master',            d:'1200 × 1200', t:'KV'},
+    {n:'Main banner — app',               d:'1600 × 800',  t:'Main banner'},
+    {n:'Main banner — web',               d:'1920 × 600',  t:'Main banner'},
+    {n:'Section banner — Best sellers',   d:'800 × 400',   t:'Section banner'},
+    {n:'Section banner — New arrivals',   d:'800 × 400',   t:'Section banner'},
+    {n:'Voucher tile — New Buyer',        d:'600 × 600',   t:'Voucher'},
+    {n:'Voucher tile — Repeat',           d:'600 × 600',   t:'Voucher'},
+    {n:'Flash sale frame set',            d:'800 × 800',   t:'Flash sale'},
+    {n:'GWP visual',                      d:'1000 × 1000', t:'GWP'}],
+  brandday:[
+    {n:'Brand day KV',                    d:'1200 × 1200', t:'KV'},
+    {n:'Head banner',                     d:'1600 × 800',  t:'Head banner'},
+    {n:'Bundle / set visual',             d:'800 × 800',   t:'Bundle/Set'},
+    {n:'Voucher tile — CBMO',             d:'600 × 600',   t:'Voucher'},
+    {n:'Store decoration strip',          d:'1920 × 400',  t:'Section banner'}],
+  npd:[
+    {n:'NPD highlight KV',                d:'1200 × 1200', t:'NPD highlight'},
+    {n:'PDP frame set (7)',               d:'1000 × 1000', t:'PDP'},
+    {n:'CPAS creative — square',          d:'1080 × 1080', t:'CPAS'},
+    {n:'CPAS creative — story',           d:'1080 × 1920', t:'CPAS'},
+    {n:'Sampling GWP visual',             d:'1000 × 1000', t:'GWP'}],
+  payday:[
+    {n:'Payday banner',                   d:'1600 × 800',  t:'Main banner'},
+    {n:'Voucher tile — BMO',              d:'600 × 600',   t:'Voucher'},
+    {n:'Payday section strip',            d:'800 × 400',   t:'Section banner'}]
+};
+</script>
+<script>
+/* Seed rows. Dates are the real 2026 Thai e-commerce calendar so the timeline reads true.
+   Owner names are matched to a profile by full name when one exists, so avatars work on
+   April's tenant and fall back to a plain name everywhere else. */
+const CP_SEED = [
+ {id:'C-2601', name:'Shopee 9.9 Super Shopping Day', brands:['CMG portfolio — 18 brands'], channels:['shopee'],
+  start:'2026-08-28', end:'2026-09-09', status:'closed', owner:'Ton', pb:'mega', prog:1,
+  gmvTarget:28000000, gmvActual:31400000, budget:2100000, spent:2045000,
+  mech:[{t:'Store-wide 15% cap discount', d:'RSP guard on, 412 SKUs excluded by the MSP rule'},
+        {t:'Vouchers ฿100 / ฿300 / ฿500', d:'Min spend 590 / 1,490 / 2,490 — New Buyer tier doubled'},
+        {t:'Flash sale — 6 slots', d:'00:00, 09:00, 12:00, 18:00, 20:00, 23:00'},
+        {t:'GWP — tote at ฿1,990', d:'3,000 units allocated, 2,884 redeemed'}]},
+ {id:'C-2602', name:'Lazada 9.9 Super Sale', brands:['CMG portfolio — 15 brands'], channels:['lazada'],
+  start:'2026-09-01', end:'2026-09-09', status:'closed', owner:'Ton', pb:'mega', prog:1,
+  gmvTarget:19500000, gmvActual:17900000, budget:1450000, spent:1502000,
+  mech:[{t:'LazFlash slots ×4', d:'Price control checked against the MSP floor before submit'},
+        {t:'Bundle deal — buy 2 save 20%', d:'96 sets across Lee, Wrangler and Jockey'},
+        {t:'Vouchers ฿150 / ฿400', d:'Collectible, capped at 8,000 redemptions'}]},
+ {id:'C-2603', name:'TikTok Shop 9.9 Brand Sale', brands:['Crocs','Guess','MLB'], channels:['tiktok'],
+  start:'2026-09-03', end:'2026-09-09', status:'wrap', owner:'Prim', pb:'mega', prog:0.95,
+  gmvTarget:8200000, gmvActual:9050000, budget:960000, spent:918000,
+  mech:[{t:'LIVE ×9 sessions', d:'3 brands × 3 slots, creator-led, 2 affiliate tiers'},
+        {t:'Deal price + platform co-fund 5%', d:'Co-fund approved for 142 SKUs'},
+        {t:'Free shipping ฿0 threshold', d:'Platform-funded'}]},
+ {id:'C-2604', name:'Clarins Double Serum NPD launch', brands:['Clarins'], channels:['brand','lazada'],
+  start:'2026-09-15', end:'2026-10-05', status:'live', owner:'Pae', pb:'npd', prog:0.72,
+  gmvTarget:4600000, gmvActual:1380000, budget:820000, spent:294000,
+  mech:[{t:'Launch RSP ฿3,900 — no discount', d:'MSP locked; any change needs maker–checker'},
+        {t:'Sampling GWP ×2 sachets', d:'Every order inside the launch window'},
+        {t:'CPAS always-on', d:'฿180k over 21 days'}]},
+ {id:'C-2605', name:'Crocs Brand Day — Shopee', brands:['Crocs'], channels:['shopee'],
+  start:'2026-09-18', end:'2026-09-20', status:'exec', owner:'Vee', pb:'brandday', prog:0.75,
+  gmvTarget:3400000, gmvActual:0, budget:410000, spent:96000,
+  mech:[{t:'Brand day 20% store-wide', d:'Clog range excluded — MSP floor'},
+        {t:'Bundle — 2 pairs ฿1,690', d:'48 set SKUs to create'},
+        {t:'Shop voucher ฿200 min 1,290', d:'Seller-funded'}]},
+ {id:'C-2606', name:'September payday — Shopee + Lazada', brands:['CMG portfolio — 12 brands'], channels:['shopee','lazada'],
+  start:'2026-09-23', end:'2026-09-27', status:'exec', owner:'Ton', pb:'payday', prog:0.5,
+  gmvTarget:6800000, gmvActual:0, budget:520000, spent:0,
+  mech:[{t:'Payday voucher ฿250 min 1,500', d:'Both platforms, seller-funded'},
+        {t:'Selected SKU 25% off', d:'Slow-mover list from the CUSP coverage report'}]},
+ {id:'C-2607', name:'Shopee 10.10 Brands Festival', brands:['CMG portfolio — 18 brands'], channels:['shopee'],
+  start:'2026-09-28', end:'2026-10-10', status:'briefed', owner:'Ton', pb:'mega', prog:0.28,
+  gmvTarget:32000000, gmvActual:0, budget:2400000, spent:0,
+  mech:[{t:'Store-wide 18% cap discount', d:'Awaiting the MSP re-run on the October price list'},
+        {t:'Vouchers ฿100 / ฿350 / ฿600', d:'Tiers pending category manager sign-off'},
+        {t:'Flash sale — 8 slots requested', d:'Slot allocation confirms D-9'}]},
+ {id:'C-2608', name:'Lazada 10.10 Mega Sale', brands:['CMG portfolio — 15 brands'], channels:['lazada'],
+  start:'2026-10-01', end:'2026-10-10', status:'briefed', owner:'Marker', pb:'mega', prog:0.18,
+  gmvTarget:22000000, gmvActual:0, budget:1600000, spent:0,
+  mech:[{t:'LazFlash ×6 slots', d:'Submission window opens 24 Sep'},
+        {t:'Bundle deal — buy 2 save 25%', d:'Set list being rebuilt from the 9.9 learnings'}]},
+ {id:'C-2609', name:'TikTok Shop 10.10', brands:['Crocs','Guess','MLB','Casio'], channels:['tiktok'],
+  start:'2026-10-05', end:'2026-10-10', status:'planning', owner:'Prim', pb:'mega', prog:0.1,
+  gmvTarget:11000000, gmvActual:0, budget:1180000, spent:0,
+  mech:[{t:'LIVE ×16 sessions', d:'Creator shortlist in review'},
+        {t:'Affiliate commission 12% / 18%', d:'Tier 2 for the top-50 creators'}]},
+ {id:'C-2610', name:'Guess × MLB streetwear push', brands:['Guess','MLB'], channels:['shopee','tiktok'],
+  start:'2026-10-12', end:'2026-10-26', status:'planning', owner:'Vee', pb:'brandday', prog:0.06,
+  gmvTarget:5200000, gmvActual:0, budget:640000, spent:0,
+  mech:[{t:'Cross-brand bundle ฿2,490', d:'Set creation blocked on the SKU master'},
+        {t:'Creator seeding ×20', d:'Brief with Creative'}]},
+ {id:'C-2611', name:'October payday', brands:['CMG portfolio — 12 brands'], channels:['shopee','lazada'],
+  start:'2026-10-23', end:'2026-10-27', status:'planning', owner:'Ton', pb:'payday', prog:0,
+  gmvTarget:7100000, gmvActual:0, budget:540000, spent:0,
+  mech:[{t:'Payday voucher ฿250 min 1,500', d:'Repeat of the September mechanic'}]},
+ {id:'C-2612', name:'11.11 Mega Sale — all channels', brands:['CMG portfolio — 20 brands'],
+  channels:['shopee','lazada','tiktok','brand'],
+  start:'2026-10-28', end:'2026-11-11', status:'planning', owner:'April', pb:'mega', prog:0.04,
+  gmvTarget:68000000, gmvActual:0, budget:5200000, spent:0,
+  mech:[{t:'Peak of the year', d:'Channel split and co-fund asks go to the platforms 30 Sep'},
+        {t:'Store-wide 20% cap + tiered vouchers', d:'Draft — pricing review 2 Oct'},
+        {t:'LIVE marathon 11 Nov', d:'24h rotation across 4 brands'}]},
+ {id:'C-2613', name:'Jockey warehouse clearance', brands:['Jockey'], channels:['shopee','brand'],
+  start:'2026-11-05', end:'2026-11-12', status:'draft', owner:'Ton', pb:'brandday', prog:0,
+  gmvTarget:2400000, gmvActual:0, budget:180000, spent:0,
+  mech:[{t:'Clearance up to 60%', d:'Needs an RSP exception — below the MSP floor'}]},
+ {id:'C-2614', name:'Casio watch fair', brands:['Casio'], channels:['lazada','brand'],
+  start:'2026-11-14', end:'2026-11-23', status:'draft', owner:'Vee', pb:'brandday', prog:0,
+  gmvTarget:3900000, gmvActual:0, budget:300000, spent:0,
+  mech:[{t:'Instalment 0% for 10 months', d:'Bank partner to be confirmed'}]}
+];
+/* Who each playbook line goes to. Division leads, matched by name to a profile when the
+   tenant has one. */
+const CP_OWNERS = {'Creative':'Vee', 'Product Listing':'Ton', 'Store Operations':'Ton',
+                   'Customer Service':'Prim', 'CX Onboarding':'Pae'};
+const CP_OWNER2 = {'Creative':['Vee','Joy','Gyb'], 'Product Listing':['Ton','Marker'],
+                   'Store Operations':['Ton','Veer'], 'Customer Service':['Prim'], 'CX Onboarding':['Pae']};
+
+let cpTab  = 'timeline';                 /* timeline | list | targets | assets */
+let cpChan = 'all';
+let cpStat = 'all';
+let cpAFil = 'pending';
+let cpTFil = 'all';
+let cpSeq  = 4820;
+</script>
+<script>
+/* ---------- dates ---------- */
+const cpD   = s => s instanceof Date ? s : new Date(s+'T00:00:00');
+const cpISO = x => { const d=cpD(x); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const cpAdd = (x,n) => { const d=new Date(cpD(x)); d.setDate(d.getDate()+n); return d; };
+const cpDays= (a,b) => Math.round((cpD(b)-cpD(a))/86400000);
+const cpToday = () => { const d=new Date(); d.setHours(0,0,0,0); return d; };
+/* Holidays come from the SLA settings when they are loaded; the fixed 2026 Thai dates are
+   the fallback so the count is still right on a cold open. */
+function cpHolidays(){
+  const rows = S.slaHolidays || S.holidays;
+  if(Array.isArray(rows) && rows.length) return rows.map(h=>h.day||h);
+  return ['2026-01-01','2026-04-06','2026-04-13','2026-04-14','2026-04-15','2026-05-01',
+          '2026-05-04','2026-06-03','2026-07-28','2026-08-12','2026-10-13','2026-10-23',
+          '2026-12-05','2026-12-10','2026-12-31'];
+}
+/* Signed count of working days from a to b — negative when b is in the past. Weekends and
+   the holiday list are skipped, the same rule the request SLA uses. */
+function cpWD(a, b){
+  const hol = cpHolidays();
+  let n=0, cur=cpD(a); const dir = cpD(b) >= cur ? 1 : -1;
+  const stop = cpISO(b);
+  let guard = 0;
+  while(cpISO(cur) !== stop && guard++ < 2000){
+    cur = cpAdd(cur, dir);
+    const w = cur.getDay();
+    if(w!==0 && w!==6 && !hol.includes(cpISO(cur))) n++;
+  }
+  return n*dir;
+}
+/* A ticket due D-n before go-live, counted back over working days. */
+function cpDueBack(start, off){
+  let d = cpD(start), left = off, guard = 0;
+  const hol = cpHolidays();
+  while(left > 0 && guard++ < 2000){
+    d = cpAdd(d, -1);
+    const w = d.getDay();
+    if(w!==0 && w!==6 && !hol.includes(cpISO(d))) left--;
+  }
+  return cpISO(d);
+}
+function cpTHB(n){
+  if(!n) return '฿0';
+  if(n >= 1000000) return '฿'+(n/1000000).toFixed(n>=10000000?1:2)+'M';
+  if(n >= 1000) return '฿'+Math.round(n/1000)+'K';
+  return '฿'+n;
+}
+const cpPct = (a,b) => b? Math.round(a/b*100) : 0;
+const cpMeter = p => p>=95?'green' : p>=70?'' : p>=40?'amber':'red';
+
+/* ---------- state ---------- */
+/* One place to swap for real tables later: fill S.campaigns from db instead of CP_SEED. */
+function cpLoad(){
+  if(S.campaigns) return S.campaigns;
+  S.campaigns = CP_SEED.map(c=>{
+    const row = JSON.parse(JSON.stringify(c));
+    row.tasks  = row.status==='draft' ? [] : cpBuildTasks(row, row.prog);
+    row.assets = row.tasks.length ? cpBuildAssets(row, row.prog) : [];
+    return row;
+  });
+  return S.campaigns;
+}
+const cpById = id => (S.campaigns||[]).find(c=>c.id===id);
+function cpBuildTasks(c, prog){
+  const pb = CP_PLAYBOOKS[c.pb]; const n = pb.items.length;
+  const seen = {};
+  return pb.items.map((it,i)=>{
+    const pool = CP_OWNER2[it.div] || [CP_OWNERS[it.div]||'Ton'];
+    seen[it.div] = (seen[it.div]||0);
+    const owner = pool[seen[it.div]++ % pool.length];
+    const frac = (i+0.5)/n;
+    let st = 'todo';
+    if(prog > 0){
+      if(frac <= prog) st='done';
+      else if(frac <= prog+0.2) st='progress';
+    }
+    return {id:'CT-'+(++cpSeq), title:it.t, div:it.div, owner, due:cpDueBack(c.start, it.off),
+            off:it.off, status:st, fresh:false};
+  });
+}
+function cpBuildAssets(c, prog){
+  const set = CP_ASSETS[c.pb]||[];
+  return set.map((a,i)=>{
+    const frac = (i+0.5)/set.length;
+    let st = 'draft';
+    if(frac <= prog-0.15) st='approved';
+    else if(frac <= prog+0.05) st = (i%4===1 ? 'changes' : 'review');
+    return {id:'CA-'+c.id.slice(2)+'-'+(i+1), name:a.n, dim:a.d, type:a.t,
+            ver:'v'+(st==='approved'? (i%3)+2 : (i%2)+1), state:st,
+            due:cpDueBack(c.start, 14-Math.min(13,i))};
+  });
+}
+const cpDone     = c => c.tasks.filter(t=>t.status==='done').length;
+const cpOverdue  = c => c.tasks.filter(t=>t.status!=='done' && cpWD(cpToday(), t.due) < 0).length;
+const cpApproved = c => c.assets.filter(a=>a.state==='approved').length;
+const cpWaiting  = c => c.assets.filter(a=>a.state==='review'||a.state==='changes').length;
+function cpAllAssets(){
+  const out=[]; (S.campaigns||[]).forEach(c=>c.assets.forEach(a=>out.push(Object.assign({cid:c.id,cname:c.name},a))));
+  return out;
+}
+
+/* ---------- small pieces ---------- */
+function cpStatusChip(k){
+  const s = CP_STATUSES.find(x=>x.k===k)||CP_STATUSES[0];
+  return `<span class="chip" style="background:${s.color}1A;color:${s.color}">${s.label}</span>`;
+}
+function cpChanChip(k){
+  const c = CP_CHANNELS[k]; if(!c) return '';
+  return `<span class="chip" style="background:var(--cp-${c.cls}-soft);color:var(--cp-${c.cls})">${c.label}</span>`;
+}
+function cpBarClass(c){ return c.channels.length>1 ? 'multi' : CP_CHANNELS[c.channels[0]].cls; }
+/* SLA state for one ticket, in the module's own working-day count. */
+function cpSla(t){
+  if(t.status==='done') return {bg:'var(--green-soft)', ink:'var(--green)', txt:'Met'};
+  const w = cpWD(cpToday(), t.due);
+  if(w < 0)  return {bg:'var(--red-soft)',   ink:'var(--red)',   txt:'Overdue '+Math.abs(w)+'d'};
+  if(w === 0)return {bg:'var(--amber-soft)', ink:'var(--amber)', txt:'Due today'};
+  if(w <= 2) return {bg:'var(--amber-soft)', ink:'var(--amber)', txt:'Due in '+w+'d'};
+  return {bg:'var(--gray-soft)', ink:'var(--ink2)', txt:'On track '+w+'d'};
+}
+function cpPill(s, txt){ return `<span class="sla-pill" style="background:${s.bg};color:${s.ink}">${txt||s.txt}</span>`; }
+/* Owners are seed names. Show the real avatar when the tenant has a profile by that name. */
+function cpWho(name){
+  const p = (S.profiles||[]).find(x=>x.full_name===name || (x.full_name||'').split(' ')[0]===name);
+  return p ? avatar(p, true)+' <span style="color:var(--ink2)">'+esc(name)+'</span>' : esc(name);
+}
+</script>
+<script>
+/* ================= ROUTE ================= */
+/* #/campaigns                     the planning window
+   #/campaigns/<id>                one campaign
+   #/campaigns/<id>/<tab>          overview | tickets | assets | mechanics          */
+function renderCampaigns(id, tab){
+  cpLoad();
+  if(id && cpById(id)) return cpRenderOne(cpById(id), tab||'overview');
+  setTopbar('Campaigns', canEdit()? `<button class="btn btn-primary btn-sm" onclick="cpNewCampaign()">＋ New campaign</button>`:'');
+  const C = $('#content');
+  const body = cpTab==='list'    ? cpViewList()
+             : cpTab==='targets' ? cpViewTargets()
+             : cpTab==='assets'  ? cpViewAssets()
+             :                     cpViewTimeline();
+  C.innerHTML = `
+    <div class="page-head"><h1>Campaigns</h1>
+      <div class="tabs">
+        ${[['timeline','Timeline'],['list','All campaigns'],['targets','Targets & budget'],['assets','Asset approvals']]
+          .map(([k,l])=>`<button class="tab ${cpTab===k?'active':''}" onclick="cpTab='${k}';renderCampaigns()">${l}</button>`).join('')}
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="cpExportCSV()">Export Excel</button>
+        ${canEdit()? `<button class="btn btn-primary" onclick="cpNewCampaign()">＋ New campaign</button>`:''}
+      </div>
+    </div>
+    ${body}`;
+}
+
+/* ---------- the planning window ---------- */
+/* The window spans whole months, from the earliest campaign to the latest, so nothing is
+   half-drawn at an edge. */
+function cpWindow(){
+  const cs = S.campaigns||[];
+  if(!cs.length) return {start:cpToday(), months:[], days:1};
+  let lo = cpD(cs[0].start), hi = cpD(cs[0].end);
+  cs.forEach(c=>{ if(cpD(c.start)<lo) lo=cpD(c.start); if(cpD(c.end)>hi) hi=cpD(c.end); });
+  const start = new Date(lo.getFullYear(), lo.getMonth(), 1);
+  const months = [];
+  let m = new Date(start);
+  while(m <= hi && months.length < 8){
+    const dim = new Date(m.getFullYear(), m.getMonth()+1, 0).getDate();
+    months.push({y:m.getFullYear(), m:m.getMonth(), d:dim,
+      label:m.toLocaleDateString('en-GB',{month:'long', year:'numeric'})});
+    m = new Date(m.getFullYear(), m.getMonth()+1, 1);
+  }
+  return {start, months, days:months.reduce((s,x)=>s+x.d,0)};
+}
+function cpViewTimeline(){
+  const W = cpWindow();
+  const list = (S.campaigns||[]).filter(c=>cpChan==='all' || c.channels.includes(cpChan));
+  const today = cpToday();
+  const idx = x => Math.round((cpD(x)-W.start)/86400000);
+
+  const months = W.months.map(mo=>{
+    let days='';
+    for(let i=1;i<=mo.d;i++) days += `<span class="cp-day">${(i===1||i%5===0)?i:''}</span>`;
+    return `<div class="cp-month" style="flex:${mo.d}"><b>${mo.label}</b><div class="cp-days">${days}</div></div>`;
+  }).join('');
+
+  let lines='', first=true;
+  W.months.forEach(mo=>{
+    for(let i=1;i<=mo.d;i++){
+      const wd = new Date(mo.y, mo.m, i).getDay();
+      lines += `<span class="${i===1&&!first?'m':(wd===1?'w':'')}"></span>`;
+    }
+    first=false;
+  });
+  const tLeft = (((idx(today)+0.5)/W.days)*100).toFixed(3);
+  const inRange = idx(today) >= 0 && idx(today) < W.days;
+
+  const groups = [
+    ['Running now', list.filter(c=>cpD(c.start)<=today && cpD(c.end)>=today)],
+    ['Upcoming',    list.filter(c=>cpD(c.start)>today)],
+    ['Closed',      list.filter(c=>cpD(c.end)<today)]
+  ];
+  let rows='', firstRow=true;
+  groups.forEach(([label, items])=>{
+    if(!items.length) return;
+    rows += `<div class="cp-grp"><span>${label} · ${items.length}</span><span></span></div>`;
+    items.slice().sort((a,b)=>cpD(a.start)-cpD(b.start)).forEach(c=>{
+      const s = Math.max(0, idx(c.start)), e = Math.min(W.days-1, idx(c.end));
+      const left = (s/W.days*100), w = Math.max(2.2, (e-s+1)/W.days*100);
+      const tot = c.tasks.length, frac = tot? cpDone(c)+'/'+tot : 'no tickets';
+      const wide = w >= 24, right = left + w;
+      const tip = `${c.name} — ${fmtDate(c.start)} to ${fmtDate(c.end)} · ${frac} tickets`;
+      const lab = `${esc(c.name)}<span class="f">${frac}</span>`;
+      const outside = wide ? ''
+        : right > 78
+          ? `<span class="cp-barlab" style="right:calc(${(100-left).toFixed(3)}% + 8px)">${lab}</span>`
+          : `<span class="cp-barlab" style="left:calc(${right.toFixed(3)}% + 8px)">${lab}</span>`;
+      rows += `<div class="cp-row">
+        <div class="cp-name"><b>${esc(c.name)}</b><span class="s">${esc(c.brands[0])}${c.brands.length>1?' +'+(c.brands.length-1):''} · ${esc(c.owner)}</span></div>
+        <div class="cp-track"><div class="cp-lines">${lines}</div>
+          ${inRange? `<div class="cp-today${firstRow?' lab':''}" style="left:${tLeft}%"></div>`:''}
+          <button type="button" class="cp-bar ${cpBarClass(c)}${c.status==='draft'?' draft':''}"
+            style="left:${left.toFixed(3)}%;width:${w.toFixed(3)}%"
+            title="${esc(tip)}" aria-label="${esc(tip)}"
+            onclick="location.hash='#/campaigns/${c.id}'">${wide? `<span>${esc(c.name)}</span><span class="f">${frac}</span>`:''}</button>
+          ${outside}</div></div>`;
+      firstRow = false;
+    });
+  });
+
+  const active  = (S.campaigns||[]).filter(c=>['planning','briefed','exec','live'].includes(c.status)).length;
+  const overdue = (S.campaigns||[]).reduce((s,c)=>s+cpOverdue(c),0);
+  const waiting = (S.campaigns||[]).reduce((s,c)=>s+cpWaiting(c),0);
+  const tgt = (S.campaigns||[]).reduce((s,c)=>s+c.gmvTarget,0);
+  const act = (S.campaigns||[]).reduce((s,c)=>s+c.gmvActual,0);
+
+  return `
+  <div class="stat-row">
+    <div class="stat cp-stat"><div class="cp-l">Active campaigns</div><div class="n">${active}</div>
+      <div class="sub">of ${(S.campaigns||[]).length} in the window</div></div>
+    <div class="stat cp-stat"><div class="cp-l">Overdue tickets</div><div class="n ${overdue?'red':''}">${overdue}</div>
+      <div class="sub">across every campaign brief</div></div>
+    <div class="stat cp-stat"><div class="cp-l">Assets awaiting approval</div><div class="n ${waiting?'amber':''}">${waiting}</div>
+      <div class="sub">in review or changes requested</div></div>
+    <div class="stat cp-stat"><div class="cp-l">GMV settled</div><div class="n navy">${cpTHB(act)}</div>
+      <div class="cp-meter" style="margin-top:7px"><i class="${cpMeter(cpPct(act,tgt))}" style="width:${Math.min(100,cpPct(act,tgt))}%"></i></div>
+      <div class="sub">${cpPct(act,tgt)}% of the ${cpTHB(tgt)} window target</div></div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+    ${cpChanFilter()}
+    <span style="color:var(--ink3);font-size:12.5px">${list.length} campaigns${W.months.length? ' · '+W.months[0].label+' – '+W.months[W.months.length-1].label : ''}</span>
+  </div>
+  <div class="card">
+    <div class="cp-tl"><div class="cp-tl-inner">
+      <div class="cp-head"><div class="cp-lab">Campaign</div><div class="cp-months">${months}</div></div>
+      ${rows || '<div class="empty">No campaigns on this channel.</div>'}
+    </div></div>
+    <div class="cp-legend">
+      ${Object.entries(CP_CHANNELS).map(([k,v])=>`<b><span class="cp-sw" style="background:var(--cp-${v.cls})"></span>${v.label}</b>`).join('')}
+      <b><span class="cp-sw" style="background:linear-gradient(97deg,var(--cp-navy),var(--cp-purple))"></span>Multi-channel</b>
+      <b><span class="cp-sw" style="background:var(--gray-soft);border:1px dashed #CFCEC7"></span>Draft</b>
+      <span>Tickets completed of tickets generated ${helpIcon('The brief for a campaign expands into tickets on the Creative, Product Listing, Store Operations and CS boards. The count on each bar is how many of those are Done.')}</span>
+    </div>
+  </div>`;
+}
+function cpChanFilter(){
+  return `<div class="tabs">${['all'].concat(Object.keys(CP_CHANNELS)).map(k=>
+    `<button class="tab ${cpChan===k?'active':''}" onclick="cpChan='${k}';renderCampaigns()">${k==='all'?'All channels':CP_CHANNELS[k].label}</button>`).join('')}</div>`;
+}
+</script>
+<script>
+/* ---------- all campaigns ---------- */
+function cpViewList(){
+  const list = (S.campaigns||[]).filter(c=>(cpChan==='all'||c.channels.includes(cpChan)) && (cpStat==='all'||c.status===cpStat));
+  const rows = list.map(c=>{
+    const tot=c.tasks.length, done=cpDone(c), od=cpOverdue(c), p=cpPct(done,tot);
+    return `<tr class="rowlink" onclick="location.hash='#/campaigns/${c.id}'">
+      <td style="font-weight:600"><span style="color:var(--ink3);font-weight:700;font-size:11.5px;margin-right:6px">${c.id}</span>${esc(c.name)}
+        <div style="font-weight:400;color:var(--ink3);font-size:11.5px;margin-top:2px">${esc(c.brands.join(', '))}</div></td>
+      <td>${c.channels.map(cpChanChip).join(' ')}</td>
+      <td style="color:var(--ink2);white-space:nowrap">${fmtDate(c.start)} – ${fmtDate(c.end)}</td>
+      <td>${cpStatusChip(c.status)}</td>
+      <td style="white-space:nowrap">${cpWho(c.owner)}</td>
+      <td style="min-width:140px">${tot
+        ? `<div style="display:flex;align-items:center;gap:8px"><b style="font-size:12px">${done}/${tot}</b>
+             <span class="cp-meter" style="flex:1;display:block"><i class="${cpMeter(p)}" style="width:${p}%"></i></span></div>
+           ${od? `<div style="color:var(--red);font-weight:600;font-size:11px;margin-top:3px">${od} overdue</div>`:''}`
+        : `<span style="color:var(--ink3);font-size:12px">not briefed</span>`}</td>
+      <td style="text-align:right;white-space:nowrap">${cpTHB(c.gmvTarget)}</td>
+      <td style="text-align:right;white-space:nowrap">${c.gmvActual? cpTHB(c.gmvActual) : '<span style="color:var(--ink3)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+  return `
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+    ${cpChanFilter()}
+    <select onchange="cpStat=this.value;renderCampaigns()" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-size:12.5px">
+      <option value="all">All statuses</option>
+      ${CP_STATUSES.map(s=>`<option value="${s.k}" ${cpStat===s.k?'selected':''}>${s.label}</option>`).join('')}
+    </select>
+    <span style="color:var(--ink3);font-size:12.5px">${list.length} shown</span>
+  </div>
+  <div class="card" style="overflow-x:auto">${list.length? `<table class="tbl">
+    <thead><tr><th>Campaign</th><th>Channels</th><th>Window</th><th>Status</th><th>Owner</th>
+      <th>Tickets</th><th style="text-align:right">GMV target</th><th style="text-align:right">GMV actual</th></tr></thead>
+    <tbody>${rows}</tbody></table>` : '<div class="empty">Nothing matches these filters.</div>'}</div>`;
+}
+
+/* ---------- targets & budget ---------- */
+function cpViewTargets(){
+  const list = (S.campaigns||[]).filter(c=>cpChan==='all'||c.channels.includes(cpChan));
+  const T = list.reduce((s,c)=>s+c.gmvTarget,0), A = list.reduce((s,c)=>s+c.gmvActual,0);
+  const B = list.reduce((s,c)=>s+c.budget,0),    Sp= list.reduce((s,c)=>s+c.spent,0);
+  const rows = list.map(c=>{
+    const settled = c.gmvActual>0, att = settled? cpPct(c.gmvActual,c.gmvTarget):null;
+    const roas = settled && c.spent ? (c.gmvActual/c.spent).toFixed(1)+'×' : '—';
+    return `<tr class="rowlink" onclick="location.hash='#/campaigns/${c.id}'">
+      <td style="font-weight:600">${esc(c.name)}
+        <div style="font-weight:400;color:var(--ink3);font-size:11.5px;margin-top:2px">${fmtDate(c.start)} – ${fmtDate(c.end)} · ${c.channels.map(k=>CP_CHANNELS[k].label).join(', ')}</div></td>
+      <td style="text-align:right;white-space:nowrap">${cpTHB(c.gmvTarget)}</td>
+      <td style="text-align:right;white-space:nowrap">${settled? cpTHB(c.gmvActual):'<span style="color:var(--ink3)">—</span>'}</td>
+      <td style="min-width:132px">${att===null? '<span style="color:var(--ink3);font-size:12px">not started</span>'
+        : `<div style="display:flex;align-items:center;gap:8px"><b style="font-size:12px;color:var(--${att>=100?'green':att>=85?'amber':'red'})">${att}%</b>
+             <span class="cp-meter" style="flex:1;display:block"><i class="${cpMeter(att)}" style="width:${Math.min(100,att)}%"></i></span></div>`}</td>
+      <td style="text-align:right;white-space:nowrap">${cpTHB(c.budget)}</td>
+      <td style="text-align:right;white-space:nowrap">${c.spent? cpTHB(c.spent):'<span style="color:var(--ink3)">—</span>'}</td>
+      <td style="text-align:right">${c.spent? cpPct(c.spent,c.budget)+'%':'<span style="color:var(--ink3)">—</span>'}</td>
+      <td style="text-align:right;font-weight:600">${roas}</td></tr>`;
+  }).join('');
+  return `
+  <div class="stat-row">
+    <div class="stat cp-stat"><div class="cp-l">GMV target</div><div class="n">${cpTHB(T)}</div>
+      <div class="sub">${list.length} campaigns in the window</div></div>
+    <div class="stat cp-stat"><div class="cp-l">GMV settled</div><div class="n green">${cpTHB(A)}</div>
+      <div class="cp-meter" style="margin-top:7px"><i class="${cpMeter(cpPct(A,T))}" style="width:${Math.min(100,cpPct(A,T))}%"></i></div>
+      <div class="sub">closed and wrap-up campaigns only</div></div>
+    <div class="stat cp-stat"><div class="cp-l">Committed budget</div><div class="n">${cpTHB(B)}</div>
+      <div class="sub">seller-funded, excludes platform co-fund</div></div>
+    <div class="stat cp-stat"><div class="cp-l">Spent to date</div><div class="n navy">${cpTHB(Sp)}</div>
+      <div class="sub">${cpPct(Sp,B)}% of committed · blended ${Sp?(A/Sp).toFixed(1):'0.0'}× ROAS</div></div>
+  </div>
+  <div style="margin-bottom:14px">${cpChanFilter()}</div>
+  <div class="card" style="overflow-x:auto"><table class="tbl">
+    <thead><tr><th>Campaign</th><th style="text-align:right">GMV target</th><th style="text-align:right">GMV actual</th>
+      <th>Attainment</th><th style="text-align:right">Budget</th><th style="text-align:right">Spent</th>
+      <th style="text-align:right">Burn</th><th style="text-align:right">ROAS</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr style="background:#FBFBF8;font-weight:700">
+      <td>Total</td><td style="text-align:right">${cpTHB(T)}</td><td style="text-align:right">${cpTHB(A)}</td><td></td>
+      <td style="text-align:right">${cpTHB(B)}</td><td style="text-align:right">${cpTHB(Sp)}</td>
+      <td style="text-align:right">${cpPct(Sp,B)}%</td><td style="text-align:right">${Sp?(A/Sp).toFixed(1):'0.0'}×</td></tr></tfoot>
+  </table></div>`;
+}
+
+/* ---------- asset approvals ---------- */
+function cpAssetCard(a, withCampaign){
+  const st = CP_ASTATES[a.state];
+  const w = cpWD(cpToday(), a.due), late = a.state!=='approved' && w < 0;
+  return `<article class="cp-asset">
+    <div class="th"><span class="v">${a.ver}</span><span class="t">${esc(a.type)}</span></div>
+    <div class="mt"><b>${esc(a.name)}</b><span class="d">${a.dim} px · ${a.id}</span>
+      ${withCampaign? `<a href="#/campaigns/${a.cid}" style="font-size:11.5px;color:var(--accent-ink);font-weight:600">${esc(a.cname)}</a>`:''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span class="chip" style="background:${st.bg};color:${st.ink}">${st.label}</span>
+        <span class="sla-pill" style="background:${a.state==='approved'?'var(--green-soft)':late?'var(--red-soft)':'var(--gray-soft)'};color:${a.state==='approved'?'var(--green)':late?'var(--red)':'var(--ink2)'}">${a.state==='approved'?'Signed off':late? Math.abs(w)+'d late':'due '+fmtDate(a.due)}</span>
+      </div></div>
+    ${a.state==='approved'||!canEdit()? '' : `<div class="ac">
+      <button class="btn btn-green btn-sm" onclick="cpSetAsset('${a.id}','approved')">Approve</button>
+      <button class="btn btn-ghost btn-sm" onclick="cpSetAsset('${a.id}','changes')">Request changes</button></div>`}
+  </article>`;
+}
+function cpViewAssets(){
+  const all = cpAllAssets();
+  const n = {all:all.length,
+             pending:all.filter(a=>a.state==='review'||a.state==='changes').length,
+             approved:all.filter(a=>a.state==='approved').length,
+             draft:all.filter(a=>a.state==='draft').length};
+  const shown = all.filter(a=> cpAFil==='all' ? true
+    : cpAFil==='pending' ? (a.state==='review'||a.state==='changes') : a.state===cpAFil);
+  return `
+  <div class="stat-row">
+    <div class="stat cp-stat"><div class="cp-l">Deliverables in flight</div><div class="n">${n.all}</div>
+      <div class="sub">across every briefed campaign</div></div>
+    <div class="stat cp-stat"><div class="cp-l">Waiting on approval</div><div class="n ${n.pending?'amber':''}">${n.pending}</div>
+      <div class="sub">in review or changes requested</div></div>
+    <div class="stat cp-stat"><div class="cp-l">Approved</div><div class="n green">${n.approved}</div>
+      <div class="cp-meter" style="margin-top:7px"><i class="green" style="width:${cpPct(n.approved,n.all)}%"></i></div>
+      <div class="sub">${cpPct(n.approved,n.all)}% of all deliverables</div></div>
+    <div class="stat cp-stat"><div class="cp-l">Not started</div><div class="n">${n.draft}</div>
+      <div class="sub">briefed to Creative, no version yet</div></div>
+  </div>
+  <div style="margin-bottom:14px"><div class="tabs">
+    ${[['pending','Waiting'],['all','All'],['approved','Approved'],['draft','Not started']].map(([k,l])=>
+      `<button class="tab ${cpAFil===k?'active':''}" onclick="cpAFil='${k}';renderCampaigns()">${l} · ${n[k]}</button>`).join('')}
+  </div></div>
+  ${shown.length? `<div class="cp-assets">${shown.map(a=>cpAssetCard(a,true)).join('')}</div>`
+                : '<div class="card empty">Nothing waiting here.</div>'}`;
+}
+function cpSetAsset(aid, state){
+  for(const c of (S.campaigns||[])){
+    const a = c.assets.find(x=>x.id===aid);
+    if(!a) continue;
+    a.state = state;
+    if(state==='changes') a.ver = 'v'+((parseInt(a.ver.slice(1))||1)+1);
+    toast(state==='approved'? 'Approved — '+a.name : 'Changes requested — '+a.name);
+    renderCampaigns(S.route.id, S.route.tab);
+    return;
+  }
+}
+</script>
+<script>
+/* ---------- one campaign ---------- */
+function cpRenderOne(c, tab){
+  setTopbar(`<a href="#/campaigns" onclick="cpTab='timeline'">Campaigns</a> <span style="color:var(--ink3)">/</span> ${esc(c.name)}`,
+    canEdit()? `<button class="btn btn-ghost btn-sm" onclick="cpBriefModal('${c.id}')">${c.tasks.length?'Re-run brief':'Generate tickets'}</button>`:'');
+  const tot=c.tasks.length, done=cpDone(c), od=cpOverdue(c), p=cpPct(done,tot);
+  const today=cpToday();
+  const phase = cpD(c.start) > today ? 'D-'+cpDays(today,c.start)+' to go-live'
+              : cpD(c.end) >= today ? 'Day '+(cpDays(c.start,today)+1)+' of '+(cpDays(c.start,c.end)+1)
+              : 'Ended '+Math.abs(cpDays(c.end,today))+'d ago';
+  const att = c.gmvActual? cpPct(c.gmvActual,c.gmvTarget) : null;
+  const body = tab==='tickets' ? cpDetTickets(c)
+             : tab==='assets'  ? cpDetAssets(c)
+             : tab==='mechanics'? cpDetMech(c)
+             :                   cpDetOverview(c);
+  $('#content').innerHTML = `
+    <div class="page-head" style="margin-bottom:12px">
+      <h1>${esc(c.name)}</h1>
+      <div class="actions">
+        ${canEdit()? `<button class="btn btn-primary" onclick="cpBriefModal('${c.id}')">${tot?'Re-run brief':'Generate tickets from brief'}</button>`:''}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:18px">
+      <span style="color:var(--ink3);font-size:12.5px;font-weight:700">${c.id}</span>
+      ${cpStatusChip(c.status)}${c.channels.map(cpChanChip).join('')}
+      <span style="color:var(--ink2);font-size:12.5px">${esc(c.brands.join(', '))}</span>
+    </div>
+    <div class="stat-row">
+      <div class="stat cp-stat"><div class="cp-l">Window</div>
+        <div class="n" style="font-size:17px;line-height:1.35">${fmtDate(c.start)} → ${fmtDate(c.end)}</div>
+        <div class="sub">${phase} · owner ${esc(c.owner)}</div></div>
+      <div class="stat cp-stat"><div class="cp-l">Tickets</div>
+        <div class="n">${done}<span style="font-size:15px;color:var(--ink3);font-weight:600"> / ${tot}</span></div>
+        <div class="cp-meter" style="margin-top:7px"><i class="${cpMeter(p)}" style="width:${p}%"></i></div>
+        <div class="sub">${tot? p+'% complete':'brief not expanded'}${od? ' · <b style="color:var(--red)">'+od+' overdue</b>':''}</div></div>
+      <div class="stat cp-stat"><div class="cp-l">GMV target</div><div class="n navy">${cpTHB(c.gmvTarget)}</div>
+        ${att!==null? `<div class="cp-meter" style="margin-top:7px"><i class="${cpMeter(att)}" style="width:${Math.min(100,att)}%"></i></div>`:''}
+        <div class="sub">${att!==null? 'actual '+cpTHB(c.gmvActual)+' · '+att+'%' : 'not started'}</div></div>
+      <div class="stat cp-stat"><div class="cp-l">Budget</div><div class="n">${cpTHB(c.budget)}</div>
+        <div class="cp-meter" style="margin-top:7px"><i class="${c.spent>c.budget?'red':''}" style="width:${Math.min(100,cpPct(c.spent,c.budget))}%"></i></div>
+        <div class="sub">spent ${cpTHB(c.spent)} · ${cpPct(c.spent,c.budget)}% burn</div></div>
+    </div>
+    <div class="tabs" style="margin-bottom:14px;width:max-content;max-width:100%;overflow-x:auto">
+      ${[['overview','Overview'],['tickets','Tickets · '+tot],['assets','Assets · '+c.assets.length],['mechanics','Mechanics']]
+        .map(([k,l])=>`<button class="tab ${tab===k?'active':''}" onclick="location.hash='#/campaigns/${c.id}/${k}'">${l}</button>`).join('')}
+    </div>
+    ${body}`;
+}
+function cpDetOverview(c){
+  const byDiv = {};
+  c.tasks.forEach(t=>{ (byDiv[t.div] = byDiv[t.div]||{n:0,d:0}).n++; if(t.status==='done') byDiv[t.div].d++; });
+  const divs = Object.entries(byDiv).map(([k,v])=>{
+    const p = cpPct(v.d,v.n);
+    return `<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:12.8px;margin-bottom:4px">
+      <b style="font-weight:600">${esc(k)}</b><span style="color:var(--ink2)">${v.d}/${v.n}</span></div>
+      <div class="cp-meter"><i class="${cpMeter(p)}" style="width:${p}%"></i></div></div>`;
+  }).join('') || '<div style="color:var(--ink3);font-size:12.8px">No tickets yet.</div>';
+  const next = c.tasks.slice().sort((a,b)=>cpD(a.due)-cpD(b.due)).filter(t=>t.status!=='done').slice(0,6);
+  return `<div class="cp-grid2">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card" style="padding:15px 16px">
+        <div class="section-title" style="margin-top:0">Readiness by division ${helpIcon('How many of the tickets this brief created on each division board are Done.')}</div>
+        ${divs}</div>
+      <div class="card" style="padding:15px 16px">
+        <div class="section-title" style="margin-top:0">What is due next</div>
+        ${next.length? next.map(t=>{ const s=cpSla(t);
+          return `<div class="cp-kv"><span style="color:var(--ink)">${fmtDate(t.due)} · ${esc(t.title)}</span><span>${cpPill(s)}</span></div>`;
+        }).join('') : '<div style="color:var(--ink3);font-size:12.8px">Nothing outstanding.</div>'}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card" style="padding:15px 16px">
+        <div class="section-title" style="margin-top:0">Brief</div>
+        <div class="cp-kv"><span>Playbook</span><span>${CP_PLAYBOOKS[c.pb].name}</span></div>
+        <div class="cp-kv"><span>Campaign owner</span><span>${esc(c.owner)}</span></div>
+        <div class="cp-kv"><span>Channels</span><span>${c.channels.map(k=>CP_CHANNELS[k].label).join(', ')}</span></div>
+        <div class="cp-kv"><span>Brands</span><span>${esc(c.brands.join(', '))}</span></div>
+        <div class="cp-kv"><span>Completion evidence</span><span>Screenshot + live URL</span></div>
+      </div>
+      <div class="card" style="padding:15px 16px">
+        <div class="section-title" style="margin-top:0">Assets</div>
+        <div class="cp-kv"><span>Approved</span><span>${cpApproved(c)} / ${c.assets.length}</span></div>
+        <div class="cp-kv"><span>Waiting on approval</span><span>${cpWaiting(c)}</span></div>
+        <div class="cp-kv"><span>Not started</span><span>${c.assets.filter(a=>a.state==='draft').length}</span></div>
+      </div>
+    </div></div>`;
+}
+function cpDetTickets(c){
+  if(!c.tasks.length) return `<div class="card empty">
+    <div class="big">◷</div>
+    <div style="font-size:15px;font-weight:600;color:var(--ink)">No tickets yet</div>
+    <p style="max-width:460px;margin:8px auto 16px;line-height:1.55">Running the brief expands the
+      <b>${CP_PLAYBOOKS[c.pb].name}</b> playbook onto the Creative, Product Listing, Store Operations
+      and CS boards, each ticket dated back from go-live in working days.</p>
+    ${canEdit()? `<button class="btn btn-primary" onclick="cpBriefModal('${c.id}')">Generate tickets from brief</button>`:''}</div>`;
+  const divs = [...new Set(c.tasks.map(t=>t.div))];
+  const shown = c.tasks.filter(t=> cpTFil==='all' ? true
+    : cpTFil==='open' ? t.status!=='done'
+    : cpTFil==='overdue' ? (t.status!=='done' && cpWD(cpToday(),t.due) < 0)
+    : t.div===cpTFil);
+  const rows = shown.map(t=>{
+    const s = cpSla(t);
+    const tick = t.status==='done'? '<span class="cp-tick done">✓</span>'
+               : t.status==='progress'? '<span class="cp-tick prog">•</span>' : '<span class="cp-tick"></span>';
+    const lab = t.status==='done'?'Done' : t.status==='progress'?'In progress':'Not started';
+    const bg  = t.status==='done'?'var(--green-soft)' : t.status==='progress'?'var(--amber-soft)':'var(--gray-soft)';
+    const ink = t.status==='done'?'var(--green)' : t.status==='progress'?'var(--amber)':'var(--ink2)';
+    return `<div class="cp-task${t.fresh?' fresh':''}">${tick}
+      <div><b>${esc(t.title)}</b><span class="m"><span>${t.id}</span><span>${esc(t.div)}</span><span>${esc(t.owner)}</span><span>due ${fmtDate(t.due)} (D-${t.off})</span></span></div>
+      <div class="r">${cpPill(s)}<span class="chip" style="background:${bg};color:${ink}">${lab}</span></div></div>`;
+  }).join('');
+  return `<div class="card">
+    <div style="padding:12px 14px;border-bottom:1px solid var(--line)"><div class="tabs" style="width:max-content;max-width:100%;overflow-x:auto">
+      ${[['all','All'],['open','Open'],['overdue','Overdue']].concat(divs.map(d=>[d,d])).map(([k,l])=>
+        `<button class="tab ${cpTFil===k?'active':''}" onclick="cpTFil='${k}';renderCampaigns('${c.id}','tickets')">${esc(l)}</button>`).join('')}
+    </div></div>
+    ${rows || '<div class="empty">No tickets match this filter.</div>'}</div>`;
+}
+function cpDetAssets(c){
+  if(!c.assets.length) return '<div class="card empty">No deliverables yet — run the brief first.</div>';
+  return `<div class="cp-assets">${c.assets.map(a=>cpAssetCard(Object.assign({cid:c.id,cname:c.name},a),false)).join('')}</div>`;
+}
+function cpDetMech(c){
+  return `<div style="display:flex;flex-direction:column;gap:12px">
+    ${c.mech.map(m=>`<div class="cp-mech"><b>${esc(m.t)}</b><p>${esc(m.d)}</p></div>`).join('')}
+    <div class="card" style="padding:14px 16px;border-color:#E6D9B8">
+      <div class="section-title" style="margin-top:0;color:var(--amber)">Pricing guard ${helpIcon('Every discount on this campaign is checked against the MSP floor before it can be submitted, and an override needs maker–checker sign-off. A breach holds the <b>Price &amp; TB setup</b> ticket until it clears.')}</div>
+      <div style="font-size:12.8px;color:var(--ink2)">${c.mech.length} mechanic${c.mech.length===1?'':'s'} on this campaign, all subject to the RSP/MSP check.</div>
+    </div></div>`;
+}
+</script>
+<script>
+/* ---------- brief → tickets ---------- */
+function cpPreviewRows(c, pbKey){
+  const pb = CP_PLAYBOOKS[pbKey];
+  const seen = {};
+  return pb.items.map(it=>{
+    const pool = CP_OWNER2[it.div]||['Ton'];
+    seen[it.div] = (seen[it.div]||0);
+    const owner = pool[seen[it.div]++ % pool.length];
+    const due = cpDueBack(c.start, it.off);
+    const past = cpWD(cpToday(), due) < 0;
+    return `<li><div><b>${esc(it.t)}</b><small>${esc(it.div)} · ${esc(owner)} · D-${it.off}</small></div>
+      <div class="du" ${past? 'style="color:var(--red);font-weight:700"':''}>${fmtDate(due)}${past?' · past':''}</div></li>`;
+  }).join('');
+}
+function cpBriefModal(id){
+  const c = cpById(id); if(!c) return;
+  const m = modal(`<div class="modal-head"><h2>Expand brief into tickets</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <div style="color:var(--ink2);font-size:13px;margin-bottom:14px">${esc(c.name)} · go-live ${fmtDate(c.start)}</div>
+      <label>Playbook ${helpIcon('The set of tickets this kind of campaign always needs. Due dates are counted back from go-live over working days, skipping weekends and the holidays in Admin → SLA.')}</label>
+      <select id="cp-pb">${Object.entries(CP_PLAYBOOKS).map(([k,v])=>
+        `<option value="${k}" ${k===c.pb?'selected':''}>${v.name} — ${v.items.length} tickets</option>`).join('')}</select>
+      <div class="cp-prev" style="margin-top:14px">
+        <div class="h"><span style="flex:1">Tickets to create</span><span>Due</span></div>
+        <ul id="cp-prev-list">${cpPreviewRows(c, c.pb)}</ul>
+      </div>
+      ${c.tasks.length? `<div style="margin-top:12px;font-size:12.3px;color:var(--amber)">This campaign already has ${c.tasks.length} tickets. Re-running replaces the ones nobody has started; completed work is kept.</div>`:''}
+    </div>
+    <div class="modal-foot">
+      <span style="margin-right:auto;color:var(--ink3);font-size:12px" id="cp-prev-count">${CP_PLAYBOOKS[c.pb].items.length} tickets · 4 boards</span>
+      <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="cpRunBrief('${c.id}')">Create tickets</button>
+    </div>`, true);
+  const sel = m.querySelector('#cp-pb');
+  sel.onchange = ()=>{
+    m.querySelector('#cp-prev-list').innerHTML = cpPreviewRows(c, sel.value);
+    m.querySelector('#cp-prev-count').textContent = CP_PLAYBOOKS[sel.value].items.length+' tickets · 4 boards';
+  };
+}
+function cpRunBrief(id){
+  const c = cpById(id); if(!c) return;
+  const pick = document.querySelector('#cp-pb');
+  if(pick && pick.value) c.pb = pick.value;
+  const kept = c.tasks.filter(t=>t.status==='done');
+  const fresh = cpBuildTasks(c, 0).filter(t=>!kept.some(k=>k.title===t.title));
+  fresh.forEach(t=>t.fresh = true);
+  c.tasks = kept.concat(fresh);
+  if(!c.assets.length) c.assets = cpBuildAssets(c, 0);
+  if(c.status==='draft') c.status = 'briefed';
+  closeModals();
+  cpTFil = 'all';
+  location.hash = '#/campaigns/'+c.id+'/tickets';
+  renderCampaigns(c.id, 'tickets');
+  toast(fresh.length+' tickets created across the division boards');
+  /* The green flash is a "these are the ones I just made" cue, not a state — drop it. */
+  setTimeout(()=>{
+    c.tasks.forEach(t=>t.fresh = false);
+    if(S.route.view==='campaigns' && S.route.id===c.id) renderCampaigns(c.id, S.route.tab||'tickets');
+  }, 2600);
+}
+
+/* ---------- new campaign ---------- */
+function cpNewCampaign(){
+  const today = cpISO(cpToday());
+  modal(`<div class="modal-head"><h2>New campaign</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <label>Campaign name <span class="req">*</span></label><input id="cp-n" placeholder="BRAND x PLATFORM — CAMPAIGN — PERIOD">
+      <label style="margin-top:12px">Brand or portfolio</label><input id="cp-b" placeholder="CMG portfolio — 18 brands">
+      <label style="margin-top:12px">Channel</label>
+      <select id="cp-c">${Object.entries(CP_CHANNELS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+        <div><label>Go-live</label><input id="cp-s" type="date" value="${today}"></div>
+        <div><label>Ends</label><input id="cp-e" type="date" value="${today}"></div>
+      </div>
+      <label style="margin-top:12px">Playbook ${helpIcon('Decides which tickets the brief will create. It can be changed when the brief is run.')}</label>
+      <select id="cp-p">${Object.entries(CP_PLAYBOOKS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('')}</select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+        <div><label>GMV target (฿)</label><input id="cp-g" type="number" min="0" placeholder="0"></div>
+        <div><label>Budget (฿)</label><input id="cp-u" type="number" min="0" placeholder="0"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="cpCreate()">Create campaign</button>
+    </div>`, true);
+}
+function cpCreate(){
+  const v = s => (document.querySelector(s)?.value||'').trim();
+  const name = v('#cp-n');
+  if(!name) return toast('Give the campaign a name', true);
+  const start = v('#cp-s'), end = v('#cp-e') || v('#cp-s');
+  if(!start) return toast('Pick a go-live date', true);
+  if(cpD(end) < cpD(start)) return toast('The end date is before go-live', true);
+  const n = (S.campaigns||[]).length;
+  const c = {
+    id:'C-26'+String(15+n).padStart(2,'0'), name, brands:[v('#cp-b')||'—'], channels:[v('#cp-c')||'shopee'],
+    start, end, status:'draft', owner:(S.me&&S.me.full_name)||'—', pb:v('#cp-p')||'mega', prog:0,
+    gmvTarget:Number(v('#cp-g'))||0, gmvActual:0, budget:Number(v('#cp-u'))||0, spent:0,
+    mech:[{t:'Mechanics not set', d:'Add the discount, voucher and GWP mechanics before the pricing review.'}],
+    tasks:[], assets:[]
+  };
+  S.campaigns.push(c);
+  closeModals();
+  location.hash = '#/campaigns/'+c.id;
+  renderCampaigns(c.id, 'overview');
+  toast('Campaign '+c.id+' created');
+}
+
+/* ---------- export ---------- */
+function cpExportCSV(){
+  const out = [['ID','Campaign','Brands','Channels','Status','Owner','Go-live','Ends',
+                'Tickets done','Tickets total','Overdue','Assets approved','Assets total',
+                'GMV target','GMV actual','Budget','Spent']];
+  (S.campaigns||[]).forEach(c=>out.push([
+    c.id, c.name, c.brands.join(', '), c.channels.map(k=>CP_CHANNELS[k].label).join(', '),
+    (CP_STATUSES.find(s=>s.k===c.status)||{}).label||c.status, c.owner, c.start, c.end,
+    cpDone(c), c.tasks.length, cpOverdue(c), cpApproved(c), c.assets.length,
+    c.gmvTarget, c.gmvActual, c.budget, c.spent
+  ]));
+  downloadXLSX(xlsxFilename('Campaigns'), out);
 }
 </script>
