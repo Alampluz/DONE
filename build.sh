@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds app/index.html from the six src/ parts and injects the Supabase keys.
+# Builds app/index.html from the src/ parts and injects the Supabase keys.
 # The anon key is public by design — it ships inside the deployed page and every
 # table is guarded by RLS — so it lives here as a default rather than a secret.
 # Override either value with SUPABASE_URL / SUPABASE_ANON in the environment.
@@ -16,7 +16,8 @@ cat "$root"/src/part1_head.html \
     "$root"/src/part3_views.html \
     "$root"/src/part4_task.html \
     "$root"/src/part5_requests.html \
-    "$root"/src/part6_dash_admin.html > "$out.tmp"
+    "$root"/src/part6_dash_admin.html \
+    "$root"/src/part7_campaigns.html > "$out.tmp"
 
 SUPABASE_URL="$SUPABASE_URL" SUPABASE_ANON="$SUPABASE_ANON" python3 - "$out.tmp" <<'PY'
 import os, sys
