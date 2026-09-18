@@ -399,32 +399,45 @@ const cpToday = () => { const d=new Date(); d.setHours(0,0,0,0); return d; };
 function cpHolidays(){
   const rows = S.slaHolidays || S.holidays;
   if(Array.isArray(rows) && rows.length) return rows.map(h=>h.day||h);
+  /* Cold-open fallback only — cpLoadCalendar() replaces it with sla_holidays from the database. */
   return ['2026-01-01','2026-04-06','2026-04-13','2026-04-14','2026-04-15','2026-05-01',
           '2026-05-04','2026-06-03','2026-07-28','2026-08-12','2026-10-13','2026-10-23',
           '2026-12-05','2026-12-10','2026-12-31'];
 }
-/* Signed count of working days from a to b — negative when b is in the past. Weekends and
-   the holiday list are skipped, the same rule the request SLA uses. */
+/* Working days as the company defines them in Admin → SLA (isodow 1–7; default Mon–Fri). */
+function cpWorkDays(){ const w = S.slaWorkDays; return Array.isArray(w) && w.length ? w : [1,2,3,4,5]; }
+function cpIsWorkDay(d){ const iso = ((d.getDay()+6)%7)+1; return cpWorkDays().includes(iso) && !cpHolidays().includes(cpISO(d)); }
+/* Lead time NEVER includes weekends or holidays (April, 18 Sep). The same calendar the SLA engine
+   uses — sla_settings.work_days minus sla_holidays — is loaded once per session by cpLoadCalendar(). */
+let cpCalLoading = null;
+function cpLoadCalendar(){
+  if(S.slaHolidays !== undefined || cpCalLoading || typeof db === 'undefined') return;
+  cpCalLoading = Promise.all([
+    db.from('sla_holidays').select('day').order('day'),
+    db.from('sla_settings').select('work_days').limit(1)
+  ]).then(([h, st])=>{
+    S.slaHolidays = (h && h.data) ? h.data.map(r=>r.day) : [];
+    S.slaWorkDays = (st && st.data && st.data[0] && Array.isArray(st.data[0].work_days)) ? st.data[0].work_days : [1,2,3,4,5];
+    if(S.route && S.route.view === 'campaigns') renderCampaigns(S.route.id, S.route.tab);
+  }).catch(()=>{ S.slaHolidays = []; });
+}
+/* Signed count of working days from a to b — negative when b is in the past. */
 function cpWD(a, b){
-  const hol = cpHolidays();
   let n=0, cur=cpD(a); const dir = cpD(b) >= cur ? 1 : -1;
   const stop = cpISO(b);
   let guard = 0;
   while(cpISO(cur) !== stop && guard++ < 2000){
     cur = cpAdd(cur, dir);
-    const w = cur.getDay();
-    if(w!==0 && w!==6 && !hol.includes(cpISO(cur))) n++;
+    if(cpIsWorkDay(cur)) n++;
   }
   return n*dir;
 }
-/* A ticket due D-n before go-live, counted back over working days. */
+/* A ticket due D-n before go-live: n WORKING days back, so a D-7 never lands on a weekend or a holiday. */
 function cpDueBack(start, off){
   let d = cpD(start), left = off, guard = 0;
-  const hol = cpHolidays();
   while(left > 0 && guard++ < 2000){
     d = cpAdd(d, -1);
-    const w = d.getDay();
-    if(w!==0 && w!==6 && !hol.includes(cpISO(d))) left--;
+    if(cpIsWorkDay(d)) left--;
   }
   return cpISO(d);
 }
@@ -520,7 +533,7 @@ function cpWho(name){
    #/campaigns/<id>                one campaign
    #/campaigns/<id>/<tab>          overview | tickets | assets | mechanics          */
 function renderCampaigns(id, tab){
-  cpLoad();
+  cpLoad(); cpLoadCalendar();
   if(id && cpById(id)) return cpRenderOne(cpById(id), tab||'overview');
   /* Strategy (management/admin) lands on the month; everyone else on their own brand lines. */
   if(!cpTab) cpTab = cpIsSuper()? 'months' : 'brands';
@@ -913,10 +926,10 @@ function cpDetTickets(c){
       <div class="r">${cpPill(s)}<span class="chip" style="background:${bg};color:${ink}">${lab}</span></div></div>`;
   }).join('');
   return `<div class="card">
-    <div style="padding:12px 14px;border-bottom:1px solid var(--line)"><div class="tabs" style="width:max-content;max-width:100%;overflow-x:auto">
+    <div style="padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="tabs" style="width:max-content;max-width:100%;overflow-x:auto">
       ${[['all','All'],['open','Open'],['overdue','Overdue']].concat(divs.map(d=>[d,d])).map(([k,l])=>
         `<button class="tab ${cpTFil===k?'active':''}" onclick="cpTFil='${k}';renderCampaigns('${c.id}','tickets')">${esc(l)}</button>`).join('')}
-    </div></div>
+    </div><span style="font-size:12px;color:var(--ink3);margin-left:auto">Lead time in working days ${helpIcon('D-n counts working days only. Weekends and the holidays in Admin → SLA are skipped, so a D-7 never lands on a Saturday or a public holiday. Due dates move automatically when a holiday is added.')}</span></div>
     ${rows || '<div class="empty">No tickets match this filter.</div>'}</div>`;
 }
 function cpDetAssets(c){
