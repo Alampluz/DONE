@@ -2,6 +2,7 @@
 /* ================= REQUESTS ================= */
 let reqTab = 'mine';
 async function renderRequests(){
+  const _nav = S.nav;
   setTopbar('Requests', `<button class="btn btn-primary btn-sm" onclick="newRequestFlow()">＋ New request</button>`);
   const C=$('#content'); C.innerHTML='<div class="empty">Loading…</div>';
   if(!isStaff()) reqTab='mine';
@@ -9,8 +10,10 @@ async function renderRequests(){
   if(reqTab==='mine') q = q.eq('submitted_by', S.me.id);
   if(reqTab==='open') q = q.in('status',['submitted','in_review','approved','in_progress']);
   const {data:reqs, error} = await q;
+  if(navStale(_nav)) return;
   if(error){ C.innerHTML=`<div class="card empty">${esc(error.message)}</div>`; return; }
   S._lastReqRows = reqs||[];          // what the queue is listing — the export reads this
+  if(navStale(_nav)) return;
   C.innerHTML = `
     <div class="page-head"><h1>Requests</h1>
       ${isStaff()? `<div class="tabs">
@@ -233,12 +236,14 @@ async function convertToTask(reqId){
 /* ================= APPROVALS ================= */
 let apprTab='pending';
 async function renderApprovals(){
+  const _nav = S.nav;
   setTopbar('Approvals');
   const C=$('#content'); C.innerHTML='<div class="empty">Loading…</div>';
   let q = db.from('approvals').select('*').order('created_at',{ascending:false});
   if(apprTab==='pending') q=q.eq('status','pending').eq('approver_id',S.me.id);
   if(apprTab==='requested') q=q.eq('requested_by',S.me.id);
   const {data:apprs} = await q;
+  if(navStale(_nav)) return;
   C.innerHTML = `
     <div class="page-head"><h1>Approvals</h1>
       <div class="tabs">

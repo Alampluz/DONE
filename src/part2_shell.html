@@ -1054,12 +1054,20 @@ function wireAttachZone(root, zoneId, entity_type, entity_id, listEl, onDone){
 
 /* ================= ROUTER ================= */
 window.addEventListener('hashchange', ()=>{ if(S.me) navigate(location.hash); });
+/* True when the route moved on while an async render was awaiting. Every async renderer that
+   writes #content after an await must bail on this. */
+function navStale(n){ return S.nav !== n; }
 function navigate(hash){
   if(location.hash !== hash) { location.hash = hash; return; }
   closeModals();
   const parts = hash.replace(/^#\//,'').split('/');
   const view = parts[0]||'home';
   S.route = {view, id:parts[1], tab:parts[2]};
+  /* Every navigation bumps this. An async renderer captures it on entry and refuses to paint
+     #content once it has changed, so a slow view cannot land on top of the one you clicked.
+     18 Sep: Campaigns showed the Operations Dashboard because renderDashboard's widget query
+     resolved after renderCampaigns (which is synchronous) had already painted. */
+  S.nav = (S.nav || 0) + 1;
   renderSidebar();
   const C = $('#content'); C.scrollTop=0;
   const map = {home:renderHome, ws:renderWorkspace, project:renderProject, task:openTaskRoute, requests:renderRequests, approvals:renderApprovals, campaigns:renderCampaigns, dashboard:renderDashboard, admin:renderAdmin, platform:renderPlatform};

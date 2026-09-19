@@ -1,6 +1,7 @@
 <script>
 /* ================= HOME (My Work) ================= */
 async function renderHome(){
+  const _nav = S.nav;
   setTopbar('My Work');
   const C=$('#content');
   C.innerHTML = '<div class="empty">Loading…</div>';
@@ -33,6 +34,7 @@ async function renderHome(){
     ]);
     pulse = {open:a.count||0, overdue:b.count||0, tickets:c.count||0, breach:d.count||0};
   }
+  if(navStale(_nav)) return;
   C.innerHTML = `
     ${pulse? `<div class="section-title" style="margin-top:0;display:flex;align-items:center">Company pulse
         <span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="location.hash='#/dashboard'">Open dashboard</button></div>
@@ -131,6 +133,7 @@ function wsTabsHTML(wsId, active){
   </div>`;
 }
 async function renderWorkspace(id, tab){
+  const _nav = S.nav;
   const w = wsById(id); if(!w){ location.hash='#/home'; return; }
   if(tab==='report') return renderWorkspaceReport(id);
   if(tab==='calendar') return renderWorkspaceCalendar(id);
@@ -147,6 +150,7 @@ async function renderWorkspace(id, tab){
     const {data} = await allRows(()=>db.from('tasks').select('project_id,status').in('project_id', ids).order('id'));
     (data||[]).forEach(t=>{ counts[t.project_id]=counts[t.project_id]||{open:0,done:0}; t.status==='done'?counts[t.project_id].done++:counts[t.project_id].open++; });
   }
+  if(navStale(_nav)) return;
   C.innerHTML = `
     ${wsTabsHTML(id,'boards')}
     <div class="page-head"><div><h1>${esc(w.name)}</h1><div class="sub">${esc(w.description)}</div></div></div>
@@ -1070,6 +1074,7 @@ async function shareSend(pid){
   shareDraw(pid);
 }
 async function renderProject(id){
+  const _nav = S.nav;
   if(S._viewPid!==id){ boardMode = viewLoad(id) || 'table'; S._viewPid = id; }   // land on the view last used here
   const p = projById(id);
   if(!p){ // maybe not in cache (partner) — try fetch, but never loop on it
@@ -1087,6 +1092,7 @@ async function renderProject(id){
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" onclick="editProjectModal('${id}')">Edit board</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" aria-label="More board actions" title="More board actions" onclick="boardMoreMenu(this,'${id}')">⋯</button>`:''}
      ${(canEditOnBoard(id) || isRequester() && boardPreset(id)!=='view')? `<button class="btn btn-primary btn-sm" onclick="newTaskModal('${id}')">＋ New task</button>`:''}`);
+  if(navStale(_nav)) return;
   const C=$('#content'); C.innerHTML='<div class="empty">Loading…</div>';
   const [{data:tasks, error},{data:sc},{data:fields},{data:groups},{data:views}] = await Promise.all([
     allRows(()=>db.from('tasks').select('*').eq('project_id',id).order('position').order('id')),
@@ -1096,6 +1102,7 @@ async function renderProject(id){
     db.from('board_views').select('*').eq('project_id',id).order('position').order('created_at'),
   ]);
   S._views = (S._views||[]).filter(v=>v.project_id!==id).concat(Array.isArray(views)? views : []);
+  if(navStale(_nav)) return;
   if(error){ C.innerHTML=`<div class="card empty">${esc(error.message)}</div>`; return; }
   // Dependencies for the whole board in one go — powers the ⛓ marker per row.
   // Filter through the task's board rather than listing task ids: a 3,000-row board
@@ -1328,6 +1335,7 @@ function renderCalendar(id, rows, host){
 let calWsHidden = new Set();     // project ids toggled off in the legend
 let calWsFor = null;             // which workspace the legend state belongs to
 async function renderWorkspaceCalendar(wsId){
+  const _nav = S.nav;
   const w = wsById(wsId); if(!w){ location.hash='#/home'; return; }
   widgetScope = null; widgetProjScope = null;
   if(calWsFor!==wsId){ calWsHidden = new Set(); calOpenDays = new Set(); calWsFor = wsId; }
@@ -1339,12 +1347,14 @@ async function renderWorkspaceCalendar(wsId){
   let tasks = [];
   if(ids.length){
     const {data, error} = await allRows(()=>db.from('tasks').select('*').in('project_id', ids).is('archived_at', null).order('id'));
+    if(navStale(_nav)) return;
     if(error){ C.innerHTML = `${wsTabsHTML(wsId,'calendar')}<div class="card empty">${esc(error.message)}</div>`; return; }
     tasks = data||[];
   }
   const byId = Object.fromEntries(projects.map(p=>[p.id,p]));
   const all = tasks.map(t=>{ const p=byId[t.project_id]||{}; return {...t, _pname:p.name||'', _pcolor:p.color||''}; });
   S._wsCalRows = all;
+  if(navStale(_nav)) return;
   C.innerHTML = `${wsTabsHTML(wsId,'calendar')}<div id="ws-cal-body"></div>`;
   renderWorkspaceCalendarBody(wsId);
 }
