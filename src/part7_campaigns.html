@@ -165,6 +165,19 @@ table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:10
 .cp-cell{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 7px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:0;font-family:inherit}
 .cp-cell.todo{background:var(--gray-soft);color:var(--ink3)} .cp-cell.prog{background:var(--blue-soft);color:var(--blue)} .cp-cell.wait{background:var(--amber-soft);color:var(--amber)}
 .cp-cell.done{background:var(--green-soft);color:var(--green)} .cp-cell.over{background:var(--red-soft);color:var(--red)} .cp-cell.na{color:#C4C3BC;cursor:default}
+/* status log popover — hover or focus any status chip / grid cell */
+.cp-hh{cursor:pointer;box-shadow:inset 0 -1px 0 rgba(0,0,0,.14)} .cp-hh:focus-visible{outline:2px solid var(--cp-navy);outline-offset:1px}
+.cp-hpop{position:fixed;z-index:1200;width:310px;max-width:calc(100vw - 16px);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 34px rgba(16,18,25,.16);font-size:12.5px;color:var(--ink2);animation:pop .12s ease;overflow:hidden;text-align:left;font-weight:400;text-transform:none;letter-spacing:0;white-space:normal}
+.cp-hpop .hd{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--ink3)}
+.cp-hpop .hd span:last-child{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500}
+.cp-hpop ol{list-style:none;margin:0;padding:6px 0;max-height:260px;overflow:auto}
+.cp-hpop li{display:grid;grid-template-columns:8px 1fr;gap:10px;padding:6px 12px 6px 14px;position:relative}
+.cp-hpop li i{width:8px;height:8px;border-radius:50%;background:var(--ink3);margin-top:5px;display:block;position:relative;z-index:1}
+.cp-hpop li.status i{background:var(--cp-navy)} .cp-hpop li.done i{background:var(--green)} .cp-hpop li.handoff i{background:var(--amber)} .cp-hpop li.created i{background:#C4C3BC}
+.cp-hpop li:not(:last-child):after{content:'';position:absolute;left:17.5px;top:19px;bottom:-7px;width:1px;background:var(--line)}
+.cp-hpop li b{color:var(--ink);font-weight:600;display:block;line-height:1.4;font-size:12.5px}
+.cp-hpop li small{display:block;font-size:11.5px;color:var(--ink3);line-height:1.4}
+.cp-hpop .ft{padding:7px 12px;border-top:1px solid var(--line);font-size:11px;color:var(--ink3)}
 .cp-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
 .cp-pk{border:1px solid var(--line);border-radius:10px;padding:11px 12px;text-align:left;display:flex;flex-direction:column;gap:4px;background:var(--panel);font:inherit;color:inherit}
 .cp-pk.on{border-color:var(--cp-navy);background:var(--cp-navy-soft)} .cp-pk b{font-size:13px} .cp-pk span{font-size:11.5px;color:var(--ink3)}
@@ -476,8 +489,11 @@ function cpBuildTasks(c, prog){
       if(frac <= prog) st='done';
       else if(frac <= prog+0.2) st='progress';
     }
-    return {id:'CT-'+(++cpSeq), title:it.t, div:it.div, owner, due:cpDueBack(c.start, it.off),
-            off:it.off, status:st, fresh:false};
+    const nxt = pb.items[i+1]; const handoff = (nxt && nxt.div !== it.div) ? nxt.div : null;
+    const t = {id:'CT-'+(++cpSeq), title:it.t, div:it.div, owner, due:cpDueBack(c.start, it.off),
+               off:it.off, status:st, fresh:false};
+    cpFakeHist('seed:'+t.id, st, owner, t.due, {handoff});
+    return t;
   });
 }
 function cpBuildAssets(c, prog){
@@ -521,6 +537,90 @@ function cpSla(t){
   return {bg:'var(--gray-soft)', ink:'var(--ink2)', txt:'On track '+w+'d'};
 }
 function cpPill(s, txt){ return `<span class="sla-pill" style="background:${s.bg};color:${s.ink}">${txt||s.txt}</span>`; }
+
+/* ---------- Status log (hover) ----------
+   Every status chip and tracker cell carries its log: who moved the status, from what to what, and when
+   (April, 18 Sep). Seed rows get a deterministic log so the demo is stable across renders; real tasks read
+   activity_log (action 'updated', detail.changes[].field === 'status') once and cache it for the session.
+   Handoffs ride along: when a step finishes and the next step belongs to another team, the log shows the
+   handoff and the Teams notification, and a step waiting on another team shows what it is waiting for. */
+const CP_HIST = {};                       /* key -> [{at, who, from, to, kind, note}] newest first, or 'loading' */
+const CP_ST_LABEL = {todo:'Not started', in_progress:'In progress', progress:'In progress', review:'Needs review', blocked:'Blocked', done:'Done', over:'Overdue', wait:'Waiting'};
+const cpStLabel = s => CP_ST_LABEL[s] || (s ? String(s).replace(/_/g,' ') : '—');
+function cpHash(s){ let h = 2166136261; for(const ch of String(s)){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+const cpAt = (d, h, m) => cpISO(d) + 'T' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':00';
+function cpFakeHist(key, st, who, due, extra){
+  if(CP_HIST[key]) return CP_HIST[key];
+  extra = extra || {}; const r = cpHash(key);
+  /* a log never runs ahead of today — for a future due date the moves happened over the past days */
+  const ref = cpD(due) > cpToday() ? cpToday() : cpD(due);
+  const created = cpAdd(ref, -(10 + r % 6)), started = cpAdd(ref, -(3 + (r >> 3) % 4));
+  const log = [{at:cpAt(created, 9 + r % 2, 5 + r % 50), who:'DONE', kind:'created', note:'Created from the playbook'}];
+  if(extra.unb) log.push({at:cpAt(cpToday(), 8 + (r >> 2) % 2, (r >> 5) % 60), who:'DONE', kind:'handoff', note:'Unblocked — upstream step finished (' + extra.unb + ')'});
+  if(st==='progress' || st==='done' || (st==='over' && (r >> 5) % 2)) log.push({at:cpAt(started, 10 + (r >> 6) % 7, (r >> 9) % 60), who, from:'todo', to:'in_progress', kind:'status'});
+  if(st==='done'){
+    const at = cpAt(cpAdd(ref, -((r >> 4) % 2)), 13 + (r >> 7) % 5, (r >> 11) % 60);
+    log.push({at, who, from:'in_progress', to:'done', kind:'status'});
+    if(extra.handoff) log.push({at, who:'DONE', kind:'handoff', note:'Handed off → ' + extra.handoff + ' · Teams channel notified'});
+  }
+  if(st==='wait' && extra.on) log.push({at:cpAt(started, 8, 30 + (r >> 8) % 29), who:'DONE', kind:'handoff', note:'Waiting on ' + extra.on + (extra.up ? ' — ' + extra.up : '')});
+  CP_HIST[key] = log.reverse(); return CP_HIST[key];
+}
+function cpFetchHist(key){
+  if(typeof db === 'undefined'){ CP_HIST[key] = []; return Promise.resolve(); }
+  CP_HIST[key] = 'loading';
+  return db.from('activity_log').select('actor_id,action,detail,created_at').eq('entity_type','task').eq('entity_id', key.slice(5))
+    .order('created_at', {ascending:false}).limit(80)
+    .then(({data})=>{
+      const out = [];
+      (data||[]).forEach(row=>{
+        const who = row.actor_id ? ownerName(row.actor_id) : 'DONE';
+        const ch = (row.detail && Array.isArray(row.detail.changes)) ? row.detail.changes.filter(c=>c.field==='status') : [];
+        ch.forEach(c=>out.push({at:row.created_at, who, from:c.from, to:c.to, kind:'status'}));
+        if(row.action==='created') out.push({at:row.created_at, who, kind:'created', note:'Created'});
+      });
+      CP_HIST[key] = out;
+    }).catch(()=>{ CP_HIST[key] = []; });
+}
+/* Attributes that turn any element into a status-log anchor. */
+const cpHistAttrs = key => ` data-hist="${esc(key)}" tabindex="0" onmouseenter="cpShowHist(this)" onmouseleave="cpHideHist()" onfocus="cpShowHist(this)" onblur="cpHideHist()"`;
+let cpHpopT = null;
+function cpHideHist(){ clearTimeout(cpHpopT); cpHpopT = setTimeout(()=>{ const p = document.getElementById('cphpop'); if(p) p.remove(); }, 140); }
+function cpShowHist(el){
+  clearTimeout(cpHpopT);
+  const key = el.dataset.hist; if(!key) return;
+  let p = document.getElementById('cphpop');
+  if(p && p.dataset.key === key) return;
+  if(p) p.remove();
+  p = document.createElement('div'); p.id = 'cphpop'; p.className = 'cp-hpop'; p.dataset.key = key; p.setAttribute('role','tooltip');
+  p.onmouseenter = ()=>clearTimeout(cpHpopT); p.onmouseleave = cpHideHist;
+  p.innerHTML = cpHistHTML(key);
+  document.body.appendChild(p); cpPlaceHist(p, el);
+  if(key.startsWith('task:') && !CP_HIST[key]) cpFetchHist(key).then(()=>{ const q = document.getElementById('cphpop'); if(q && q.dataset.key === key){ q.innerHTML = cpHistHTML(key); cpPlaceHist(q, el); } });
+}
+function cpPlaceHist(p, el){
+  const r = el.getBoundingClientRect(), pb = p.getBoundingClientRect();
+  p.style.left = Math.max(8, Math.min(r.left, innerWidth - pb.width - 8)) + 'px';
+  p.style.top  = (r.bottom + pb.height + 10 > innerHeight ? Math.max(8, r.top - pb.height - 6) : r.bottom + 6) + 'px';
+}
+function cpHistHTML(key){
+  const log = CP_HIST[key];
+  const rows = (!log || log === 'loading') ? `<li><i></i><div><b>Loading…</b></div></li>`
+    : !log.length ? `<li class="created"><i></i><div><b>No status changes yet</b><small>Still as generated from the playbook</small></div></li>`
+    : log.map(e=>{
+        const cls  = e.kind === 'status' ? (e.to === 'done' ? 'done' : 'status') : e.kind;
+        const head = e.kind === 'status' ? `${cpStLabel(e.from)} → ${cpStLabel(e.to)}` : (e.note || 'Created');
+        return `<li class="${cls}"><i></i><div><b>${esc(head)}</b><small>${esc(e.who || '—')} · ${esc(fmtDateTime(e.at))}</small></div></li>`;
+      }).join('');
+  const n = Array.isArray(log) ? log.filter(e=>e.kind === 'status').length : 0;
+  return `<div class="hd"><span>Status log</span><span>${n ? n + ' change' + (n === 1 ? '' : 's') : ''}</span></div><ol>${rows}</ol><div class="ft">Newest first · date and time in your local time</div>`;
+}
+/* Seed helper for month-layer rows: registers a stable log and returns the chip. */
+function cpSeedChip(t, st, extra){
+  const key = 'seed:' + (t.b || '') + '|' + (t.s || '');
+  cpFakeHist(key, st, t.k || (S.me && S.me.full_name ? S.me.full_name.split(' ')[0] : 'KAM'), t.due, extra);
+  return cpTaskChip(st, key);
+}
 /* Owners are seed names. Show the real avatar when the tenant has a profile by that name. */
 function cpWho(name){
   const p = (S.profiles||[]).find(x=>x.full_name===name || (x.full_name||'').split(' ')[0]===name);
@@ -923,7 +1023,7 @@ function cpDetTickets(c){
     const ink = t.status==='done'?'var(--green)' : t.status==='progress'?'var(--amber)':'var(--ink2)';
     return `<div class="cp-task${t.fresh?' fresh':''}">${tick}
       <div><b>${esc(t.title)}</b><span class="m"><span>${t.id}</span><span>${esc(t.div)}</span><span>${esc(t.owner)}</span><span>due ${fmtDate(t.due)} (D-${t.off})</span></span></div>
-      <div class="r">${cpPill(s)}<span class="chip" style="background:${bg};color:${ink}">${lab}</span></div></div>`;
+      <div class="r">${cpPill(s)}<span class="chip cp-hh" style="background:${bg};color:${ink}"${cpHistAttrs('seed:'+t.id)}>${lab}</span></div></div>`;
   }).join('');
   return `<div class="card">
     <div style="padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="tabs" style="width:max-content;max-width:100%;overflow-x:auto">
@@ -1156,9 +1256,9 @@ const CP_CELL = {w:['wait','Waiting on KAM','W'], d:['done','Done','✓'], p:['p
 
 /* ---- small pieces ---- */
 const cpChanChipByKey = k => cpChanChip(k);
-function cpTaskChip(st){
+function cpTaskChip(st, key){
   const m = {done:['Done','var(--green-soft)','var(--green)'], progress:['In progress','var(--blue-soft)','var(--blue)'], over:['Overdue','var(--red-soft)','var(--red)'], wait:['Waiting','var(--amber-soft)','var(--amber)']}[st] || ['Not started','var(--gray-soft)','var(--ink2)'];
-  return `<span class="chip" style="background:${m[1]};color:${m[2]}">${m[0]}</span>`;
+  return `<span class="chip${key?' cp-hh':''}" style="background:${m[1]};color:${m[2]}"${key? cpHistAttrs(key):''}>${m[0]}</span>`;
 }
 const cpLate = due => { const w = cpWD(cpToday(), due); return w < 0 ? `<span class="sla-pill" style="background:var(--red-soft);color:var(--red)">${Math.abs(w)}d late</span>` : ''; };
 const cpMeterHTML = (p, cls) => `<div class="cp-meter" style="margin-top:7px"><i class="${cls||cpMeter(Math.round(p*100))}" style="width:${Math.round(p*100)}%"></i></div>`;
@@ -1243,10 +1343,10 @@ function cpViewLane(){
   <div class="card cp-digest"><div class="ic">T</div><p><b>Daily digest → Microsoft Teams · ${esc(cpLaneTeam)} channel · 08:30</b> — 3 overdue · 6 due this week · 4 waiting on another team · 3 unblocked since yesterday · 7 done yesterday. ${helpIcon('One card a day per team while a campaign is inside its window. Person-to-person notifications stay on the bell and email.')}</p></div>
   ${cpLaneTeam!=='Store Operations'? `<div class="card empty">Seed data only covers Store Operations for now — the other lanes fill in when the tables land.</div>` : `
   <div class="cp-lane">
-    <div class="cp-col over"><header>Overdue<span class="cnt">${L.over.length}</span></header>${L.over.map(t=>tk(t, cpLate(t.due)+cpTaskChip(t.st))).join('')}</div>
-    <div class="cp-col"><header>Due this week<span class="cnt">${L.week.length}</span></header>${L.week.map(t=>tk(t, cpTaskChip(t.st))).join('')}</div>
-    <div class="cp-col wait"><header>Waiting on another team<span class="cnt">${L.wait.length}</span></header>${L.wait.map(t=>tk(t, `<span class="chip" style="background:var(--amber-soft);color:var(--amber)">Waiting on ${esc(t.on)}</span><span style="color:var(--ink3);font-size:11px">← ${esc(t.up)}</span>`)).join('')}</div>
-    <div class="cp-col unb"><header>Just unblocked<span class="cnt">${L.unb.length}</span></header>${L.unb.map(t=>tk(t, `<span class="chip" style="background:var(--green-soft);color:var(--green)">Unblocked ${esc(t.at)}</span>`+cpTaskChip('todo'))).join('')}</div>
+    <div class="cp-col over"><header>Overdue<span class="cnt">${L.over.length}</span></header>${L.over.map(t=>tk(t, cpLate(t.due)+cpSeedChip(t, t.st))).join('')}</div>
+    <div class="cp-col"><header>Due this week<span class="cnt">${L.week.length}</span></header>${L.week.map(t=>tk(t, cpSeedChip(t, t.st))).join('')}</div>
+    <div class="cp-col wait"><header>Waiting on another team<span class="cnt">${L.wait.length}</span></header>${L.wait.map(t=>tk(t, cpSeedChip(t, 'wait', {on:t.on, up:t.up}).replace('>Waiting<', `>Waiting on ${esc(t.on)}<`)+`<span style="color:var(--ink3);font-size:11px">← ${esc(t.up)}</span>`)).join('')}</div>
+    <div class="cp-col unb"><header>Just unblocked<span class="cnt">${L.unb.length}</span></header>${L.unb.map(t=>tk(t, `<span class="chip" style="background:var(--green-soft);color:var(--green)">Unblocked ${esc(t.at)}</span>`+cpSeedChip(t, 'todo', {unb:t.at}))).join('')}</div>
   </div>`}`;
 }
 
@@ -1257,7 +1357,7 @@ function cpViewBrands(){
       <div class="h"><b>${esc(l.b)}</b>${cpChanChip(l.p)}</div>
       <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="font-weight:700">${l.done}/${l.tot}</span><span class="cp-meter" style="flex:1;display:block"><i class="${cpMeter(Math.round(p*100))}" style="width:${Math.round(p*100)}%"></i></span>${l.over? `<span class="sla-pill" style="background:var(--red-soft);color:var(--red)">${l.over} overdue</span>`:''}</div>
       <div class="nx">Next: <b>${esc(l.next)}</b>${l.wait? `<div style="margin-top:4px"><span class="chip" style="background:var(--amber-soft);color:var(--amber)">${esc(l.wait)}</span></div>`:''}</div></button>`; }).join('');
-  const week = CP_MY_WEEK.map(t=>`<div class="cp-tk" onclick="cpOpenTaskToast()"><b>${esc(t.b)} — ${esc(t.s)}</b><span class="m"><span>due ${fmtDate(t.due)}</span>${t.blocks? `<span style="color:var(--amber)">blocks ${esc(t.blocks)}</span>`:''}${t.on? `<span>waiting on ${esc(t.on)}</span>`:''}</span><span class="r">${t.st==='over'? cpLate(t.due):''}${cpTaskChip(t.st)}</span></div>`).join('');
+  const week = CP_MY_WEEK.map(t=>`<div class="cp-tk" onclick="cpOpenTaskToast()"><b>${esc(t.b)} — ${esc(t.s)}</b><span class="m"><span>due ${fmtDate(t.due)}</span>${t.blocks? `<span style="color:var(--amber)">blocks ${esc(t.blocks)}</span>`:''}${t.on? `<span>waiting on ${esc(t.on)}</span>`:''}</span><span class="r">${t.st==='over'? cpLate(t.due):''}${cpSeedChip(t, t.st, {on:t.on})}</span></div>`).join('');
   return `
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px"><div class="tabs"><button class="tab active">10.10 Mega</button><button class="tab" onclick="toast('Payday lines generate when October is locked')">Payday</button><button class="tab" onclick="toast('All-month view arrives with the tables')">All month</button></div>
     <span style="color:var(--ink3);font-size:12.5px">Seed shows Yves’s lines; with the tables it shows ${esc(me)}’s.</span></div>
@@ -1274,10 +1374,17 @@ function cpViewBrands(){
 }
 
 /* ---------- Tracker grid ---------- */
+/* One stable log per tracker cell; the cell class carries the status. */
+function cpGridHist(b, p, k, step, cls){
+  const key = 'seed:grid:' + b + '|' + p + '|' + step;
+  if(!CP_HIST[key]){ const st = {wait:'wait', done:'done', prog:'progress', over:'over'}[cls] || 'todo'; const r = cpHash(key);
+    cpFakeHist(key, st, k, cpAdd(cpToday(), (r % 9) - 4), {on: cls==='wait' ? 'KAM' : null}); }
+  return key;
+}
 function cpViewGrid(){
   const G = CP_GRID;
   const head = `<tr><th rowspan="2">Brand · platform</th><th class="ph" colspan="${G.steps.length}">${esc(G.phase)} · ${G.steps.length} steps</th></tr><tr>${G.steps.map(s=>`<th>${esc(s)}</th>`).join('')}</tr>`;
-  const body = G.rows.map(([b,p,k,pat])=>`<tr><td><div class="bn">${esc(b)} ${cpChanChip(p)}</div><div class="bs">KAM ${esc(k)}</div></td>${[...pat].map((c,i)=>{ const [cls,l,g]=CP_CELL[c]; return `<td>${c==='.'? `<span class="cp-cell na">—</span>` : `<button type="button" class="cp-cell ${cls}" title="${esc(G.steps[i])} — ${l}" aria-label="${esc(b)} ${p} · ${esc(G.steps[i])} · ${l}" onclick="cpOpenTaskToast()">${g}</button>`}</td>`; }).join('')}</tr>`).join('');
+  const body = G.rows.map(([b,p,k,pat])=>`<tr><td><div class="bn">${esc(b)} ${cpChanChip(p)}</div><div class="bs">KAM ${esc(k)}</div></td>${[...pat].map((c,i)=>{ const [cls,l,g]=CP_CELL[c]; return `<td>${c==='.'? `<span class="cp-cell na">—</span>` : `<button type="button" class="cp-cell ${cls}" aria-label="${esc(b)} ${p} · ${esc(G.steps[i])} · ${l}" onclick="cpOpenTaskToast()"${cpHistAttrs(cpGridHist(b,p,k,G.steps[i],cls))}>${g}</button>`}</td>`; }).join('')}</tr>`).join('');
   return `
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
     <div class="tabs" style="max-width:100%;overflow-x:auto">${G.teams.map(([t,n],i)=>`<button class="tab ${i===1?'active':''}" style="flex:none" onclick="${i===1?'':`toast('${t} columns arrive with the tables')`}">${esc(t)} · ${n}</button>`).join('')}</div>
