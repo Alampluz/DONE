@@ -23,13 +23,60 @@
   --amber:#90660C; --amber-soft:#FBF3DE; --blue:#2A6FB8; --blue-soft:#EAF1F9;
   --purple:#6E56B8; --purple-soft:#F1EDFA; --gray-soft:#F0EFEA;
   --sidebar:#FFFFFF; --sidebar-ink:#5D6167; --sidebar-hover:#F2F2EE;
+  /* Surfaces and states that used to be written as literal hex all over the parts. Naming
+     them here is what makes a second theme possible at all. */
+  --panel-2:#FBFBF8; --hover:#FAFAF6; --line-2:#F1F0EB; --line-strong:#CFCEC7; --mark:#C6C9D8;
+  --field:#FFFFFF; --btn-ink:#16181D; --btn-on:#FFFFFF;
+  --fill-normal:#E7E7E0; --fill-low:#F3F3EC; --soft-low:#F6F6F1;
+  /* Status hues were tuned for text on their own soft tint (~4.5:1 on white). Dark needs its
+     own values, so they are tokens now rather than literals in the STATUSES array. */
+  --st-todo:#6F7384; --st-todo-ink:#616473; --st-prog:#2273C9; --st-prog-ink:#1E66B2;
+  --st-review:#9F6907; --st-review-ink:#8B5C06; --st-blocked:#D04358; --st-blocked-ink:#B0394B;
+  --st-done:#108456; --st-done-ink:#0E734B;
+  color-scheme:light;
   --radius:14px; --shadow:0 1px 2px rgba(22,24,29,.05),0 10px 30px rgba(22,24,29,.05);
 }
+/* ── Dark theme ────────────────────────────────────────────────────────────────────────
+   Warm-neutral, because the light theme is warm (#F7F7F4 / #E9E8E3) and a blue-black would
+   read as a different product. Every text token was re-checked against the dark surface it
+   actually sits on — the light --ink3 was tuned for 4.83:1 ON WHITE, and that logic inverts
+   here, so a straight flip would quietly undo the 11 Sep a11y pass. Brand, team and channel
+   colours are deliberately NOT redefined: those are identity, not theme. */
+:root[data-theme="dark"]{
+  --bg:#161613; --panel:#222220; --ink:#F2F1EC; --ink2:#B4B2AA; --ink3:#94928A;
+  --line:#34342F; --accent:#2A9D8F; --accent-soft:#16332F; --accent-ink:#6FD3C7;
+  --green:#4FBA84; --green-soft:#15301F; --red:#E8737F; --red-soft:#351A1D;
+  --amber:#D9A441; --amber-soft:#332714; --blue:#6BA6E8; --blue-soft:#16243A;
+  --purple:#A896E8; --purple-soft:#221D38; --gray-soft:#2C2C27;
+  --sidebar:#1C1C19; --sidebar-ink:#B4B2AA; --sidebar-hover:#2A2A25;
+  --panel-2:#292926; --hover:#2A2A26; --line-2:#2C2C28; --line-strong:#45453F; --mark:#4A4A55;
+  --field:#1A1A17; --btn-ink:#2A9D8F; --btn-on:#0B1F1C;
+  --fill-normal:#33332E; --fill-low:#2A2A26; --soft-low:#262622;
+  --st-todo:#9FA3B4; --st-todo-ink:#AEB2C2; --st-prog:#6BA6E8; --st-prog-ink:#7FB4EE;
+  --st-review:#D9A441; --st-review-ink:#E0B25C; --st-blocked:#E8737F; --st-blocked-ink:#ED8791;
+  --st-done:#4FBA84; --st-done-ink:#62C795;
+  color-scheme:dark;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.3);
+}
+.pf-sec{font-size:12.5px;font-weight:800;color:var(--ink2);letter-spacing:.2px}
+.pf-ths{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.pf-th{display:flex;flex-direction:column;gap:2px;align-items:flex-start;padding:10px;border:1.5px solid var(--line);
+  border-radius:12px;background:var(--panel);min-width:132px;text-align:left;transition:border-color .12s}
+.pf-th:hover{border-color:var(--line-strong)}
+.pf-th.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.pf-th b{font-size:13px;font-weight:700;color:var(--ink);margin-top:6px}
+.pf-th span:last-child{font-size:11.5px;color:var(--ink3)}
+.pf-th-sw{display:block;width:100%;height:40px;border-radius:8px;border:1px solid var(--line);overflow:hidden;
+  background:var(--a);position:relative}
+.pf-th-sw .s1{position:absolute;left:6px;top:6px;width:26px;bottom:6px;border-radius:4px;background:var(--b)}
+.pf-th-sw .s2{position:absolute;left:38px;top:11px;right:8px;height:5px;border-radius:3px;background:var(--c);opacity:.85}
+.pf-th-sw .s3{position:absolute;left:38px;top:22px;right:20px;height:5px;border-radius:3px;background:var(--c);opacity:.4}
+.pf-hint{font-size:12px;color:var(--ink3);margin-top:12px;line-height:1.5;max-width:46ch}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
 body{font-family:'DM Sans',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased;letter-spacing:.1px}
 button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:13.5px}
-input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;outline:none;transition:border-color .15s, box-shadow .15s}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;outline:none;transition:border-color .15s, box-shadow .15s}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 textarea{resize:vertical;min-height:80px}
 label{display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin:14px 0 5px}
@@ -130,7 +177,7 @@ a{color:var(--accent-ink);text-decoration:none}
 /* ---------- shared components ---------- */
 .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:8px;font-weight:600;font-size:13.5px;transition:filter .12s;white-space:nowrap}
 .btn:hover{filter:brightness(.96)}
-.btn-primary{background:#16181D;color:#fff}
+.btn-primary{background:var(--btn-ink);color:var(--btn-on)}
 .btn-primary:hover{background:#2A2D34;filter:none}
 .btn-ghost{background:var(--panel);border:1px solid var(--line);color:var(--ink)}
 .btn-danger{background:var(--red);color:#fff}
@@ -838,6 +885,18 @@ body.modal-open{overflow:hidden}
 .tv-more em{font-style:normal;color:var(--ink3);margin-left:10px}
 .kb-more{padding:10px;font-size:12px;color:var(--ink3);text-align:center}
 </style>
+<script>
+/* Runs before <body> so a dark-theme user never sees a flash of the light app. The real
+   preference lives in profiles.nav_prefs.theme and is applied again at boot; this is only
+   the fast local echo of it. 'system' follows the OS. */
+(function(){
+  try{
+    var t = localStorage.getItem('done-theme') || 'light';
+    if(t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+  }catch(e){ document.documentElement.setAttribute('data-theme','light'); }
+})();
+</script>
 </head>
 <body>
 <div id="login-screen">
@@ -909,11 +968,11 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 /* `color` is the fill and the dot; `ink` is the label when the chip is a 10% tint of its own
    hue, where using `color` for both lands around 4:1. */
 const STATUSES = [
-  {k:'todo', label:'To Do', color:'#6F7384', ink:'#616473'},
-  {k:'in_progress', label:'In Progress', color:'#2273C9', ink:'#1E66B2'},
-  {k:'review', label:'Review', color:'#9F6907', ink:'#8B5C06'},
-  {k:'blocked', label:'Blocked', color:'#D04358', ink:'#B0394B'},
-  {k:'done', label:'Done', color:'#108456', ink:'#0E734B'},
+  {k:'todo', label:'To Do', color:'var(--st-todo)', ink:'var(--st-todo-ink)'},
+  {k:'in_progress', label:'In Progress', color:'var(--st-prog)', ink:'var(--st-prog-ink)'},
+  {k:'review', label:'Review', color:'var(--st-review)', ink:'var(--st-review-ink)'},
+  {k:'blocked', label:'Blocked', color:'var(--st-blocked)', ink:'var(--st-blocked-ink)'},
+  {k:'done', label:'Done', color:'var(--st-done)', ink:'var(--st-done-ink)'},
 ];
 /* Priority reads by weight, not just hue: Urgent and High are saturated fills, Normal and
    Low are neutral. Normal used to be the loudest colour on the board (saturated blue, on
@@ -922,8 +981,8 @@ const STATUSES = [
 const PRIORITIES = [
   {k:'urgent', label:'Urgent', color:'var(--red)',   soft:'var(--red-soft)',   fill:'var(--red)',   fillInk:'#fff'},
   {k:'high',   label:'High',   color:'var(--amber)', soft:'var(--amber-soft)', fill:'var(--amber)', fillInk:'#fff'},
-  {k:'normal', label:'Normal', color:'var(--ink2)',  soft:'var(--gray-soft)',  fill:'#E7E7E0',      fillInk:'var(--ink)'},
-  {k:'low',    label:'Low',    color:'var(--ink2)',  soft:'#F6F6F1',           fill:'#F3F3EC',      fillInk:'var(--ink2)'},
+  {k:'normal', label:'Normal', color:'var(--ink2)',  soft:'var(--gray-soft)',  fill:'var(--fill-normal)',      fillInk:'var(--ink)'},
+  {k:'low',    label:'Low',    color:'var(--ink2)',  soft:'var(--soft-low)',           fill:'var(--fill-low)',      fillInk:'var(--ink2)'},
 ];
 /* The four standard task fields every board has. A board can rename them and hide the ones it does
    not use (projects.field_config, 7 Sep) — an onboarding board has a "Store live" date, not a due date;
@@ -1161,7 +1220,7 @@ function avatarImgFailed(img){
   sp.textContent = initials(name);
 }
 function avatar(p, sm=false){
-  if(!p) return `<span class="avatar ${sm?'sm':''}" style="background:#C6C9D8" title="Unassigned">–</span>`;
+  if(!p) return `<span class="avatar ${sm?'sm':''}" style="background:var(--mark)" title="Unassigned">–</span>`;
   /* If the photo fails to load, fall back to initials. Without this a broken image just shows
      the avatar_color circle — which is how a dead avatar URL went unnoticed for over a week. */
   if(p.avatar_url) return `<span class="avatar ${sm?'sm':''}" style="background:${p.avatar_color}" title="${esc(p.full_name)}"><img src="${esc(p.avatar_url)}" alt="" onerror="avatarImgFailed(this)"></span>`;
@@ -1692,6 +1751,7 @@ async function _boot(){
   if(error || !me){ toast('Could not load your profile', true); return; }
   if(!me.active || !me.company_id){ await db.auth.signOut(); toast('Your account is awaiting activation by an admin.', true); return; }
   S.me = me;
+  applyTheme(navPrefs().theme);
   await refreshCore();
   if(S.company && ['suspended','cancelled'].includes(S.company.status) && !me.platform_admin){
     await db.auth.signOut();
@@ -1961,8 +2021,31 @@ function navPrefs(){
     hidden: Array.isArray(p.hidden)? p.hidden : [],
     order: (p.order && typeof p.order==='object')? p.order : {},
     collapsed: (p.collapsed && typeof p.collapsed==='object')? p.collapsed : {},
+    theme: (p.theme==='dark'||p.theme==='system')? p.theme : 'light',
   };
 }
+/* ---- theme (profiles.nav_prefs.theme) ----
+   Default is LIGHT, not the OS: a team that never asked for dark should not arrive on Monday
+   to an app that changed overnight. 'system' is opt-in. localStorage is only the fast echo so
+   part1's pre-paint script can set the attribute before the first frame; nav_prefs is the
+   real store, so the choice follows the person to another machine. */
+function applyTheme(pref){
+  const t = pref==='system'
+    ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : (pref==='dark' ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', t);
+  try{ localStorage.setItem('done-theme', pref||'light'); }catch(e){}
+}
+function setThemePref(pref){
+  applyTheme(pref);
+  navPrefsSet(p=>{ p.theme = pref; });
+  if(document.getElementById('pf-main') && pfTab==='appear') pfRender();
+}
+try{
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{
+    if(navPrefs().theme==='system') applyTheme('system');
+  });
+}catch(e){}
 let _navSaveTimer = null;
 function navPrefsSet(mut){
   const p = navPrefs(); mut(p);
@@ -2211,9 +2294,10 @@ const myProfileModal = ()=> profileModal(null);
 function pfRender(){
   const nav = $('#pf-nav'), main = $('#pf-main'); if(!nav||!main) return;
   const mine = pfUser.id===(S.me||{}).id;
-  const tabs = [['info','Personal info'], ...(mine? [['notif','Notifications'],['pass','Password']] : []), ['teams','Teams']];
+  const tabs = [['info','Personal info'], ...(mine? [['notif','Notifications'],['appear','Appearance'],['pass','Password']] : []), ['teams','Teams']];
   nav.innerHTML = tabs.map(([k,l])=>`<button class="${pfTab===k?'on':''}" onclick="pfGo('${k}')">${l}</button>`).join('');
   if(pfTab==='info') main.innerHTML = pfInfoHTML();
+  else if(pfTab==='appear') main.innerHTML = pfAppearHTML();
   else if(pfTab==='teams'){
     main.innerHTML = '<div class="empty">Loading…</div>';
     db.from('workspace_members').select('workspace_id').eq('user_id', pfUser.id).then(({data})=>{
@@ -2228,6 +2312,29 @@ function pfGo(k){
   if(k==='notif'){ closeModals(); emailSettingsModal(); return; }
   if(k==='pass'){ closeModals(); changePasswordModal(); return; }
   pfTab = k; pfRender();
+}
+/* Appearance. Three choices, each previewing its own palette in the swatch so the decision
+   is made by looking rather than by reading a label. */
+function pfAppearHTML(){
+  const cur = navPrefs().theme;
+  const opt = (k, title, sub, vars) => `
+    <button type="button" class="pf-th${cur===k?' on':''}" onclick="setThemePref('${k}')"
+            aria-pressed="${cur===k}" title="${esc(title)}">
+      <span class="pf-th-sw" style="${vars}">
+        <span class="s1"></span><span class="s2"></span><span class="s3"></span>
+      </span>
+      <b>${esc(title)}</b><span>${esc(sub)}</span>
+    </button>`;
+  return `<div class="pf-card">
+    <div class="pf-sec">Appearance</div>
+    <div class="pf-ths">
+      ${opt('light','Light','The default',        '--a:#F7F7F4;--b:#FFFFFF;--c:#16181D')}
+      ${opt('dark','Dark','Easier at night',      '--a:#161613;--b:#222220;--c:#F2F1EC')}
+      ${opt('system','Follow system','Matches your device','--a:#F7F7F4;--b:#222220;--c:#6FD3C7')}
+    </div>
+    <p class="pf-hint">Saved to your profile, so it follows you to any computer you sign in on.
+      It changes nothing for anyone else.</p>
+  </div>`;
 }
 function pfVal(k, type){
   const v = pfUser[k];
@@ -3061,7 +3168,7 @@ function editProjectModal(pid){
       ${visPickerHTML('ep-vis', p.visibility||'collaborate')}
       <label style="margin-top:14px">Colour</label>
       <div id="ep-cols" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-        ${PJ_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===p.color?'0 0 0 3px #fff,0 0 0 5px '+c:'none'}"></span>`).join('')}
+        ${PJ_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===p.color?'0 0 0 3px var(--panel),0 0 0 5px '+c:'none'}"></span>`).join('')}
       </div>${gateSection}
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="ep-save">Save</button></div>`);
@@ -3074,7 +3181,7 @@ function editProjectModal(pid){
   if(gateOn) gateOn.onchange = ()=>{ m.querySelector('#ep-gate-appr').hidden = !gateOn.checked; };
   m.querySelectorAll('#ep-cols span').forEach(s=> s.onclick=()=>{
     colour = s.dataset.c;
-    m.querySelectorAll('#ep-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px #fff,0 0 0 5px '+colour : 'none');
+    m.querySelectorAll('#ep-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px var(--panel),0 0 0 5px '+colour : 'none');
   });
   m.querySelector('#ep-save').onclick = async ()=>{
     const name = m.querySelector('#ep-name').value.trim(); if(!name) return toast('Name required', true);
@@ -5182,7 +5289,7 @@ function renderProjectTableView(id, rowSet, host){
       </div>${tableFor(rows, g.id, i===0, g.color)}</div>`;
   }).join('')
   + (ungrouped.length? `<div class="tv-group">
-      <div class="tv-group-head"><span class="bar" style="background:#C6C9D8"></span><h3 style="color:var(--ink3)">No group</h3><span class="cnt">${ungrouped.length}</span></div>
+      <div class="tv-group-head"><span class="bar" style="background:var(--mark)"></span><h3 style="color:var(--ink3)">No group</h3><span class="cnt">${ungrouped.length}</span></div>
       ${tableFor(ungrouped, null, false)}</div>`:'')
   + (canManageBoard(id)? `<div class="tv-addgroup" onclick="addGroupModal('${id}')">＋ Add group</div>`:'') + archBar;
 }
@@ -6277,7 +6384,7 @@ function fieldInput(f){
   if(f.type==='textarea') return `<label>${esc(f.label)} ${req}</label><textarea data-fk="${f.key}" rows="3"></textarea>`;
   if(f.type==='select') return `<label>${esc(f.label)} ${req}</label><select data-fk="${f.key}"><option value="">— select —</option>${(f.options||[]).map(o=>`<option>${esc(o)}</option>`).join('')}</select>`;
   if(f.type==='brand') return `<label>${esc(f.label)} ${req}</label><select data-fk="${f.key}"><option value="">— select brand —</option>${(S.brandsList||[]).filter(b=>b.active).map(b=>`<option>${esc(b.name)}</option>`).join('')}</select>`;
-  if(f.type==='multiselect') return `<label>${esc(f.label)} ${req}</label><div style="display:flex;flex-wrap:wrap;gap:4px 16px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff">${(f.options||[]).map(o=>`<label style="display:inline-flex;align-items:center;gap:6px;margin:0;font-weight:500;color:var(--ink);cursor:pointer"><input type="checkbox" data-fkm="${f.key}" value="${esc(o)}" style="width:15px;height:15px;accent-color:var(--accent)">${esc(o)}</label>`).join('')}</div>`;
+  if(f.type==='multiselect') return `<label>${esc(f.label)} ${req}</label><div style="display:flex;flex-wrap:wrap;gap:4px 16px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:var(--field)">${(f.options||[]).map(o=>`<label style="display:inline-flex;align-items:center;gap:6px;margin:0;font-weight:500;color:var(--ink);cursor:pointer"><input type="checkbox" data-fkm="${f.key}" value="${esc(o)}" style="width:15px;height:15px;accent-color:var(--accent)">${esc(o)}</label>`).join('')}</div>`;
   return `<label>${esc(f.label)} ${req}</label><input data-fk="${f.key}" type="${f.type==='number'?'number':f.type==='date'?'date':'text'}">`;
 }
 function readField(m, f){
@@ -7880,7 +7987,7 @@ function editWorkspaceModal(wid){
       <div style="font-size:12px;color:var(--ink3);margin-top:4px">Owners and admins rename this workspace, manage its members, and manage every board inside it. <b>Only an admin can delete the workspace itself.</b></div>
       <label style="margin-top:14px">Colour</label>
       <div id="ew-cols" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-        ${WS_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===w.color?'0 0 0 3px #fff,0 0 0 5px '+c:'none'}"></span>`).join('')}
+        ${WS_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===w.color?'0 0 0 3px var(--panel),0 0 0 5px '+c:'none'}"></span>`).join('')}
       </div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="ew-save">Save</button></div>`);
@@ -7888,7 +7995,7 @@ function editWorkspaceModal(wid){
   m.querySelector('#ew-owners').onclick = ()=>{ closeModals(); teamMembersModal(wid); };
   m.querySelectorAll('#ew-cols span').forEach(s=> s.onclick=()=>{
     colour = s.dataset.c;
-    m.querySelectorAll('#ew-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px #fff,0 0 0 5px '+colour : 'none');
+    m.querySelectorAll('#ew-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px var(--panel),0 0 0 5px '+colour : 'none');
   });
   m.querySelector('#ew-save').onclick = async ()=>{
     const name = m.querySelector('#ew-name').value.trim(); if(!name) return toast('Name required', true);
@@ -8025,13 +8132,13 @@ function editTeamModal(tid){
       <input id="tt-name" value="${t? esc(t.name):''}" placeholder="e.g. Customer Service">
       <label style="margin-top:14px">Colour</label>
       <div id="tt-cols" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-        ${TEAM_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===colour?'0 0 0 3px #fff,0 0 0 5px '+c:'none'}"></span>`).join('')}
+        ${TEAM_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===colour?'0 0 0 3px var(--panel),0 0 0 5px '+c:'none'}"></span>`).join('')}
       </div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="tt-save">Save</button></div>`);
   m.querySelectorAll('#tt-cols span').forEach(s=> s.onclick=()=>{
     colour = s.dataset.c;
-    m.querySelectorAll('#tt-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px #fff,0 0 0 5px '+colour : 'none');
+    m.querySelectorAll('#tt-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px var(--panel),0 0 0 5px '+colour : 'none');
   });
   m.querySelector('#tt-save').onclick = async ()=>{
     const name = m.querySelector('#tt-name').value.trim();
@@ -8095,9 +8202,19 @@ async function deleteTeamModal(tid){
   --cp-tiktok:#0A6E78; --cp-tiktok-soft:#E2F1F3;
   --cp-brand:#7A3E9C;  --cp-brand-soft:#F2E9F7;
 }
+/* Channel hues keep their identity in dark; only the pale -soft tints (designed against
+   white) and the text weights are restated so the chips stay legible instead of glaring. */
+:root[data-theme="dark"]{
+  --cp-navy:#8F98DC;   --cp-navy-soft:#1E2140;
+  --cp-shopee:#E8874F; --cp-shopee-soft:#3A2116;
+  --cp-lazada:#8288E0; --cp-lazada-soft:#1D1F45;
+  --cp-tiktok:#4FB6C0; --cp-tiktok-soft:#123035;
+  --cp-brand:#B681D4;  --cp-brand-soft:#2B1B36;
+  --cp-purple:#B681D4;
+}
 .cp-tl{overflow-x:auto}
 .cp-tl-inner{min-width:1080px}
-.cp-head{display:grid;grid-template-columns:226px 1fr;border-bottom:1px solid var(--line);background:#FBFBF8}
+.cp-head{display:grid;grid-template-columns:226px 1fr;border-bottom:1px solid var(--line);background:var(--panel-2)}
 .cp-head .cp-lab{padding:9px 14px;border-right:1px solid var(--line);font-size:11.5px;text-transform:uppercase;
   letter-spacing:.5px;color:var(--ink3);font-weight:700;align-self:center}
 .cp-months{display:flex}
@@ -8107,11 +8224,11 @@ async function deleteTeamModal(tid){
   text-transform:uppercase;color:var(--ink2)}
 .cp-days{display:flex;padding-top:2px}
 .cp-day{flex:1;text-align:center;font-size:9px;color:var(--ink3)}
-.cp-grp{display:grid;grid-template-columns:226px 1fr;background:#FBFBF8;border-bottom:1px solid var(--line)}
+.cp-grp{display:grid;grid-template-columns:226px 1fr;background:var(--panel-2);border-bottom:1px solid var(--line)}
 .cp-grp span{padding:6px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);font-weight:700}
 .cp-row{display:grid;grid-template-columns:226px 1fr;border-bottom:1px solid var(--line);min-height:44px}
 .cp-row:last-child{border-bottom:none}
-.cp-row:hover{background:#FAFAF6}
+.cp-row:hover{background:var(--hover)}
 .cp-name{padding:8px 12px 8px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;
   gap:2px;justify-content:center}
 .cp-name b{font-size:12.5px;font-weight:600;line-height:1.25}
@@ -8119,7 +8236,7 @@ async function deleteTeamModal(tid){
 .cp-track{position:relative;padding:9px 0}
 .cp-lines{position:absolute;inset:0;display:flex;pointer-events:none}
 .cp-lines span{flex:1}
-.cp-lines span.w{border-right:1px solid #F1F0EB}
+.cp-lines span.w{border-right:1px solid var(--line-2)}
 .cp-lines span.m{border-left:1px solid var(--line)}
 .cp-today{position:absolute;top:0;bottom:0;width:2px;background:var(--red);opacity:.7;pointer-events:none;z-index:3}
 .cp-today.lab::after{content:"TODAY";position:absolute;top:-18px;left:50%;transform:translateX(-50%);
@@ -8134,26 +8251,26 @@ async function deleteTeamModal(tid){
 .cp-bar.shopee{background:var(--cp-shopee)} .cp-bar.lazada{background:var(--cp-lazada)}
 .cp-bar.tiktok{background:var(--cp-tiktok)} .cp-bar.brand{background:var(--cp-brand)}
 .cp-bar.multi{background:linear-gradient(97deg,var(--cp-navy),var(--cp-purple))}
-.cp-bar.draft{background:var(--gray-soft);color:var(--ink2);border:1px dashed #CFCEC7;box-shadow:none}
+.cp-bar.draft{background:var(--gray-soft);color:var(--ink2);border:1px dashed var(--line-strong);box-shadow:none}
 .cp-barlab{position:absolute;height:26px;display:flex;align-items:center;gap:7px;font-size:11.5px;
   font-weight:600;color:var(--ink2);white-space:nowrap;pointer-events:none;z-index:2}
 .cp-barlab .f{font-size:10px;font-weight:700;color:var(--ink3);background:var(--gray-soft);
   padding:1px 5px;border-radius:5px}
 .cp-legend{display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line);
-  background:#FBFBF8;font-size:11.5px;color:var(--ink3)}
+  background:var(--panel-2);font-size:11.5px;color:var(--ink3)}
 .cp-legend b{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ink2)}
 .cp-sw{width:14px;height:8px;border-radius:3px;display:inline-block}
 .cp-meter{height:5px;border-radius:99px;background:var(--gray-soft);overflow:hidden}
 .cp-meter i{display:block;height:100%;border-radius:99px;background:var(--cp-navy)}
 .cp-meter i.green{background:var(--green)} .cp-meter i.amber{background:var(--amber)} .cp-meter i.red{background:var(--red)}
-.cp-tick{width:16px;height:16px;border-radius:5px;border:1.5px solid #D6D5CE;flex:none;display:grid;
-  place-items:center;font-size:10px;color:#fff;background:#fff}
+.cp-tick{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--line-strong);flex:none;display:grid;
+  place-items:center;font-size:10px;color:#fff;background:var(--field)}
 .cp-tick.done{background:var(--green);border-color:var(--green)}
 .cp-tick.prog{border-color:var(--amber);background:var(--amber-soft);color:var(--amber)}
 .cp-task{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 14px;
   border-bottom:1px solid var(--line)}
 .cp-task:last-child{border-bottom:none}
-.cp-task:hover{background:#FAFAF6}
+.cp-task:hover{background:var(--hover)}
 .cp-task.fresh{background:var(--green-soft)}
 .cp-task b{font-size:12.8px;font-weight:600;display:block}
 .cp-task .m{font-size:11.2px;color:var(--ink3);display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
@@ -8163,7 +8280,7 @@ async function deleteTeamModal(tid){
 .cp-asset .th{aspect-ratio:16/10;max-width:100%;background:var(--gray-soft);display:grid;place-items:center;
   border-bottom:1px solid var(--line);position:relative}
 .cp-asset .th .t{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:700}
-.cp-asset .th .v{position:absolute;top:7px;left:7px;font-size:10px;font-weight:700;background:#fff;
+.cp-asset .th .v{position:absolute;top:7px;left:7px;font-size:10px;font-weight:700;background:var(--panel);
   border:1px solid var(--line);padding:1px 6px;border-radius:6px;color:var(--ink2)}
 .cp-asset .mt{padding:10px 12px;display:flex;flex-direction:column;gap:5px}
 .cp-asset .mt b{font-size:12.5px;font-weight:600}
@@ -8181,11 +8298,11 @@ async function deleteTeamModal(tid){
 .cp-kv span:first-child{color:var(--ink3)}
 .cp-kv span:last-child{font-weight:600;text-align:right}
 .cp-grid2{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start}
-.cp-mech{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#FBFBF8}
+.cp-mech{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel-2)}
 .cp-mech b{font-size:12.8px}
 .cp-mech p{margin:3px 0 0;font-size:11.8px;color:var(--ink3)}
 .cp-prev{border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.cp-prev .h{display:flex;padding:8px 12px;background:#FBFBF8;border-bottom:1px solid var(--line);
+.cp-prev .h{display:flex;padding:8px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);
   font-size:11px;letter-spacing:.5px;text-transform:uppercase;font-weight:700;color:var(--ink3)}
 .cp-prev ul{list-style:none;margin:0;padding:0;max-height:270px;overflow:auto}
 .cp-prev li{display:grid;grid-template-columns:1fr auto;gap:10px;padding:8px 12px;
@@ -8214,15 +8331,15 @@ async function deleteTeamModal(tid){
 .cp-pstep .when{font-size:11px;color:var(--ink3);font-weight:700}
 .cp-plan{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 16px;margin-bottom:16px}
 .cp-mg{overflow-x:auto} .cp-mg-in{min-width:820px}
-.cp-mg-h{display:grid;grid-template-columns:230px 1fr;border-bottom:1px solid var(--line);background:#FBFBF8}
+.cp-mg-h{display:grid;grid-template-columns:230px 1fr;border-bottom:1px solid var(--line);background:var(--panel-2)}
 .cp-mg-h .days{display:flex} .cp-mg-h .d{flex:1;text-align:center;font-size:10px;color:var(--ink3);padding:6px 0}
-.cp-mg-h .d.we{color:#B9B8B1}
+.cp-mg-h .d.we{color:var(--ink3)}
 .cp-mg-r{display:grid;grid-template-columns:230px 1fr;border-bottom:1px solid var(--line);min-height:46px}
-.cp-mg-r:last-child{border-bottom:0} .cp-mg-r:hover{background:#FAFAF6}
+.cp-mg-r:last-child{border-bottom:0} .cp-mg-r:hover{background:var(--hover)}
 .cp-mg-n{padding:8px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;gap:2px}
 .cp-mg-n b{font-size:12.8px} .cp-mg-n span{font-size:11px;color:var(--ink3)}
 .cp-mg-t{position:relative;padding:9px 0}
-.cp-mg-t .grid{position:absolute;inset:0;display:flex;pointer-events:none} .cp-mg-t .grid i{flex:1;border-right:1px solid #F1F0EB}
+.cp-mg-t .grid{position:absolute;inset:0;display:flex;pointer-events:none} .cp-mg-t .grid i{flex:1;border-right:1px solid var(--line-2)}
 .cp-bar.pay{background:var(--accent)} .cp-bar.brandday{background:var(--cp-shopee)} .cp-bar.ttk{background:var(--cp-tiktok)} .cp-bar.laz{background:var(--cp-lazada)}
 .cp-bar.plan{background:var(--gray-soft);color:var(--ink2);border:1px dashed var(--ink3);box-shadow:none}
 .cp-lane{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
@@ -8231,7 +8348,7 @@ async function deleteTeamModal(tid){
 .cp-col>header .cnt{margin-left:auto;font-size:11.5px;color:var(--ink3);background:var(--gray-soft);padding:1px 8px;border-radius:10px}
 .cp-col.over>header{color:var(--red)} .cp-col.wait>header{color:var(--amber)} .cp-col.unb>header{color:var(--green)}
 .cp-tk{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:4px;cursor:pointer}
-.cp-tk:last-child{border-bottom:0} .cp-tk:hover{background:#FAFAF6}
+.cp-tk:last-child{border-bottom:0} .cp-tk:hover{background:var(--hover)}
 .cp-tk b{font-size:12.8px;font-weight:600} .cp-tk .m{font-size:11.2px;color:var(--ink3);display:flex;gap:8px;flex-wrap:wrap}
 .cp-tk .r{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px}
 .cp-digest{display:flex;gap:12px;align-items:center;padding:12px 14px;margin-bottom:14px;border-color:#C9CCE6}
@@ -8242,15 +8359,15 @@ async function deleteTeamModal(tid){
 .cp-bl .nx{font-size:12px;color:var(--ink2);border-top:1px dashed var(--line);padding-top:8px} .cp-bl .nx b{font-weight:600;color:var(--ink)}
 .cp-gw{overflow:auto;max-height:70vh}
 table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:100%}
-.cp-g th{position:sticky;top:0;background:#FBFBF8;z-index:2;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink3);font-weight:700;padding:8px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:left;vertical-align:bottom;max-width:120px;white-space:normal;line-height:1.25}
+.cp-g th{position:sticky;top:0;background:var(--panel-2);z-index:2;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink3);font-weight:700;padding:8px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:left;vertical-align:bottom;max-width:120px;white-space:normal;line-height:1.25}
 .cp-g th.ph{background:var(--panel);color:var(--ink2);letter-spacing:.08em;text-align:center}
 .cp-g th:first-child,.cp-g td:first-child{position:sticky;left:0;z-index:3;background:var(--panel);min-width:200px;border-right:1px solid var(--line)}
-.cp-g th:first-child{z-index:4;background:#FBFBF8}
-.cp-g td{padding:5px 6px;border-bottom:1px solid var(--line);border-right:1px solid #F1F0EB;white-space:nowrap}
+.cp-g th:first-child{z-index:4;background:var(--panel-2)}
+.cp-g td{padding:5px 6px;border-bottom:1px solid var(--line);border-right:1px solid var(--line-2);white-space:nowrap}
 .cp-g td .bn{font-weight:600;font-size:12.5px} .cp-g td .bs{font-size:10.5px;color:var(--ink3)}
 .cp-cell{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 7px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:0;font-family:inherit}
 .cp-cell.todo{background:var(--gray-soft);color:var(--ink3)} .cp-cell.prog{background:var(--blue-soft);color:var(--blue)} .cp-cell.wait{background:var(--amber-soft);color:var(--amber)}
-.cp-cell.done{background:var(--green-soft);color:var(--green)} .cp-cell.over{background:var(--red-soft);color:var(--red)} .cp-cell.na{color:#C4C3BC;cursor:default}
+.cp-cell.done{background:var(--green-soft);color:var(--green)} .cp-cell.over{background:var(--red-soft);color:var(--red)} .cp-cell.na{color:var(--line-strong);cursor:default}
 /* status log popover — hover or focus any status chip / grid cell */
 .cp-hh{cursor:pointer;box-shadow:inset 0 -1px 0 rgba(0,0,0,.14)} .cp-hh:focus-visible{outline:2px solid var(--cp-navy);outline-offset:1px}
 .cp-hpop{position:fixed;z-index:1200;width:310px;max-width:calc(100vw - 16px);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 34px rgba(16,18,25,.16);font-size:12.5px;color:var(--ink2);animation:pop .12s ease;overflow:hidden;text-align:left;font-weight:400;text-transform:none;letter-spacing:0;white-space:normal}
@@ -8259,7 +8376,7 @@ table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:10
 .cp-hpop ol{list-style:none;margin:0;padding:6px 0;max-height:260px;overflow:auto}
 .cp-hpop li{display:grid;grid-template-columns:8px 1fr;gap:10px;padding:6px 12px 6px 14px;position:relative}
 .cp-hpop li i{width:8px;height:8px;border-radius:50%;background:var(--ink3);margin-top:5px;display:block;position:relative;z-index:1}
-.cp-hpop li.status i{background:var(--cp-navy)} .cp-hpop li.done i{background:var(--green)} .cp-hpop li.handoff i{background:var(--amber)} .cp-hpop li.created i{background:#C4C3BC}
+.cp-hpop li.status i{background:var(--cp-navy)} .cp-hpop li.done i{background:var(--green)} .cp-hpop li.handoff i{background:var(--amber)} .cp-hpop li.created i{background:var(--line-strong)}
 .cp-hpop li:not(:last-child):after{content:'';position:absolute;left:17.5px;top:19px;bottom:-7px;width:1px;background:var(--line)}
 .cp-hpop li b{color:var(--ink);font-weight:600;display:block;line-height:1.4;font-size:12.5px}
 .cp-hpop li small{display:block;font-size:11.5px;color:var(--ink3);line-height:1.4}
@@ -8286,13 +8403,13 @@ const CP_CHANNELS = {
   brand: {label:'Brand.com', cls:'brand'}
 };
 const CP_STATUSES = [
-  {k:'draft',    label:'Draft',        color:'#6E7279'},
+  {k:'draft',    label:'Draft',        color:'var(--ink3)'},
   {k:'planning', label:'Planning',     color:'#2A6FB8'},
   {k:'briefed',  label:'Briefed',      color:'#6E56B8'},
   {k:'exec',     label:'In execution', color:'#90660C'},
   {k:'live',     label:'Live',         color:'#0F7D51'},
   {k:'wrap',     label:'Wrap-up',      color:'#0B5D57'},
-  {k:'closed',   label:'Closed',       color:'#6E7279'}
+  {k:'closed',   label:'Closed',       color:'var(--ink3)'}
 ];
 const CP_ASTATES = {
   approved:{label:'Approved',          bg:'var(--green-soft)', ink:'var(--green)'},
@@ -8852,7 +8969,7 @@ function cpViewTimeline(){
     <div class="cp-legend">
       ${Object.entries(CP_CHANNELS).map(([k,v])=>`<b><span class="cp-sw" style="background:var(--cp-${v.cls})"></span>${v.label}</b>`).join('')}
       <b><span class="cp-sw" style="background:linear-gradient(97deg,var(--cp-navy),var(--cp-purple))"></span>Multi-channel</b>
-      <b><span class="cp-sw" style="background:var(--gray-soft);border:1px dashed #CFCEC7"></span>Draft</b>
+      <b><span class="cp-sw" style="background:var(--gray-soft);border:1px dashed var(--line-strong)"></span>Draft</b>
       <span>Tickets completed of tickets generated ${helpIcon('The brief for a campaign expands into tickets on the Creative, Product Listing, Store Operations and CS boards. The count on each bar is how many of those are Done.')}</span>
     </div>
   </div>`;
@@ -8887,7 +9004,7 @@ function cpViewList(){
   return `
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
     ${cpChanFilter()}
-    <select onchange="cpStat=this.value;renderCampaigns()" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-size:12.5px">
+    <select onchange="cpStat=this.value;renderCampaigns()" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field);font:inherit;font-size:12.5px">
       <option value="all">All statuses</option>
       ${CP_STATUSES.map(s=>`<option value="${s.k}" ${cpStat===s.k?'selected':''}>${s.label}</option>`).join('')}
     </select>
@@ -8938,7 +9055,7 @@ function cpViewTargets(){
       <th>Attainment</th><th style="text-align:right">Budget</th><th style="text-align:right">Spent</th>
       <th style="text-align:right">Burn</th><th style="text-align:right">ROAS</th></tr></thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr style="background:#FBFBF8;font-weight:700">
+    <tfoot><tr style="background:var(--panel-2);font-weight:700">
       <td>Total</td><td style="text-align:right">${cpTHB(T)}</td><td style="text-align:right">${cpTHB(A)}</td><td></td>
       <td style="text-align:right">${cpTHB(B)}</td><td style="text-align:right">${cpTHB(Sp)}</td>
       <td style="text-align:right">${cpPct(Sp,B)}%</td><td style="text-align:right">${Sp?(A/Sp).toFixed(1):'0.0'}×</td></tr></tfoot>
@@ -9422,7 +9539,7 @@ function cpViewLane(){
   const L = CP_LANE;
   return `
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-    <select class="f" onchange="cpLaneTeam=this.value;renderCampaigns()" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-size:12.5px">${teams.map(t=>`<option ${t===cpLaneTeam?'selected':''}>${t}</option>`).join('')}</select>
+    <select class="f" onchange="cpLaneTeam=this.value;renderCampaigns()" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field);font:inherit;font-size:12.5px">${teams.map(t=>`<option ${t===cpLaneTeam?'selected':''}>${t}</option>`).join('')}</select>
     <div class="tabs"><button class="tab active">10.10 Mega</button><button class="tab" onclick="toast('All-October lane arrives with the tables')">All October</button></div>
     <span style="margin-left:auto;display:flex;gap:8px">${canEdit()? `<button class="btn btn-ghost" onclick="toast('Bulk assign arrives with the tables')">Assign unassigned · 41</button>`:''}</span>
   </div>
