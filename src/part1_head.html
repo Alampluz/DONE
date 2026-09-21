@@ -23,13 +23,60 @@
   --amber:#90660C; --amber-soft:#FBF3DE; --blue:#2A6FB8; --blue-soft:#EAF1F9;
   --purple:#6E56B8; --purple-soft:#F1EDFA; --gray-soft:#F0EFEA;
   --sidebar:#FFFFFF; --sidebar-ink:#5D6167; --sidebar-hover:#F2F2EE;
+  /* Surfaces and states that used to be written as literal hex all over the parts. Naming
+     them here is what makes a second theme possible at all. */
+  --panel-2:#FBFBF8; --hover:#FAFAF6; --line-2:#F1F0EB; --line-strong:#CFCEC7; --mark:#C6C9D8;
+  --field:#FFFFFF; --btn-ink:#16181D; --btn-on:#FFFFFF;
+  --fill-normal:#E7E7E0; --fill-low:#F3F3EC; --soft-low:#F6F6F1;
+  /* Status hues were tuned for text on their own soft tint (~4.5:1 on white). Dark needs its
+     own values, so they are tokens now rather than literals in the STATUSES array. */
+  --st-todo:#6F7384; --st-todo-ink:#616473; --st-prog:#2273C9; --st-prog-ink:#1E66B2;
+  --st-review:#9F6907; --st-review-ink:#8B5C06; --st-blocked:#D04358; --st-blocked-ink:#B0394B;
+  --st-done:#108456; --st-done-ink:#0E734B;
+  color-scheme:light;
   --radius:14px; --shadow:0 1px 2px rgba(22,24,29,.05),0 10px 30px rgba(22,24,29,.05);
 }
+/* ── Dark theme ────────────────────────────────────────────────────────────────────────
+   Warm-neutral, because the light theme is warm (#F7F7F4 / #E9E8E3) and a blue-black would
+   read as a different product. Every text token was re-checked against the dark surface it
+   actually sits on — the light --ink3 was tuned for 4.83:1 ON WHITE, and that logic inverts
+   here, so a straight flip would quietly undo the 11 Sep a11y pass. Brand, team and channel
+   colours are deliberately NOT redefined: those are identity, not theme. */
+:root[data-theme="dark"]{
+  --bg:#161613; --panel:#222220; --ink:#F2F1EC; --ink2:#B4B2AA; --ink3:#94928A;
+  --line:#34342F; --accent:#2A9D8F; --accent-soft:#16332F; --accent-ink:#6FD3C7;
+  --green:#4FBA84; --green-soft:#15301F; --red:#E8737F; --red-soft:#351A1D;
+  --amber:#D9A441; --amber-soft:#332714; --blue:#6BA6E8; --blue-soft:#16243A;
+  --purple:#A896E8; --purple-soft:#221D38; --gray-soft:#2C2C27;
+  --sidebar:#1C1C19; --sidebar-ink:#B4B2AA; --sidebar-hover:#2A2A25;
+  --panel-2:#292926; --hover:#2A2A26; --line-2:#2C2C28; --line-strong:#45453F; --mark:#4A4A55;
+  --field:#1A1A17; --btn-ink:#2A9D8F; --btn-on:#0B1F1C;
+  --fill-normal:#33332E; --fill-low:#2A2A26; --soft-low:#262622;
+  --st-todo:#9FA3B4; --st-todo-ink:#AEB2C2; --st-prog:#6BA6E8; --st-prog-ink:#7FB4EE;
+  --st-review:#D9A441; --st-review-ink:#E0B25C; --st-blocked:#E8737F; --st-blocked-ink:#ED8791;
+  --st-done:#4FBA84; --st-done-ink:#62C795;
+  color-scheme:dark;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.3);
+}
+.pf-sec{font-size:12.5px;font-weight:800;color:var(--ink2);letter-spacing:.2px}
+.pf-ths{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.pf-th{display:flex;flex-direction:column;gap:2px;align-items:flex-start;padding:10px;border:1.5px solid var(--line);
+  border-radius:12px;background:var(--panel);min-width:132px;text-align:left;transition:border-color .12s}
+.pf-th:hover{border-color:var(--line-strong)}
+.pf-th.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.pf-th b{font-size:13px;font-weight:700;color:var(--ink);margin-top:6px}
+.pf-th span:last-child{font-size:11.5px;color:var(--ink3)}
+.pf-th-sw{display:block;width:100%;height:40px;border-radius:8px;border:1px solid var(--line);overflow:hidden;
+  background:var(--a);position:relative}
+.pf-th-sw .s1{position:absolute;left:6px;top:6px;width:26px;bottom:6px;border-radius:4px;background:var(--b)}
+.pf-th-sw .s2{position:absolute;left:38px;top:11px;right:8px;height:5px;border-radius:3px;background:var(--c);opacity:.85}
+.pf-th-sw .s3{position:absolute;left:38px;top:22px;right:20px;height:5px;border-radius:3px;background:var(--c);opacity:.4}
+.pf-hint{font-size:12px;color:var(--ink3);margin-top:12px;line-height:1.5;max-width:46ch}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
 body{font-family:'DM Sans',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;-webkit-font-smoothing:antialiased;letter-spacing:.1px}
 button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:13.5px}
-input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;outline:none;transition:border-color .15s, box-shadow .15s}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;outline:none;transition:border-color .15s, box-shadow .15s}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 textarea{resize:vertical;min-height:80px}
 label{display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin:14px 0 5px}
@@ -130,7 +177,7 @@ a{color:var(--accent-ink);text-decoration:none}
 /* ---------- shared components ---------- */
 .btn{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:8px;font-weight:600;font-size:13.5px;transition:filter .12s;white-space:nowrap}
 .btn:hover{filter:brightness(.96)}
-.btn-primary{background:#16181D;color:#fff}
+.btn-primary{background:var(--btn-ink);color:var(--btn-on)}
 .btn-primary:hover{background:#2A2D34;filter:none}
 .btn-ghost{background:var(--panel);border:1px solid var(--line);color:var(--ink)}
 .btn-danger{background:var(--red);color:#fff}
@@ -838,5 +885,17 @@ body.modal-open{overflow:hidden}
 .tv-more em{font-style:normal;color:var(--ink3);margin-left:10px}
 .kb-more{padding:10px;font-size:12px;color:var(--ink3);text-align:center}
 </style>
+<script>
+/* Runs before <body> so a dark-theme user never sees a flash of the light app. The real
+   preference lives in profiles.nav_prefs.theme and is applied again at boot; this is only
+   the fast local echo of it. 'system' follows the OS. */
+(function(){
+  try{
+    var t = localStorage.getItem('done-theme') || 'light';
+    if(t === 'system') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+  }catch(e){ document.documentElement.setAttribute('data-theme','light'); }
+})();
+</script>
 </head>
 <body>

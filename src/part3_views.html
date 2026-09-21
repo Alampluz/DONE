@@ -411,7 +411,7 @@ function editProjectModal(pid){
       ${visPickerHTML('ep-vis', p.visibility||'collaborate')}
       <label style="margin-top:14px">Colour</label>
       <div id="ep-cols" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-        ${PJ_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===p.color?'0 0 0 3px #fff,0 0 0 5px '+c:'none'}"></span>`).join('')}
+        ${PJ_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===p.color?'0 0 0 3px var(--panel),0 0 0 5px '+c:'none'}"></span>`).join('')}
       </div>${gateSection}
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="ep-save">Save</button></div>`);
@@ -424,7 +424,7 @@ function editProjectModal(pid){
   if(gateOn) gateOn.onchange = ()=>{ m.querySelector('#ep-gate-appr').hidden = !gateOn.checked; };
   m.querySelectorAll('#ep-cols span').forEach(s=> s.onclick=()=>{
     colour = s.dataset.c;
-    m.querySelectorAll('#ep-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px #fff,0 0 0 5px '+colour : 'none');
+    m.querySelectorAll('#ep-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px var(--panel),0 0 0 5px '+colour : 'none');
   });
   m.querySelector('#ep-save').onclick = async ()=>{
     const name = m.querySelector('#ep-name').value.trim(); if(!name) return toast('Name required', true);
@@ -2532,7 +2532,7 @@ function renderProjectTableView(id, rowSet, host){
       </div>${tableFor(rows, g.id, i===0, g.color)}</div>`;
   }).join('')
   + (ungrouped.length? `<div class="tv-group">
-      <div class="tv-group-head"><span class="bar" style="background:#C6C9D8"></span><h3 style="color:var(--ink3)">No group</h3><span class="cnt">${ungrouped.length}</span></div>
+      <div class="tv-group-head"><span class="bar" style="background:var(--mark)"></span><h3 style="color:var(--ink3)">No group</h3><span class="cnt">${ungrouped.length}</span></div>
       ${tableFor(ungrouped, null, false)}</div>`:'')
   + (canManageBoard(id)? `<div class="tv-addgroup" onclick="addGroupModal('${id}')">＋ Add group</div>`:'') + archBar;
 }

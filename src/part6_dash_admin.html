@@ -1388,7 +1388,7 @@ function editWorkspaceModal(wid){
       <div style="font-size:12px;color:var(--ink3);margin-top:4px">Owners and admins rename this workspace, manage its members, and manage every board inside it. <b>Only an admin can delete the workspace itself.</b></div>
       <label style="margin-top:14px">Colour</label>
       <div id="ew-cols" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-        ${WS_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===w.color?'0 0 0 3px #fff,0 0 0 5px '+c:'none'}"></span>`).join('')}
+        ${WS_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===w.color?'0 0 0 3px var(--panel),0 0 0 5px '+c:'none'}"></span>`).join('')}
       </div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="ew-save">Save</button></div>`);
@@ -1396,7 +1396,7 @@ function editWorkspaceModal(wid){
   m.querySelector('#ew-owners').onclick = ()=>{ closeModals(); teamMembersModal(wid); };
   m.querySelectorAll('#ew-cols span').forEach(s=> s.onclick=()=>{
     colour = s.dataset.c;
-    m.querySelectorAll('#ew-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px #fff,0 0 0 5px '+colour : 'none');
+    m.querySelectorAll('#ew-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px var(--panel),0 0 0 5px '+colour : 'none');
   });
   m.querySelector('#ew-save').onclick = async ()=>{
     const name = m.querySelector('#ew-name').value.trim(); if(!name) return toast('Name required', true);
@@ -1533,13 +1533,13 @@ function editTeamModal(tid){
       <input id="tt-name" value="${t? esc(t.name):''}" placeholder="e.g. Customer Service">
       <label style="margin-top:14px">Colour</label>
       <div id="tt-cols" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-        ${TEAM_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===colour?'0 0 0 3px #fff,0 0 0 5px '+c:'none'}"></span>`).join('')}
+        ${TEAM_COLORS.map(c=>`<span data-c="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;box-shadow:${c===colour?'0 0 0 3px var(--panel),0 0 0 5px '+c:'none'}"></span>`).join('')}
       </div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="tt-save">Save</button></div>`);
   m.querySelectorAll('#tt-cols span').forEach(s=> s.onclick=()=>{
     colour = s.dataset.c;
-    m.querySelectorAll('#tt-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px #fff,0 0 0 5px '+colour : 'none');
+    m.querySelectorAll('#tt-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px var(--panel),0 0 0 5px '+colour : 'none');
   });
   m.querySelector('#tt-save').onclick = async ()=>{
     const name = m.querySelector('#tt-name').value.trim();

@@ -67,11 +67,11 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 /* `color` is the fill and the dot; `ink` is the label when the chip is a 10% tint of its own
    hue, where using `color` for both lands around 4:1. */
 const STATUSES = [
-  {k:'todo', label:'To Do', color:'#6F7384', ink:'#616473'},
-  {k:'in_progress', label:'In Progress', color:'#2273C9', ink:'#1E66B2'},
-  {k:'review', label:'Review', color:'#9F6907', ink:'#8B5C06'},
-  {k:'blocked', label:'Blocked', color:'#D04358', ink:'#B0394B'},
-  {k:'done', label:'Done', color:'#108456', ink:'#0E734B'},
+  {k:'todo', label:'To Do', color:'var(--st-todo)', ink:'var(--st-todo-ink)'},
+  {k:'in_progress', label:'In Progress', color:'var(--st-prog)', ink:'var(--st-prog-ink)'},
+  {k:'review', label:'Review', color:'var(--st-review)', ink:'var(--st-review-ink)'},
+  {k:'blocked', label:'Blocked', color:'var(--st-blocked)', ink:'var(--st-blocked-ink)'},
+  {k:'done', label:'Done', color:'var(--st-done)', ink:'var(--st-done-ink)'},
 ];
 /* Priority reads by weight, not just hue: Urgent and High are saturated fills, Normal and
    Low are neutral. Normal used to be the loudest colour on the board (saturated blue, on
@@ -80,8 +80,8 @@ const STATUSES = [
 const PRIORITIES = [
   {k:'urgent', label:'Urgent', color:'var(--red)',   soft:'var(--red-soft)',   fill:'var(--red)',   fillInk:'#fff'},
   {k:'high',   label:'High',   color:'var(--amber)', soft:'var(--amber-soft)', fill:'var(--amber)', fillInk:'#fff'},
-  {k:'normal', label:'Normal', color:'var(--ink2)',  soft:'var(--gray-soft)',  fill:'#E7E7E0',      fillInk:'var(--ink)'},
-  {k:'low',    label:'Low',    color:'var(--ink2)',  soft:'#F6F6F1',           fill:'#F3F3EC',      fillInk:'var(--ink2)'},
+  {k:'normal', label:'Normal', color:'var(--ink2)',  soft:'var(--gray-soft)',  fill:'var(--fill-normal)',      fillInk:'var(--ink)'},
+  {k:'low',    label:'Low',    color:'var(--ink2)',  soft:'var(--soft-low)',           fill:'var(--fill-low)',      fillInk:'var(--ink2)'},
 ];
 /* The four standard task fields every board has. A board can rename them and hide the ones it does
    not use (projects.field_config, 7 Sep) — an onboarding board has a "Store live" date, not a due date;
@@ -319,7 +319,7 @@ function avatarImgFailed(img){
   sp.textContent = initials(name);
 }
 function avatar(p, sm=false){
-  if(!p) return `<span class="avatar ${sm?'sm':''}" style="background:#C6C9D8" title="Unassigned">–</span>`;
+  if(!p) return `<span class="avatar ${sm?'sm':''}" style="background:var(--mark)" title="Unassigned">–</span>`;
   /* If the photo fails to load, fall back to initials. Without this a broken image just shows
      the avatar_color circle — which is how a dead avatar URL went unnoticed for over a week. */
   if(p.avatar_url) return `<span class="avatar ${sm?'sm':''}" style="background:${p.avatar_color}" title="${esc(p.full_name)}"><img src="${esc(p.avatar_url)}" alt="" onerror="avatarImgFailed(this)"></span>`;
@@ -850,6 +850,7 @@ async function _boot(){
   if(error || !me){ toast('Could not load your profile', true); return; }
   if(!me.active || !me.company_id){ await db.auth.signOut(); toast('Your account is awaiting activation by an admin.', true); return; }
   S.me = me;
+  applyTheme(navPrefs().theme);
   await refreshCore();
   if(S.company && ['suspended','cancelled'].includes(S.company.status) && !me.platform_admin){
     await db.auth.signOut();
@@ -1119,8 +1120,31 @@ function navPrefs(){
     hidden: Array.isArray(p.hidden)? p.hidden : [],
     order: (p.order && typeof p.order==='object')? p.order : {},
     collapsed: (p.collapsed && typeof p.collapsed==='object')? p.collapsed : {},
+    theme: (p.theme==='dark'||p.theme==='system')? p.theme : 'light',
   };
 }
+/* ---- theme (profiles.nav_prefs.theme) ----
+   Default is LIGHT, not the OS: a team that never asked for dark should not arrive on Monday
+   to an app that changed overnight. 'system' is opt-in. localStorage is only the fast echo so
+   part1's pre-paint script can set the attribute before the first frame; nav_prefs is the
+   real store, so the choice follows the person to another machine. */
+function applyTheme(pref){
+  const t = pref==='system'
+    ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : (pref==='dark' ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', t);
+  try{ localStorage.setItem('done-theme', pref||'light'); }catch(e){}
+}
+function setThemePref(pref){
+  applyTheme(pref);
+  navPrefsSet(p=>{ p.theme = pref; });
+  if(document.getElementById('pf-main') && pfTab==='appear') pfRender();
+}
+try{
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{
+    if(navPrefs().theme==='system') applyTheme('system');
+  });
+}catch(e){}
 let _navSaveTimer = null;
 function navPrefsSet(mut){
   const p = navPrefs(); mut(p);
@@ -1369,9 +1393,10 @@ const myProfileModal = ()=> profileModal(null);
 function pfRender(){
   const nav = $('#pf-nav'), main = $('#pf-main'); if(!nav||!main) return;
   const mine = pfUser.id===(S.me||{}).id;
-  const tabs = [['info','Personal info'], ...(mine? [['notif','Notifications'],['pass','Password']] : []), ['teams','Teams']];
+  const tabs = [['info','Personal info'], ...(mine? [['notif','Notifications'],['appear','Appearance'],['pass','Password']] : []), ['teams','Teams']];
   nav.innerHTML = tabs.map(([k,l])=>`<button class="${pfTab===k?'on':''}" onclick="pfGo('${k}')">${l}</button>`).join('');
   if(pfTab==='info') main.innerHTML = pfInfoHTML();
+  else if(pfTab==='appear') main.innerHTML = pfAppearHTML();
   else if(pfTab==='teams'){
     main.innerHTML = '<div class="empty">Loading…</div>';
     db.from('workspace_members').select('workspace_id').eq('user_id', pfUser.id).then(({data})=>{
@@ -1386,6 +1411,29 @@ function pfGo(k){
   if(k==='notif'){ closeModals(); emailSettingsModal(); return; }
   if(k==='pass'){ closeModals(); changePasswordModal(); return; }
   pfTab = k; pfRender();
+}
+/* Appearance. Three choices, each previewing its own palette in the swatch so the decision
+   is made by looking rather than by reading a label. */
+function pfAppearHTML(){
+  const cur = navPrefs().theme;
+  const opt = (k, title, sub, vars) => `
+    <button type="button" class="pf-th${cur===k?' on':''}" onclick="setThemePref('${k}')"
+            aria-pressed="${cur===k}" title="${esc(title)}">
+      <span class="pf-th-sw" style="${vars}">
+        <span class="s1"></span><span class="s2"></span><span class="s3"></span>
+      </span>
+      <b>${esc(title)}</b><span>${esc(sub)}</span>
+    </button>`;
+  return `<div class="pf-card">
+    <div class="pf-sec">Appearance</div>
+    <div class="pf-ths">
+      ${opt('light','Light','The default',        '--a:#F7F7F4;--b:#FFFFFF;--c:#16181D')}
+      ${opt('dark','Dark','Easier at night',      '--a:#161613;--b:#222220;--c:#F2F1EC')}
+      ${opt('system','Follow system','Matches your device','--a:#F7F7F4;--b:#222220;--c:#6FD3C7')}
+    </div>
+    <p class="pf-hint">Saved to your profile, so it follows you to any computer you sign in on.
+      It changes nothing for anyone else.</p>
+  </div>`;
 }
 function pfVal(k, type){
   const v = pfUser[k];

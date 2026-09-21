@@ -9,9 +9,19 @@
   --cp-tiktok:#0A6E78; --cp-tiktok-soft:#E2F1F3;
   --cp-brand:#7A3E9C;  --cp-brand-soft:#F2E9F7;
 }
+/* Channel hues keep their identity in dark; only the pale -soft tints (designed against
+   white) and the text weights are restated so the chips stay legible instead of glaring. */
+:root[data-theme="dark"]{
+  --cp-navy:#8F98DC;   --cp-navy-soft:#1E2140;
+  --cp-shopee:#E8874F; --cp-shopee-soft:#3A2116;
+  --cp-lazada:#8288E0; --cp-lazada-soft:#1D1F45;
+  --cp-tiktok:#4FB6C0; --cp-tiktok-soft:#123035;
+  --cp-brand:#B681D4;  --cp-brand-soft:#2B1B36;
+  --cp-purple:#B681D4;
+}
 .cp-tl{overflow-x:auto}
 .cp-tl-inner{min-width:1080px}
-.cp-head{display:grid;grid-template-columns:226px 1fr;border-bottom:1px solid var(--line);background:#FBFBF8}
+.cp-head{display:grid;grid-template-columns:226px 1fr;border-bottom:1px solid var(--line);background:var(--panel-2)}
 .cp-head .cp-lab{padding:9px 14px;border-right:1px solid var(--line);font-size:11.5px;text-transform:uppercase;
   letter-spacing:.5px;color:var(--ink3);font-weight:700;align-self:center}
 .cp-months{display:flex}
@@ -21,11 +31,11 @@
   text-transform:uppercase;color:var(--ink2)}
 .cp-days{display:flex;padding-top:2px}
 .cp-day{flex:1;text-align:center;font-size:9px;color:var(--ink3)}
-.cp-grp{display:grid;grid-template-columns:226px 1fr;background:#FBFBF8;border-bottom:1px solid var(--line)}
+.cp-grp{display:grid;grid-template-columns:226px 1fr;background:var(--panel-2);border-bottom:1px solid var(--line)}
 .cp-grp span{padding:6px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);font-weight:700}
 .cp-row{display:grid;grid-template-columns:226px 1fr;border-bottom:1px solid var(--line);min-height:44px}
 .cp-row:last-child{border-bottom:none}
-.cp-row:hover{background:#FAFAF6}
+.cp-row:hover{background:var(--hover)}
 .cp-name{padding:8px 12px 8px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;
   gap:2px;justify-content:center}
 .cp-name b{font-size:12.5px;font-weight:600;line-height:1.25}
@@ -33,7 +43,7 @@
 .cp-track{position:relative;padding:9px 0}
 .cp-lines{position:absolute;inset:0;display:flex;pointer-events:none}
 .cp-lines span{flex:1}
-.cp-lines span.w{border-right:1px solid #F1F0EB}
+.cp-lines span.w{border-right:1px solid var(--line-2)}
 .cp-lines span.m{border-left:1px solid var(--line)}
 .cp-today{position:absolute;top:0;bottom:0;width:2px;background:var(--red);opacity:.7;pointer-events:none;z-index:3}
 .cp-today.lab::after{content:"TODAY";position:absolute;top:-18px;left:50%;transform:translateX(-50%);
@@ -48,26 +58,26 @@
 .cp-bar.shopee{background:var(--cp-shopee)} .cp-bar.lazada{background:var(--cp-lazada)}
 .cp-bar.tiktok{background:var(--cp-tiktok)} .cp-bar.brand{background:var(--cp-brand)}
 .cp-bar.multi{background:linear-gradient(97deg,var(--cp-navy),var(--cp-purple))}
-.cp-bar.draft{background:var(--gray-soft);color:var(--ink2);border:1px dashed #CFCEC7;box-shadow:none}
+.cp-bar.draft{background:var(--gray-soft);color:var(--ink2);border:1px dashed var(--line-strong);box-shadow:none}
 .cp-barlab{position:absolute;height:26px;display:flex;align-items:center;gap:7px;font-size:11.5px;
   font-weight:600;color:var(--ink2);white-space:nowrap;pointer-events:none;z-index:2}
 .cp-barlab .f{font-size:10px;font-weight:700;color:var(--ink3);background:var(--gray-soft);
   padding:1px 5px;border-radius:5px}
 .cp-legend{display:flex;gap:16px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line);
-  background:#FBFBF8;font-size:11.5px;color:var(--ink3)}
+  background:var(--panel-2);font-size:11.5px;color:var(--ink3)}
 .cp-legend b{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--ink2)}
 .cp-sw{width:14px;height:8px;border-radius:3px;display:inline-block}
 .cp-meter{height:5px;border-radius:99px;background:var(--gray-soft);overflow:hidden}
 .cp-meter i{display:block;height:100%;border-radius:99px;background:var(--cp-navy)}
 .cp-meter i.green{background:var(--green)} .cp-meter i.amber{background:var(--amber)} .cp-meter i.red{background:var(--red)}
-.cp-tick{width:16px;height:16px;border-radius:5px;border:1.5px solid #D6D5CE;flex:none;display:grid;
-  place-items:center;font-size:10px;color:#fff;background:#fff}
+.cp-tick{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--line-strong);flex:none;display:grid;
+  place-items:center;font-size:10px;color:#fff;background:var(--field)}
 .cp-tick.done{background:var(--green);border-color:var(--green)}
 .cp-tick.prog{border-color:var(--amber);background:var(--amber-soft);color:var(--amber)}
 .cp-task{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 14px;
   border-bottom:1px solid var(--line)}
 .cp-task:last-child{border-bottom:none}
-.cp-task:hover{background:#FAFAF6}
+.cp-task:hover{background:var(--hover)}
 .cp-task.fresh{background:var(--green-soft)}
 .cp-task b{font-size:12.8px;font-weight:600;display:block}
 .cp-task .m{font-size:11.2px;color:var(--ink3);display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
@@ -77,7 +87,7 @@
 .cp-asset .th{aspect-ratio:16/10;max-width:100%;background:var(--gray-soft);display:grid;place-items:center;
   border-bottom:1px solid var(--line);position:relative}
 .cp-asset .th .t{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);font-weight:700}
-.cp-asset .th .v{position:absolute;top:7px;left:7px;font-size:10px;font-weight:700;background:#fff;
+.cp-asset .th .v{position:absolute;top:7px;left:7px;font-size:10px;font-weight:700;background:var(--panel);
   border:1px solid var(--line);padding:1px 6px;border-radius:6px;color:var(--ink2)}
 .cp-asset .mt{padding:10px 12px;display:flex;flex-direction:column;gap:5px}
 .cp-asset .mt b{font-size:12.5px;font-weight:600}
@@ -95,11 +105,11 @@
 .cp-kv span:first-child{color:var(--ink3)}
 .cp-kv span:last-child{font-weight:600;text-align:right}
 .cp-grid2{display:grid;grid-template-columns:1.5fr 1fr;gap:14px;align-items:start}
-.cp-mech{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#FBFBF8}
+.cp-mech{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel-2)}
 .cp-mech b{font-size:12.8px}
 .cp-mech p{margin:3px 0 0;font-size:11.8px;color:var(--ink3)}
 .cp-prev{border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.cp-prev .h{display:flex;padding:8px 12px;background:#FBFBF8;border-bottom:1px solid var(--line);
+.cp-prev .h{display:flex;padding:8px 12px;background:var(--panel-2);border-bottom:1px solid var(--line);
   font-size:11px;letter-spacing:.5px;text-transform:uppercase;font-weight:700;color:var(--ink3)}
 .cp-prev ul{list-style:none;margin:0;padding:0;max-height:270px;overflow:auto}
 .cp-prev li{display:grid;grid-template-columns:1fr auto;gap:10px;padding:8px 12px;
@@ -128,15 +138,15 @@
 .cp-pstep .when{font-size:11px;color:var(--ink3);font-weight:700}
 .cp-plan{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 16px;margin-bottom:16px}
 .cp-mg{overflow-x:auto} .cp-mg-in{min-width:820px}
-.cp-mg-h{display:grid;grid-template-columns:230px 1fr;border-bottom:1px solid var(--line);background:#FBFBF8}
+.cp-mg-h{display:grid;grid-template-columns:230px 1fr;border-bottom:1px solid var(--line);background:var(--panel-2)}
 .cp-mg-h .days{display:flex} .cp-mg-h .d{flex:1;text-align:center;font-size:10px;color:var(--ink3);padding:6px 0}
-.cp-mg-h .d.we{color:#B9B8B1}
+.cp-mg-h .d.we{color:var(--ink3)}
 .cp-mg-r{display:grid;grid-template-columns:230px 1fr;border-bottom:1px solid var(--line);min-height:46px}
-.cp-mg-r:last-child{border-bottom:0} .cp-mg-r:hover{background:#FAFAF6}
+.cp-mg-r:last-child{border-bottom:0} .cp-mg-r:hover{background:var(--hover)}
 .cp-mg-n{padding:8px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;gap:2px}
 .cp-mg-n b{font-size:12.8px} .cp-mg-n span{font-size:11px;color:var(--ink3)}
 .cp-mg-t{position:relative;padding:9px 0}
-.cp-mg-t .grid{position:absolute;inset:0;display:flex;pointer-events:none} .cp-mg-t .grid i{flex:1;border-right:1px solid #F1F0EB}
+.cp-mg-t .grid{position:absolute;inset:0;display:flex;pointer-events:none} .cp-mg-t .grid i{flex:1;border-right:1px solid var(--line-2)}
 .cp-bar.pay{background:var(--accent)} .cp-bar.brandday{background:var(--cp-shopee)} .cp-bar.ttk{background:var(--cp-tiktok)} .cp-bar.laz{background:var(--cp-lazada)}
 .cp-bar.plan{background:var(--gray-soft);color:var(--ink2);border:1px dashed var(--ink3);box-shadow:none}
 .cp-lane{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
@@ -145,7 +155,7 @@
 .cp-col>header .cnt{margin-left:auto;font-size:11.5px;color:var(--ink3);background:var(--gray-soft);padding:1px 8px;border-radius:10px}
 .cp-col.over>header{color:var(--red)} .cp-col.wait>header{color:var(--amber)} .cp-col.unb>header{color:var(--green)}
 .cp-tk{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:4px;cursor:pointer}
-.cp-tk:last-child{border-bottom:0} .cp-tk:hover{background:#FAFAF6}
+.cp-tk:last-child{border-bottom:0} .cp-tk:hover{background:var(--hover)}
 .cp-tk b{font-size:12.8px;font-weight:600} .cp-tk .m{font-size:11.2px;color:var(--ink3);display:flex;gap:8px;flex-wrap:wrap}
 .cp-tk .r{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:2px}
 .cp-digest{display:flex;gap:12px;align-items:center;padding:12px 14px;margin-bottom:14px;border-color:#C9CCE6}
@@ -156,15 +166,15 @@
 .cp-bl .nx{font-size:12px;color:var(--ink2);border-top:1px dashed var(--line);padding-top:8px} .cp-bl .nx b{font-weight:600;color:var(--ink)}
 .cp-gw{overflow:auto;max-height:70vh}
 table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:100%}
-.cp-g th{position:sticky;top:0;background:#FBFBF8;z-index:2;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink3);font-weight:700;padding:8px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:left;vertical-align:bottom;max-width:120px;white-space:normal;line-height:1.25}
+.cp-g th{position:sticky;top:0;background:var(--panel-2);z-index:2;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink3);font-weight:700;padding:8px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:left;vertical-align:bottom;max-width:120px;white-space:normal;line-height:1.25}
 .cp-g th.ph{background:var(--panel);color:var(--ink2);letter-spacing:.08em;text-align:center}
 .cp-g th:first-child,.cp-g td:first-child{position:sticky;left:0;z-index:3;background:var(--panel);min-width:200px;border-right:1px solid var(--line)}
-.cp-g th:first-child{z-index:4;background:#FBFBF8}
-.cp-g td{padding:5px 6px;border-bottom:1px solid var(--line);border-right:1px solid #F1F0EB;white-space:nowrap}
+.cp-g th:first-child{z-index:4;background:var(--panel-2)}
+.cp-g td{padding:5px 6px;border-bottom:1px solid var(--line);border-right:1px solid var(--line-2);white-space:nowrap}
 .cp-g td .bn{font-weight:600;font-size:12.5px} .cp-g td .bs{font-size:10.5px;color:var(--ink3)}
 .cp-cell{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 7px;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;border:0;font-family:inherit}
 .cp-cell.todo{background:var(--gray-soft);color:var(--ink3)} .cp-cell.prog{background:var(--blue-soft);color:var(--blue)} .cp-cell.wait{background:var(--amber-soft);color:var(--amber)}
-.cp-cell.done{background:var(--green-soft);color:var(--green)} .cp-cell.over{background:var(--red-soft);color:var(--red)} .cp-cell.na{color:#C4C3BC;cursor:default}
+.cp-cell.done{background:var(--green-soft);color:var(--green)} .cp-cell.over{background:var(--red-soft);color:var(--red)} .cp-cell.na{color:var(--line-strong);cursor:default}
 /* status log popover — hover or focus any status chip / grid cell */
 .cp-hh{cursor:pointer;box-shadow:inset 0 -1px 0 rgba(0,0,0,.14)} .cp-hh:focus-visible{outline:2px solid var(--cp-navy);outline-offset:1px}
 .cp-hpop{position:fixed;z-index:1200;width:310px;max-width:calc(100vw - 16px);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 34px rgba(16,18,25,.16);font-size:12.5px;color:var(--ink2);animation:pop .12s ease;overflow:hidden;text-align:left;font-weight:400;text-transform:none;letter-spacing:0;white-space:normal}
@@ -173,7 +183,7 @@ table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:10
 .cp-hpop ol{list-style:none;margin:0;padding:6px 0;max-height:260px;overflow:auto}
 .cp-hpop li{display:grid;grid-template-columns:8px 1fr;gap:10px;padding:6px 12px 6px 14px;position:relative}
 .cp-hpop li i{width:8px;height:8px;border-radius:50%;background:var(--ink3);margin-top:5px;display:block;position:relative;z-index:1}
-.cp-hpop li.status i{background:var(--cp-navy)} .cp-hpop li.done i{background:var(--green)} .cp-hpop li.handoff i{background:var(--amber)} .cp-hpop li.created i{background:#C4C3BC}
+.cp-hpop li.status i{background:var(--cp-navy)} .cp-hpop li.done i{background:var(--green)} .cp-hpop li.handoff i{background:var(--amber)} .cp-hpop li.created i{background:var(--line-strong)}
 .cp-hpop li:not(:last-child):after{content:'';position:absolute;left:17.5px;top:19px;bottom:-7px;width:1px;background:var(--line)}
 .cp-hpop li b{color:var(--ink);font-weight:600;display:block;line-height:1.4;font-size:12.5px}
 .cp-hpop li small{display:block;font-size:11.5px;color:var(--ink3);line-height:1.4}
@@ -200,13 +210,13 @@ const CP_CHANNELS = {
   brand: {label:'Brand.com', cls:'brand'}
 };
 const CP_STATUSES = [
-  {k:'draft',    label:'Draft',        color:'#6E7279'},
+  {k:'draft',    label:'Draft',        color:'var(--ink3)'},
   {k:'planning', label:'Planning',     color:'#2A6FB8'},
   {k:'briefed',  label:'Briefed',      color:'#6E56B8'},
   {k:'exec',     label:'In execution', color:'#90660C'},
   {k:'live',     label:'Live',         color:'#0F7D51'},
   {k:'wrap',     label:'Wrap-up',      color:'#0B5D57'},
-  {k:'closed',   label:'Closed',       color:'#6E7279'}
+  {k:'closed',   label:'Closed',       color:'var(--ink3)'}
 ];
 const CP_ASTATES = {
   approved:{label:'Approved',          bg:'var(--green-soft)', ink:'var(--green)'},
@@ -766,7 +776,7 @@ function cpViewTimeline(){
     <div class="cp-legend">
       ${Object.entries(CP_CHANNELS).map(([k,v])=>`<b><span class="cp-sw" style="background:var(--cp-${v.cls})"></span>${v.label}</b>`).join('')}
       <b><span class="cp-sw" style="background:linear-gradient(97deg,var(--cp-navy),var(--cp-purple))"></span>Multi-channel</b>
-      <b><span class="cp-sw" style="background:var(--gray-soft);border:1px dashed #CFCEC7"></span>Draft</b>
+      <b><span class="cp-sw" style="background:var(--gray-soft);border:1px dashed var(--line-strong)"></span>Draft</b>
       <span>Tickets completed of tickets generated ${helpIcon('The brief for a campaign expands into tickets on the Creative, Product Listing, Store Operations and CS boards. The count on each bar is how many of those are Done.')}</span>
     </div>
   </div>`;
@@ -801,7 +811,7 @@ function cpViewList(){
   return `
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
     ${cpChanFilter()}
-    <select onchange="cpStat=this.value;renderCampaigns()" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-size:12.5px">
+    <select onchange="cpStat=this.value;renderCampaigns()" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field);font:inherit;font-size:12.5px">
       <option value="all">All statuses</option>
       ${CP_STATUSES.map(s=>`<option value="${s.k}" ${cpStat===s.k?'selected':''}>${s.label}</option>`).join('')}
     </select>
@@ -852,7 +862,7 @@ function cpViewTargets(){
       <th>Attainment</th><th style="text-align:right">Budget</th><th style="text-align:right">Spent</th>
       <th style="text-align:right">Burn</th><th style="text-align:right">ROAS</th></tr></thead>
     <tbody>${rows}</tbody>
-    <tfoot><tr style="background:#FBFBF8;font-weight:700">
+    <tfoot><tr style="background:var(--panel-2);font-weight:700">
       <td>Total</td><td style="text-align:right">${cpTHB(T)}</td><td style="text-align:right">${cpTHB(A)}</td><td></td>
       <td style="text-align:right">${cpTHB(B)}</td><td style="text-align:right">${cpTHB(Sp)}</td>
       <td style="text-align:right">${cpPct(Sp,B)}%</td><td style="text-align:right">${Sp?(A/Sp).toFixed(1):'0.0'}×</td></tr></tfoot>
@@ -1336,7 +1346,7 @@ function cpViewLane(){
   const L = CP_LANE;
   return `
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-    <select class="f" onchange="cpLaneTeam=this.value;renderCampaigns()" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-size:12.5px">${teams.map(t=>`<option ${t===cpLaneTeam?'selected':''}>${t}</option>`).join('')}</select>
+    <select class="f" onchange="cpLaneTeam=this.value;renderCampaigns()" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--field);font:inherit;font-size:12.5px">${teams.map(t=>`<option ${t===cpLaneTeam?'selected':''}>${t}</option>`).join('')}</select>
     <div class="tabs"><button class="tab active">10.10 Mega</button><button class="tab" onclick="toast('All-October lane arrives with the tables')">All October</button></div>
     <span style="margin-left:auto;display:flex;gap:8px">${canEdit()? `<button class="btn btn-ghost" onclick="toast('Bulk assign arrives with the tables')">Assign unassigned · 41</button>`:''}</span>
   </div>
