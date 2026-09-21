@@ -54,7 +54,7 @@ w.eval(scripts.join('\n')+'\n'+driver);
 w.eval('window.__run()').then(j=>{ const r=JSON.parse(j); let ok=true;
  const check=(n,c)=>{ console.log((c?'PASS':'FAIL')+' '+n+(c?'':' -> '+JSON.stringify(r))); if(!c) ok=false; };
  check('sidebar shows role until a position exists', r.sideBefore==='April N | admin');
- check('profile page: wide, nav has Personal info/Notifications/Password/Teams', r.wide && r.nav==='Personal info,Notifications,Password,Teams');
+ check('profile page: wide, nav has Personal info/Notifications/Appearance/Password/Teams', r.wide && r.nav==='Personal info,Notifications,Appearance,Password,Teams');
  check('sheet shows name, email, role, location, add-mobile prompt; no landline, dates or teams card', Object.values(r.shows).every(Boolean));
  check('email is read-only', r.emailRO);
  check('click-to-edit position, Enter saves exactly that column', r.inputShown && r.saveCall && r.saveCall.op==='update' && r.saveCall.eq.id==='me' && JSON.stringify(r.saveCall.payload)==='{"job_title":"CX Team Lead"}' && r.meTitle==='CX Team Lead');
