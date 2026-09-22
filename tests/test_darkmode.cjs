@@ -61,20 +61,25 @@ for (const [themeName, tokens, base] of [['light', light, light], ['dark', dark,
   }
 }
 
-// ---- D. no greyscale literals outside the token blocks ------------------------------------
-// Intentional exceptions: the login screen and the public request form are deliberately dark
-// on their own, and white text on a saturated fill is correct in both themes.
-const ALLOW = new Set(['#AEB7B4','#101114','#9DA1A7','#fff','#FFFFFF','#F7F7F4','#16181D',
-                       '#161613','#222220','#F2F1EC','#EAEBF6','#E9EAF7','#E2F1F3','#F2E9F7']);
-const bodyOnly = html.slice(html.indexOf('</style>'));
+// ---- D. no greyscale literals anywhere — stylesheet INCLUDED ------------------------------
+// The first version of this check sliced the file at </style> and only scanned markup. part1's
+// CSS held 81 literals (.tv-wrap, .tv td, .modal all nailed to #fff) and the check passed while
+// the board rendered white-on-dark. Now the whole document is scanned, minus the two token blocks
+// and comments. The allowlist is the exact intentional residue: the login screen and the public
+// request form (dark by design, own palettes), white text on saturated fills, the Appearance
+// swatch previews, and one var() fallback.
+const ALLOW = new Set(['#0B0F0E','#101114','#161613','#16181D','#222220','#2A3532','#6F7A77','#8A9591',
+                       '#9DA1A7','#AEB7B4','#B7C0BD','#E6EAE8','#F1F1EC','#F2F1EC','#F2F5F4','#F7F7F4',
+                       '#FFFFFF','#fff']);
+let scan = html.replace(/:root(\[data-theme="dark"\])?\s*\{[\s\S]*?\}/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 const strays = [];
-for (const m of bodyOnly.matchAll(/#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g)) {
+for (const m of scan.matchAll(/#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g)) {
   const raw = '#' + m[1];
   if (ALLOW.has(raw)) continue;
   const [r,g,b] = hex(raw);
   if (Math.max(r,g,b) - Math.min(r,g,b) <= 18) strays.push(raw);
 }
-check('D. no new greyscale literals in markup', strays.length === 0, [...new Set(strays)].slice(0, 12));
+check('D. no new greyscale literals in CSS or markup', strays.length === 0, [...new Set(strays)].slice(0, 12));
 
 // ---- E. the theme is applied before first paint, and defaults to light --------------------
 const head = html.slice(0, html.indexOf('</head>'));
