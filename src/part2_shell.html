@@ -40,6 +40,10 @@
           <line x1="3.5" y1="7" x2="20.5" y2="7"/><line x1="3.5" y1="12" x2="20.5" y2="12"/><line x1="3.5" y1="17" x2="20.5" y2="17"/>
         </svg></button>
       <div class="crumb" id="crumb">Home</div>
+      <button id="gs-btn" type="button" onclick="gsOpen()" aria-label="Search everything">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
+        </svg><span>Search everything</span><kbd id="gs-kbd">⌘K</kbd></button>
       <div class="topbar-right" id="topbar-actions"></div>
       <div id="bell-wrap"><button id="bell" title="Notifications" aria-label="Notifications" onclick="toggleNotifPanel(event)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -857,6 +861,7 @@ async function _boot(){
     toast('This company subscription is inactive. Contact support to reactivate.', true);
     return;
   }
+  try{ if(!/Mac|iPhone|iPad/.test(navigator.platform||'')){ const k=$('#gs-kbd'); if(k) k.textContent='Ctrl K'; } }catch(e){}
   $('#login-screen').classList.add('hidden');
   $('#app').classList.remove('hidden');
   const b = $('#ten-banner');
@@ -1534,6 +1539,117 @@ function setTopbar(crumb, actionsHtml=''){
   $('#crumb').innerHTML = crumb;
   $('#topbar-actions').innerHTML = actionsHtml;
 }
+
+/* ================= GLOBAL SEARCH (Cmd/Ctrl+K) =================
+   Tasks are queried; boards, workspaces and people are filtered out of caches already loaded
+   through RLS. NOTHING here uses a security-definer RPC — every task row comes back through
+   PostgREST, so a person can only ever see what has_project_access() already lets them open.
+   That is what makes search safe to make global: the 11 Sep partner boundary holds with no
+   extra check here. */
+let gsQ = '', gsSel = 0, gsRows = [], gsTimer = null, gsSeq = 0;
+
+function gsOpen(prefill){
+  if(document.getElementById('gs-box')) return;
+  const m = modal(`<div id="gs-box">
+      <div class="gs-in">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink3)" stroke-width="2.1" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+        <input id="gs-q" placeholder="Search tasks, boards, people..." autocomplete="off" aria-label="Search everything"
+               role="combobox" aria-expanded="true" aria-controls="gs-res">
+      </div>
+      <div class="gs-res" id="gs-res" role="listbox" aria-label="Results"></div>
+      <div class="gs-foot"><span>&#8593;&#8595; move</span><span>&#8629; open</span><span>esc close</span></div>
+    </div>`);
+  m.querySelector('.modal').classList.add('palette');
+  const inp = document.getElementById('gs-q');
+  gsQ=''; gsSel=0; gsRows=[];
+  gsPaint('<div class="gs-none">Start typing &mdash; ticket numbers work too.</div>');
+  inp.addEventListener('input', ()=>{ gsQ = inp.value.trim(); clearTimeout(gsTimer); gsTimer = setTimeout(gsRun, 180); });
+  inp.addEventListener('keydown', e=>{
+    if(e.key==='ArrowDown'){ e.preventDefault(); gsMove(1); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); gsMove(-1); }
+    else if(e.key==='Enter'){ e.preventDefault(); gsGo(gsSel); }
+  });
+  if(prefill){ inp.value = prefill; gsQ = prefill; gsRun(); }
+  setTimeout(()=>inp.focus(), 0);
+}
+function gsPaint(html){ const r=document.getElementById('gs-res'); if(r) r.innerHTML = html; }
+
+async function gsRun(){
+  const q = gsQ, seq = ++gsSeq;
+  if(q.length < 2){ gsRows=[]; gsPaint('<div class="gs-none">Keep typing...</div>'); return; }
+  const like = '%' + q + '%';
+  /* Two plain .ilike() filters rather than one .or() — an or() string is hand-built, so a comma
+     or bracket in the query would break its grammar. */
+  const [byTitle, byTicket] = await Promise.all([
+    db.from('tasks').select('id,title,ticket_no,status,project_id').is('archived_at',null).ilike('title', like).limit(8),
+    db.from('tasks').select('id,title,ticket_no,status,project_id').is('archived_at',null).ilike('ticket_no', like).limit(5),
+  ]);
+  if(seq !== gsSeq) return;                 // a later keystroke already won
+  const seen = new Set(), tasks = [];
+  for(const t of [...(byTicket.data||[]), ...(byTitle.data||[])]){   // ticket matches rank first
+    if(seen.has(t.id)) continue; seen.add(t.id); tasks.push(t);
+  }
+  const ql = q.toLowerCase();
+  const hit = v => (v||'').toLowerCase().includes(ql);
+  const boards = (S.projects||[]).filter(p=>!p.archived_at && hit(p.name)).slice(0,5);
+  const wss    = (S.workspaces||[]).filter(w=>hit(w.name)).slice(0,4);
+  const people = (S.profiles||[]).filter(p=>p.active && hit(p.full_name) && !(p.email||'').startsWith('forms+')).slice(0,5);
+
+  gsRows = [
+    ...tasks.map(t=>({k:'task', id:t.id, t:t.title, s:t.ticket_no||'', ic:'#'})),
+    ...boards.map(b=>({k:'board', id:b.id, t:b.name, s:(wsById(b.workspace_id)||{}).name||'', ic:'B'})),
+    ...wss.map(w=>({k:'ws', id:w.id, t:w.name, s:'Workspace', ic:'W'})),
+    ...people.map(p=>({k:'person', id:p.id, t:p.full_name, s:p.job_title||'', ic:(p.full_name||'?').trim()[0].toUpperCase()})),
+  ];
+  gsSel = 0;
+  if(!gsRows.length){ gsPaint('<div class="gs-none">Nothing matches &ldquo;'+esc(q)+'&rdquo;.</div>'); return; }
+  const GRP = {task:'TASKS', board:'BOARDS', ws:'WORKSPACES', person:'PEOPLE'};
+  let out='', last='';
+  gsRows.forEach((r,i)=>{
+    if(r.k!==last){ out += '<div class="gs-grp">'+GRP[r.k]+'</div>'; last=r.k; }
+    out += '<div class="gs-it'+(i===gsSel?' on':'')+'" role="option" aria-selected="'+(i===gsSel)+'" data-i="'+i+'"'
+        +  ' onmousedown="event.preventDefault();gsGo('+i+')" onmouseenter="gsHover('+i+')">'
+        +  '<span class="gs-ico">'+esc(r.ic)+'</span><span class="t">'+gsMark(r.t, q)+'</span>'
+        +  (r.s? '<span class="s">'+esc(r.s)+'</span>':'') + '</div>';
+  });
+  gsPaint(out);
+}
+/* Highlight the match without ever putting user text through innerHTML unescaped. */
+function gsMark(text, q){
+  const t = String(text||''), i = t.toLowerCase().indexOf(q.toLowerCase());
+  if(i < 0) return esc(t);
+  return esc(t.slice(0,i)) + '<mark>' + esc(t.slice(i, i+q.length)) + '</mark>' + esc(t.slice(i+q.length));
+}
+function gsHover(i){ gsSel = i; gsSync(); }
+function gsMove(d){
+  if(!gsRows.length) return;
+  gsSel = (gsSel + d + gsRows.length) % gsRows.length;
+  gsSync(true);
+}
+function gsSync(scroll){
+  document.querySelectorAll('.gs-it').forEach(el=>{
+    const on = Number(el.dataset.i) === gsSel;
+    el.classList.toggle('on', on); el.setAttribute('aria-selected', on);
+    if(on && scroll) el.scrollIntoView({block:'nearest'});
+  });
+}
+function gsGo(i){
+  const r = gsRows[i]; if(!r) return;
+  closeModals();
+  if(r.k==='task')        location.hash = '#/task/' + r.id;
+  else if(r.k==='board')  location.hash = '#/project/' + r.id;
+  else if(r.k==='ws')     location.hash = '#/ws/' + r.id;
+  else if(r.k==='person') profileModal(r.id);
+}
+/* Cmd/Ctrl+K anywhere, and "/" when you are not already typing. */
+document.addEventListener('keydown', e=>{
+  if(!S.me) return;
+  const tag = ((e.target||{}).tagName)||'';
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(tag) || (e.target||{}).isContentEditable;
+  if((e.metaKey||e.ctrlKey) && (e.key==='k'||e.key==='K')){ e.preventDefault(); gsOpen(); return; }
+  if(e.key==='/' && !typing && !document.querySelector('.modal-back')){ e.preventDefault(); gsOpen(); }
+});
 
 /* ================= @MENTIONS ================= */
 /* People you can tag: active colleagues, minus yourself. */
