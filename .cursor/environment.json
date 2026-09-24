@@ -1,0 +1,11 @@
+{
+  "name": "DONE",
+  "install": "bash ./build.sh && mkdir -p /tmp/workos-testrun && cd /tmp/workos-testrun && npm install jsdom --no-audit --no-fund --silent",
+  "terminals": [
+    {
+      "name": "web",
+      "command": "bash ./build.sh && python3 -m http.server 5173 --bind 0.0.0.0 --directory app"
+    }
+  ],
+  "ports": [5173]
+}
