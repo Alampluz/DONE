@@ -1928,6 +1928,11 @@ async function openNotif(id){
 /* ================= PUBLIC FORM (no login) ================= */
 function pfTitleLabel(def){ return def.title_label || (/creative|campaign|artwork/i.test(def.name||'')? 'Campaign Name' : 'Subject'); }
 async function renderPublicForm(token){
+  /* The form card is white by design, but its labels, inputs and pickers read the theme tokens.
+     A staff member with dark mode saved in this browser got dark tokens on the white card:
+     black fields and an invisible title (24 Sep). Pin light for this page only — nothing is
+     written to localStorage or nav_prefs, so their app theme is untouched. */
+  document.documentElement.setAttribute('data-theme', 'light');
   $('#login-screen').classList.add('hidden');
   $('#app').classList.add('hidden');
   const mount = el('<div style="position:fixed;inset:0;overflow-y:auto;background:radial-gradient(1200px 700px at 18% -10%,#14403A 0%,#101114 58%);padding:5vh 16px;z-index:150"><div id="pf-card" style="max-width:560px;margin:0 auto;background:#fff;border-radius:18px;padding:34px 34px 28px;box-shadow:0 30px 80px rgba(0,0,0,.45)"><div style="color:#9DA1A7">Loading form…</div></div></div>');
