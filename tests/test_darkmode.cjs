@@ -95,5 +95,8 @@ check('F. Appearance tab wires the picker', /onclick="setThemePref\('\$\{k\}'\)"
 check('F. Appearance tab offers all three', /opt\('light',/.test(html)
       && /opt\('dark',/.test(html) && /opt\('system',/.test(html));
 
+// ---- G. the public request form stays light (white card) whatever the saved theme ----------
+check('G. public form pins the light theme', /async function renderPublicForm\(token\)\{[\s\S]{0,600}setAttribute\('data-theme', 'light'\)/.test(html));
+
 console.log(fail ? `darkmode: ${fail} FAILED` : 'darkmode: all checks passed');
 process.exit(fail ? 1 : 0);
