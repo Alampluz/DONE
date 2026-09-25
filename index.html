@@ -3941,6 +3941,19 @@ function viewMenu(anchor, pid){
 const boardLink = pid => location.origin + location.pathname + '#/project/' + pid;
 async function copyText(t){ try{ await navigator.clipboard.writeText(t); toast('Link copied'); }catch(e){ toast('Copy failed — select the link and copy it', true); } }
 let _shareSel = new Set();
+/* Request forms whose submissions land on this board (request_types.default_project_id). */
+function boardForms(pid){ return (S.requestTypes||[]).filter(r=>r.default_project_id===pid && r.public_enabled && r.public_token); }
+const formLink = r => location.origin + location.pathname + '#/f/' + r.public_token;
+function boardFormsMenu(btn, pid){
+  const forms = boardForms(pid); if(!forms.length) return;
+  const m = modal(`<div class="modal-head"><h2>Request form${forms.length>1?'s':''} for this board</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">${forms.map(r=>`<div class="share-sec"><label>${esc(r.name)} <span class="ca-opt">each submission becomes a task here</span></label>
+      <div class="share-row"><input readonly value="${esc(formLink(r))}" onclick="this.select()">
+        <button class="btn btn-ghost btn-sm" onclick="window.open('${formLink(r)}','_blank','noopener')">Open</button>
+        <button class="btn btn-primary btn-sm" onclick="copyText('${formLink(r)}')">Copy</button></div></div>`).join('')}</div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Close</button></div>`);
+  m.querySelector('.modal').classList.add('wide');
+}
 function shareBoardModal(pid){
   const p = projById(pid); if(!p) return;
   _shareSel = new Set();
@@ -3988,6 +4001,7 @@ async function renderProject(id){
   const gateChip = p.approval_gate?.on? `<span class="chip" style="background:var(--gray-soft);color:var(--ink3)" title="Tasks need an approved sign-off before they can be marked ${esc((STATUSES.find(s=>s.k===p.approval_gate.status)||{}).label||'Done')}">Sign-off required</span>` : '';
   setTopbar(`<span onclick="location.hash='#/ws/${p.workspace_id}'" style="cursor:pointer">${w? esc(w.name):''}</span> <span>/</span> ${esc(p.name)} ${visChip(p.visibility)}${gateChip}`,
     `${viewPickerHTML(id)}
+     ${boardForms(id).length? `<button class="btn btn-ghost btn-sm" onclick="boardFormsMenu(this,'${id}')" title="Request forms that create tasks on this board">Form${boardForms(id).length>1?'s':''}</button>`:''}
      <button class="btn btn-ghost btn-sm" onclick="shareBoardModal('${id}')" title="Copy the link, send it to colleagues, or make a public read-only link">Share</button>
      ${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="projectMembersModal('${id}')">Partner access</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" onclick="boardAutomationsModal('${id}')" title="Rules that watch this board and react on their own">Automate</button>`:''}
@@ -4592,23 +4606,31 @@ function fxDisplay(f, t){
    link:   options {project_id} — the cell value is a task uuid on that board.
    mirror: options {via: <link field id here>, show: <core key or target field id>}
            — read-only, computed from the linked task. */
+const LINK_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function loadLinkedData(tasks, fields){
   S._linkedTasks = {}; S._linkedFields = {};
   const linkFields = (fields||[]).filter(f=>f.ftype==='link');
   if(!linkFields.length) return;                    // no link columns → no queries
   const ids = new Set();
-  (tasks||[]).forEach(t=> linkFields.forEach(f=>{ const v=(t.custom||{})[f.id]; if(v) ids.add(v); }));
+  /* Only real task ids go to the server, 150 per request. The Price & TB import (24 Sep) put
+     ~1,860 monday file URLs into two link columns; sending them all in one .in() built a
+     ~500 KB request URL and the board sat on "Loading…" for good (25 Sep). */
+  (tasks||[]).forEach(t=> linkFields.forEach(f=>{ const v=(t.custom||{})[f.id]; if(typeof v==='string' && LINK_ID_RE.test(v)) ids.add(v); }));
   const targets = [...new Set(linkFields.map(f=>(f.options||{}).project_id).filter(Boolean))];
-  const [lt, lf] = await Promise.all([
-    ids.size? db.from('tasks').select('id,title,status,priority,assignee_id,due_date,group_id,project_id,custom').in('id',[...ids]) : Promise.resolve({data:[]}),
+  const idList = [...ids], chunks = [];
+  for(let i=0; i<idList.length; i+=150) chunks.push(idList.slice(i, i+150));
+  const [lts, lf] = await Promise.all([
+    Promise.all(chunks.map(c=> db.from('tasks').select('id,title,status,priority,assignee_id,due_date,group_id,project_id,custom').in('id',c))),
     targets.length? db.from('project_fields').select('id,label,ftype,options').in('project_id',targets) : Promise.resolve({data:[]}),
   ]);
-  (lt.data||[]).forEach(x=> S._linkedTasks[x.id]=x);
+  lts.forEach(lt=> (lt.data||[]).forEach(x=> S._linkedTasks[x.id]=x));
   (lf.data||[]).forEach(x=> S._linkedFields[x.id]=x);
 }
 const tvLinkIcon = ()=> `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
 function tvLinkCell(t, f){
   const v = (t.custom||{})[f.id];
+  if(typeof v==='string' && /^https?:\/\//.test(v))   // imported URL in a link column — show it, don't hide it
+    return `<div class="tv-pickv ro">${tvDisplay('text', v, t)}</div>`;
   const lt = v? (S._linkedTasks||{})[v] : null;   // broken link / missing cache → dash
   const title = lt? String(lt.title||'') : '';
   const chip = lt? `<span class="tv-linkchip" title="${esc(title)}" onclick="event.stopPropagation();location.hash='#/task/${lt.id}'">${tvLinkIcon()}<span class="lt">${esc(title.length>24? title.slice(0,24)+'…' : title)}</span></span>`
