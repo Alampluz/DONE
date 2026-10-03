@@ -20,7 +20,8 @@ const driver=`window.__run=async function(){const r={};
  const empty=await allRows(fake([])); r.emptyCount=empty.data.length;
  let n=0; const failing=()=>({range:async(a,b)=>{ n++; return n===1? {data:rows.slice(a,b+1),error:null} : {data:null,error:{message:'boom'}}; }});
  const part=await allRows(failing); r.partialKeeps=part.data.length; r.partialError=part.error&&part.error.message;
- const src=renderProject.toString()+renderWorkspaceCalendar.toString()+renderHome.toString()+buildDashCtx.toString();
+ const src=renderProject.toString()+renderWorkspaceCalendar.toString()+renderHome.toString();
+ r.dashAggregates=/widget_stats/.test(buildDashCtx.toString()) && !/allRows/.test(buildDashCtx.toString());
  r.boardUsesPaging=/allRows\\(\\(\\)=>db\\.from\\('tasks'\\)/.test(renderProject.toString());
  r.sitesPaged=(src.match(/allRows\\(/g)||[]).length;
  return JSON.stringify(r);};`;
@@ -35,6 +36,7 @@ w.eval('window.__run()').then(j=>{
   check('empty table -> zero rows', r.emptyCount===0);
   check('page error keeps earlier rows and reports it', r.partialKeeps===1000 && r.partialError==='boom');
   check('board loader goes through allRows', r.boardUsesPaging===true);
-  check('home, calendar, board and dashboard all paged (>=5 sites)', r.sitesPaged>=5);
+  check('home, calendar and board all paged (>=4 sites)', r.sitesPaged>=4);
+  check('dashboard aggregates in the database instead of paging tasks', r.dashAggregates===true);
   if(!ok) process.exit(1);
 }).catch(e=>{ console.error(e); process.exit(1); });

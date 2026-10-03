@@ -30,6 +30,7 @@ window.__mkQuery=(t)=>{const q={_t:t,_eq:{},
    return p.then(res,rej);}};return q;};
 window.__sel={};
 window.supabase={createClient:()=>({from:window.__mkQuery,
+ rpc:(fn,args)=>{ const p = window.__gate? window.__gate.then(()=>({data:[],error:null})) : Promise.resolve({data:[],error:null}); return p; },
  auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{}}})},
  storage:{from:()=>({})},functions:{}})};`);
 

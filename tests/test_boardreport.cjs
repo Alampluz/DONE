@@ -15,6 +15,7 @@ window.__mkQuery=(t)=>{const q={_t:t,_op:'select',_p:null,_eq:{},
   else data = window.__sel[t]||[];
   return Promise.resolve({data,error:null}).then(r,j);}};return q;};
 window.supabase={createClient:()=>({from:window.__mkQuery,
+ rpc:(fn,args)=>{ (window.__rpc=window.__rpc||[]).push({fn,args}); const d=(window.__rpcData||{})[fn]; return Promise.resolve({data: typeof d==='function'? d(args) : (d||[]), error:null}); },
  auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{}}})},
  storage:{from:()=>({})},functions:{}})};`);
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
@@ -33,6 +34,7 @@ const driver=`window.__run=async function(){const r={};try{
    {id:'t3',project_id:'p1',title:'C',status:'todo',priority:'normal',assignee_id:'u2',group_id:'g1',custom:{},position:3}]});
  S._tasks=S._tasksAll.slice();
  document.getElementById('content').innerHTML='<div id="board-body"></div>';
+ window.__rpcData={widget_stats:[{total:3,open:2,overdue:1,due7:0,done:1,done7:0,new7:0,on_time_pct:100,median_days:null}], widget_counts:(a)=> a.p_group==='group'? [{key:'g1',label:'Case Open',n:2}] : [{key:'todo',label:'todo',n:2},{key:'done',label:'done',n:1}], widget_rows:[]}; window.__rpc=[];
 
  // A. board report renders scoped stats + seeds 4 widgets incl. group-by-group
  window.__sel.projWidgets=[];
@@ -48,8 +50,9 @@ const driver=`window.__run=async function(){const r={};try{
  r.widgetsRendered = document.querySelectorAll('.widget-card').length;
 
  // B. group-by-group chart uses the board's own groups
- const rows = widgetGroups({entity:'tasks', groupBy:'group'});
+ const rows = await widgetGroups({entity:'tasks', groupBy:'group'}, 'bar');
  r.groupRows = rows.map(x=>x.label+':'+x.n);                       // Case Open:2
+ r.groupCallScoped = window.__rpc.some(c=>c.fn==='widget_counts' && c.args.p_group==='group' && c.args.p_project==='p1');
 
  // C. adding a widget from the board report stamps project_id, not workspace_id
  window.__calls.length=0; reRenderWidgets=()=>{};
@@ -71,4 +74,13 @@ const driver=`window.__run=async function(){const r={};try{
  r.requesterStillSees = document.querySelectorAll('.widget-card').length;                    // 1
 }catch(e){r.error=e.message+' | '+(e.stack||'').split('\\n').slice(0,4).join(' / ');}return r;};`;
 try{w.eval(scripts.join('\n')+'\n'+driver);}catch(e){console.log('EVAL ERROR:',e.message);}
-(async()=>{try{console.log(JSON.stringify(await w.eval('window.__run()'),null,2));}catch(e){console.log('RUN ERROR:',e.message);}process.exit(0);})();
+(async()=>{ const r=await w.eval('window.__run()'); let ok=true;
+ const check=(n,c)=>{ console.log((c?'PASS':'FAIL')+' '+n+(c?'':' -> '+JSON.stringify(r).slice(0,700))); if(!c) ok=false; };
+ check('no error', !r.error);
+ check('board report scope set, workspace scope cleared', r.projScope==='p1' && r.wsScopeCleared===true);
+ check('stat tiles (no requests → 7 tiles) from RPC', r.statTiles===7 && r.openCount==='2');
+ check('seeds 4 board widgets incl. group-by-group', r.seeded===true && r.groupWidgetSeeded===true && r.widgetsRendered===4 && r.hasAddBtn===true);
+ check('group chart uses the board groups via RPC', String(r.groupRows)==='Case Open:2' && r.groupCallScoped===true);
+ check('new widget stamped with project_id', r.modalNote===true && r.insertProj===true);
+ check('requester sees but cannot edit', r.requesterAdd===false && r.requesterEditLinks===0 && r.requesterStillSees===1);
+ console.log(ok?'boardreport: all checks passed':'boardreport: FAILED'); process.exit(ok?0:1); })();

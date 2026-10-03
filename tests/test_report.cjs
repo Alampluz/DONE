@@ -15,6 +15,7 @@ window.__mkQuery=(t)=>{const q={_t:t,_op:'select',_p:null,_eq:{},_is:{},
   else data = window.__sel[t]||[];
   return Promise.resolve({data,count:0,error:null}).then(r,j);}};return q;};
 window.supabase={createClient:()=>({from:window.__mkQuery,
+ rpc:(fn,args)=>{ (window.__rpc=window.__rpc||[]).push({fn,args}); const d=(window.__rpcData||{})[fn]; return Promise.resolve({data: typeof d==='function'? d(args) : (d||[]), error:null}); },
  auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{}}})},
  storage:{from:()=>({})},functions:{}})};`);
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
@@ -33,11 +34,13 @@ const driver=`window.__run=async function(){const r={};try{
   {id:'t9',project_id:'p9',title:'Server',status:'todo',priority:'low',assignee_id:'u2',due_date:null,created_at:'2026-08-01'}];
  window.__sel['requests']=[{id:'r1',ticket_no:'WO-1',title:'Req',status:'submitted',request_type_id:'rt1',sla_due_at:'2020-01-01',created_at:'2026-08-01'}];
  window.__sel['approvals']=[{id:'a1',status:'pending',request_id:'r1'}];
+ window.__rpcData={widget_stats:(a)=>[{total:a.p_workspace?2:3, open:a.p_workspace?1:2, overdue:1, due7:0, done:1, done7:0, new7:0, on_time_pct:100, median_days:null}], widget_counts:[{key:'todo',label:'todo',n:1},{key:'done',label:'done',n:1}], widget_rows:[]};
+ window.__rpc=[];
 
  // A. report scopes data to the workspace (t9 belongs to Tech Team and must not count)
  window.__sel.wsWidgets=[{id:'wg1',workspace_id:'w1',wtype:'donut',title:'Tasks by status',config:{entity:'tasks',groupBy:'status'},position:0}];
  await renderWorkspaceReport('w1');
- r.scopedTaskCount = S._dashCtx.tasks.length;                 // 2, not 3
+ r.scopedStats = window.__rpc.find(c=>c.fn==='widget_stats'); r.scopedToWs = r.scopedStats && r.scopedStats.args.p_workspace==='w1';
  r.scopedProjects  = S._dashCtx.scopeProjects.map(p=>p.id);   // [p1]
  r.widgetScope = widgetScope;
  r.hasTabs = [...document.querySelectorAll('.tabs .tab')].map(t=>t.textContent.trim());
@@ -82,7 +85,7 @@ const driver=`window.__run=async function(){const r={};try{
  const dq = window.__calls.filter(c=>c.table==='dashboard_widgets'&&c.op==='select').pop();
  r.dashQueriedUser = dq && dq.eq.user_id;
  r.dashQueriedNullWs = dq && ('workspace_id' in dq.is);
- r.dashTaskCount = S._dashCtx.tasks.length;                    // 3 across everything
+ r.dashStats = window.__rpc.filter(c=>c.fn==='widget_stats').pop(); r.dashUnscoped = r.dashStats && r.dashStats.args.p_workspace===null;
 
  // F. boards tab renders tabs too
  await renderWorkspace('w1');
@@ -90,4 +93,16 @@ const driver=`window.__run=async function(){const r={};try{
  r.boardsScopeCleared = widgetScope;
 }catch(e){r.error=e.message+' | '+(e.stack||'').split('\\n').slice(0,4).join(' / ');}return r;};`;
 try{w.eval(scripts.join('\n')+'\n'+driver);}catch(e){console.log('EVAL ERROR:',e.message);}
-(async()=>{try{console.log(JSON.stringify(await w.eval('window.__run()'),null,2));}catch(e){console.log('RUN ERROR:',e.message);}process.exit(0);})();
+(async()=>{ const r=await w.eval('window.__run()'); let ok=true;
+ const check=(n,c)=>{ console.log((c?'PASS':'FAIL')+' '+n+(c?'':' -> '+JSON.stringify(r).slice(0,700))); if(!c) ok=false; };
+ check('no error', !r.error);
+ check('report stats scoped to the workspace', r.scopedToWs===true && String(r.scopedProjects)==='p1');
+ check('report tabs + heading', r.activeTab==='Report' && /Creative Team/.test(r.heading));
+ check('widgets drawn, Add widget for editors', r.widgetsShown===1 && r.hasAddBtn===true && r.canEditWidgets===true);
+ check('stat tiles from RPC', r.statTiles===7 && r.openTasks==='1');
+ check('asks for the workspace widget set', r.queriedWorkspace==='w1');
+ check('new widget stamped with workspace_id', r.insertedScope==='w1' && r.insertedTitle==='Brand mix');
+ check('requester: sees, cannot edit', r.requesterSeesWidgets===1 && r.requesterHasAdd===false && r.requesterHasEditLinks===0 && r.requesterEditable===false);
+ check('personal dashboard: own widgets, unscoped stats', r.dashScope===null && r.dashQueriedUser==='me' && r.dashQueriedNullWs===true && r.dashUnscoped===true);
+ check('boards tab', r.boardsTabActive==='Boards' && r.boardsScopeCleared===null);
+ console.log(ok?'report: all checks passed':'report: FAILED'); process.exit(ok?0:1); })();
