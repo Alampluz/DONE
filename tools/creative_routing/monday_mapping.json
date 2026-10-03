@@ -1,6 +1,16 @@
 {
  "source": "monday Creative Queue board 5617471353, automations read 7 Sep 2026",
- "note": "Each rule: when a brief is created with Brand in [brands] (and artwork type = Livestreaming Frame where given) -> assign designer. In DONE build as: trigger field_changed on Brand (or task_created + condition brand in), condition artwork-type is Livestreaming Frame for the override rules; live-frame rules must be created AFTER brand rules so they win (engine runs rules in created_at order).",
+ "note": "Each rule: when a brief is created with Brand in [brands] (and artwork type = Livestreaming Frame where given) -> assign designer. DONE stores these as custom_automations on Creative Queue (field_changed on Brand, and again on Artwork Type for the overrides). Brand-filtered rules run in created_at order, which is this file's order: brand routes, then Brand + Livestreaming Frame overrides (they win), then the last-resort brand route Em/Areelak \u2190 B2B Shopee. A rule with no brand list must not replace an assignee a brand-filtered rule already set in that same pass \u2014 that is the July 2026 Monday Livestreaming Frame workflows, and they are not copied in as winning rules. Live DONE rule names use the nicknames Bank=Sorrakrai, Smart=Pongsathon, Heart=Alisa, Em=Areelak.",
+ "verify": "node tests/test_creativeroute.cjs \u2014 or, after migration creative_assign_guard, select * from creative_route_winner('Nestle', 'Livestreaming Frame'); Heart/Alisa wins, and creative_route_winner('Interpharma', 'Livestreaming Frame') returns no assignee.",
+ "uncovered": [
+  {
+   "brand": "Interpharma",
+   "monday_label_index": 486,
+   "designer": null,
+   "email": null,
+   "reason": "No designer in this mapping and no brand route in DONE. Monday automation 624439325 (Alisa Dechphrom, Livestreaming Frame) includes label index 486, which is Interpharma. April decided not to copy that label, so Interpharma stays unassigned."
+  }
+ ],
  "rules": [
   {
    "designer": "Vee",

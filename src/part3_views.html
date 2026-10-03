@@ -1687,6 +1687,31 @@ function fxCall(name,a,num,truthy){
     case 'SUM': return a.reduce((x,y)=>x+num(y),0);
     case 'AVERAGE': return a.length? a.reduce((x,y)=>x+num(y),0)/a.length : 0;
     case 'DAYS': return Math.round((D(a[0])-D(a[1]))/86400000);
+    case 'WORKDAYS': {
+      // Monday Creative Queue: WORKDAYS(start, end). Weekends are skipped.
+      // The start day is not counted; the end day is. A blank date stays blank.
+      if(a[0]==null || a[0]==='' || a[1]==null || a[1]==='') return '';
+      const utc = s => { const d=D(s); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()); };
+      const start=utc(a[0]), end=utc(a[1]);
+      if(start===end) return 0;
+      const step = start<end ? 86400000 : -86400000;
+      let n=0;
+      for(let t=start+step; step>0 ? t<=end : t>=end; t+=step){
+        const day=new Date(t).getUTCDay();
+        if(day!==0 && day!==6) n += step>0 ? 1 : -1;
+      }
+      return n;
+    }
+    case 'SWITCH': {
+      // SWITCH(value, match, result, ..., default). Match is case-insensitive, like "=".
+      const key=String(a[0]??'').toLowerCase();
+      let i=1;
+      while(i+1<a.length){
+        if(String(a[i]??'').toLowerCase()===key) return a[i+1];
+        i+=2;
+      }
+      return i<a.length ? a[i] : '';
+    }
     case 'TODAY': return new Date().toISOString().slice(0,10);
     default: throw new Error(name+' is not a known function');
   }
