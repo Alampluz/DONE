@@ -578,6 +578,12 @@ td.tv-name .tv-open{padding-left:20px}
 @media (max-width:900px){.widget-card.w-wide{grid-column:auto}}
 .w-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .w-head h3{font-size:13.5px;font-weight:700;flex:1}
+.w-head>div:first-child{flex:1;min-width:0}
+.w-sub{font-size:11.5px;color:var(--ink3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w-loading{color:var(--ink3);font-size:13px;padding:8px 0;letter-spacing:2px}
+.wm-frow{display:grid;grid-template-columns:1.2fr 1fr 1.4fr auto;gap:8px;align-items:center;margin-bottom:6px}
+.wm-frow select,.wm-frow input{margin:0}
+.wm-frow.wm-range{grid-template-columns:1fr 1.3fr 1fr 1fr}
 .w-actions{display:flex;gap:10px;font-size:12px;font-weight:600;color:var(--ink3);opacity:0;transition:opacity .12s}
 .widget-card:hover .w-actions{opacity:1}
 .w-actions span{cursor:pointer}

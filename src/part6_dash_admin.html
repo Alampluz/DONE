@@ -1,40 +1,50 @@
 <script>
 /* ================= DASHBOARD ================= */
-/* One engine, two homes: the personal Dashboard, and each workspace's Report tab.
-   `wsSel` (a workspace id, or null for everything) scopes every widget. */
+/* One engine, three homes: the personal Dashboard, each workspace's Report tab, and each
+   board's Report view. Since 3 Oct the numbers are computed in the database (widget_stats /
+   widget_counts / widget_rows / widget_values — security-invoker, so RLS still decides what the
+   caller can count). Before that every open downloaded every task in the company (13k rows,
+   3.5 MB, 14 round trips) to add up ~10 numbers in the browser.
+   `wData` is the DATA scope: which tasks the widgets count. `widgetScope`/`widgetProjScope`
+   below are the STORAGE scope: whose widget set is on screen. They differ on the personal
+   Dashboard, where a workspace dropdown narrows the data but the widgets stay yours. */
+let wData = {project:null, workspace:null};
+const wScopeArgs = ()=> ({p_project: wData.project||null, p_workspace: wData.project? null : (wData.workspace||null)});
+async function wRpc(fn, args){
+  const {data, error} = await db.rpc(fn, args);
+  if(error){ console.warn(fn, error.message); return null; }
+  return data;
+}
+/* Requests and approvals are small tables and keep the old client-side path. */
 async function buildDashCtx(wsSel){
-  const [tks, reqs, apprs] = await Promise.all([
-    allRows(()=>db.from('tasks').select('id,project_id,title,status,priority,assignee_id,due_date,completed_at,created_at').order('id')),
+  wData = {project:null, workspace:wsSel||null};
+  const [st, reqs, apprs] = await Promise.all([
+    wRpc('widget_stats', wScopeArgs()),
     db.from('requests').select('id,ticket_no,title,status,sla_due_at,completed_at,created_at,request_type_id,decided_at,submitted_by,assigned_to'),
     db.from('approvals').select('id,status,request_id'),
   ]);
-  let tasks=tks.data||[], requests=reqs.data||[], approvals=apprs.data||[];
+  let requests=reqs.data||[], approvals=apprs.data||[];
   const scopeProjects = wsSel ? S.projects.filter(p=>p.workspace_id===wsSel) : S.projects;
   if(wsSel){
-    const pidSet = new Set(scopeProjects.map(p=>p.id));
-    tasks = tasks.filter(t=>pidSet.has(t.project_id));
     const rtSet = new Set(S.requestTypes.filter(rt=>rt.default_workspace_id===wsSel).map(rt=>rt.id));
     requests = requests.filter(r=>rtSet.has(r.request_type_id));
     const reqSet = new Set(requests.map(r=>r.id));
     approvals = approvals.filter(a=>a.request_id && reqSet.has(a.request_id));
   }
-  const open = tasks.filter(t=>t.status!=='done');
-  const overdue = open.filter(t=>t.due_date && daysDiff(t.due_date)<0);
-  const dueWeek = open.filter(t=>t.due_date && daysDiff(t.due_date)>=0 && daysDiff(t.due_date)<=7);
-  const doneTasks = tasks.filter(t=>t.status==='done');
-  const onTime = doneTasks.filter(t=>!t.due_date || (t.completed_at && new Date(t.completed_at) <= new Date(t.due_date+'T23:59:59')));
-  const onTimePct = doneTasks.length? Math.round(onTime.length/doneTasks.length*100) : null;
+  const s = (st&&st[0]) || {};
   const openReqs = requests.filter(r=>['submitted','in_review','approved','in_progress'].includes(r.status));
   const slaBreach = openReqs.filter(r=>r.sla_due_at && new Date(r.sla_due_at)<Date.now());
   const pendingAppr = approvals.filter(a=>a.status==='pending').length;
-  S._dashCtx = {tasks, requests, open, overdue, dueWeek, doneTasks, openReqs, slaBreach, scopeProjects, wsSel};
-  return {open, overdue, dueWeek, onTimePct, openReqs, slaBreach, pendingAppr};
+  S._dashCtx = {requests, openReqs, slaBreach, scopeProjects, wsSel};
+  return {open:+s.open||0, overdue:+s.overdue||0, dueWeek:+s.due7||0, done:+s.done||0, done7:+s.done7||0, new7:+s.new7||0,
+          onTimePct: s.on_time_pct==null? null : +s.on_time_pct, medianDays: s.median_days==null? null : +s.median_days,
+          openReqs, slaBreach, pendingAppr};
 }
 function statRowHTML(k){
   return `<div class="stat-row">
-      <div class="stat"><div class="n accent">${k.open.length}</div><div class="l">Open tasks</div></div>
-      <div class="stat"><div class="n ${k.overdue.length?'red':''}">${k.overdue.length}</div><div class="l">Overdue</div></div>
-      <div class="stat"><div class="n amber">${k.dueWeek.length}</div><div class="l">Due within 7 days</div></div>
+      <div class="stat"><div class="n accent">${k.open}</div><div class="l">Open tasks</div></div>
+      <div class="stat"><div class="n ${k.overdue?'red':''}">${k.overdue}</div><div class="l">Overdue</div></div>
+      <div class="stat"><div class="n amber">${k.dueWeek}</div><div class="l">Due within 7 days</div></div>
       <div class="stat"><div class="n ${k.onTimePct===null?'':k.onTimePct>=80?'green':k.onTimePct>=50?'amber':'red'}">${k.onTimePct===null?'—':k.onTimePct+'%'}</div><div class="l">On-time completion</div></div>
       <div class="stat"><div class="n">${k.openReqs.length}</div><div class="l">Open requests</div></div>
       <div class="stat"><div class="n ${k.slaBreach.length?'red':'green'}">${k.slaBreach.length}</div><div class="l">SLA breached</div></div>
@@ -56,30 +66,22 @@ function reRenderWidgets(){
 async function renderBoardReport(pid){
   const _nav = S.nav;
   const p = projById(pid); if(!p){ location.hash='#/home'; return; }
-  widgetProjScope = pid; widgetScope = null;
+  widgetProjScope = pid; widgetScope = null; wData = {project:pid, workspace:null};
   const C=$('#board-body') || $('#content');
   C.innerHTML='<div class="empty">Loading report…</div>';
-  const [{data:reqs},{data:wdg}] = await Promise.all([
+  const [st, {data:reqs}, {data:wdg}] = await Promise.all([
+    wRpc('widget_stats', wScopeArgs()),
     db.from('requests').select('id,ticket_no,title,status,sla_due_at,completed_at,created_at,request_type_id,decided_at,submitted_by,assigned_to').eq('project_id',pid),
     db.from('dashboard_widgets').select('*').eq('project_id',pid).order('position'),
   ]);
-  const tasks = (S._tasksAll||[]).filter(t=>!t.archived_at);
-  const open = tasks.filter(t=>t.status!=='done');
-  const overdue = open.filter(t=>t.due_date && daysDiff(t.due_date)<0);
-  const dueWeek = open.filter(t=>t.due_date && daysDiff(t.due_date)>=0 && daysDiff(t.due_date)<=7);
-  const doneTasks = tasks.filter(t=>t.status==='done');
-  const onTime = doneTasks.filter(t=>!t.due_date || (t.completed_at && new Date(t.completed_at) <= new Date(t.due_date+'T23:59:59')));
-  const onTimePct = doneTasks.length? Math.round(onTime.length/doneTasks.length*100) : null;
-  // Throughput: what came in and what got finished this week, and how long finishing takes.
-  const wk = daysAgoISO(7), mo = daysAgoISO(30);
-  const done7 = doneTasks.filter(t=>(t.completed_at||'')>=wk), new7 = tasks.filter(t=>(t.created_at||'')>=wk);
-  const solveDays = doneTasks.filter(t=>t.completed_at && (t.completed_at>=mo)).map(t=>(new Date(t.completed_at)-new Date(t.created_at))/86400000).filter(d=>d>=0).sort((a,b)=>a-b);
-  const medianDays = solveDays.length? Math.round(solveDays[Math.floor(solveDays.length/2)]*10)/10 : null;
+  const s = (st&&st[0]) || {};
+  const open=+s.open||0, overdue=+s.overdue||0, dueWeek=+s.due7||0, done=+s.done||0, done7=+s.done7||0, new7=+s.new7||0;
+  const onTimePct = s.on_time_pct==null? null : +s.on_time_pct;
+  const medianDays = s.median_days==null? null : +s.median_days;   // median days to finish, last 30 days
   const requests = reqs||[];
   const openReqs = requests.filter(r=>['submitted','in_review','approved','in_progress'].includes(r.status));
   const slaBreach = openReqs.filter(r=>r.sla_due_at && new Date(r.sla_due_at)<Date.now());
-  S._dashCtx = {tasks, requests, open, overdue, dueWeek, doneTasks, done7, new7, openReqs, slaBreach,
-                scopeProjects:[p], wsSel:p.workspace_id, groups:S._groups||[]};
+  S._dashCtx = {requests, openReqs, slaBreach, scopeProjects:[p], wsSel:p.workspace_id, groups:S._groups||[]};
   S._widgets = wdg||[];
   if(!S._widgets.length && canEdit() && !(S._seededBoardReports?.[pid])){
     (S._seededBoardReports = S._seededBoardReports||{})[pid] = true;
@@ -94,27 +96,27 @@ async function renderBoardReport(pid){
   }
   S._reportName = p.name + ' report';
   S._reportStats = [
-    ['Open tasks', open.length], ['Overdue', overdue.length], ['Due within 7 days', dueWeek.length],
-    ['On-time completion', onTimePct===null? '—' : onTimePct+'%'], ['Done', doneTasks.length],
-    ['Done this week', done7.length], ['New this week', new7.length], ['Median days to finish (30d)', medianDays===null? '—' : medianDays],
+    ['Open tasks', open], ['Overdue', overdue], ['Due within 7 days', dueWeek],
+    ['On-time completion', onTimePct===null? '—' : onTimePct+'%'], ['Done', done],
+    ['Done this week', done7], ['New this week', new7], ['Median days to finish (30d)', medianDays===null? '—' : medianDays],
     ...(requests.length? [['SLA breached', slaBreach.length]] : []),
   ];
   if(navStale(_nav)) return;
   C.innerHTML = `
     <div class="stat-row">
-      <div class="stat"><div class="n accent">${open.length}</div><div class="l">Open tasks</div></div>
-      <div class="stat"><div class="n ${overdue.length?'red':''}">${overdue.length}</div><div class="l">Overdue</div></div>
-      <div class="stat"><div class="n amber">${dueWeek.length}</div><div class="l">Due within 7 days</div></div>
+      <div class="stat"><div class="n accent">${open}</div><div class="l">Open tasks</div></div>
+      <div class="stat"><div class="n ${overdue?'red':''}">${overdue}</div><div class="l">Overdue</div></div>
+      <div class="stat"><div class="n amber">${dueWeek}</div><div class="l">Due within 7 days</div></div>
       <div class="stat"><div class="n ${onTimePct===null?'':onTimePct>=80?'green':onTimePct>=50?'amber':'red'}">${onTimePct===null?'—':onTimePct+'%'}</div><div class="l">On-time completion</div></div>
-      <div class="stat"><div class="n">${doneTasks.length}</div><div class="l">Done</div></div>
-      <div class="stat"><div class="n green">${done7.length}</div><div class="l">Done this week</div><div class="sub">${new7.length} new this week</div></div>
-      <div class="stat"><div class="n">${medianDays===null?'—':medianDays}</div><div class="l">Median days to finish</div><div class="sub">last 30 days${solveDays.length?` · ${solveDays.length} tasks`:''}</div></div>
+      <div class="stat"><div class="n">${done}</div><div class="l">Done</div></div>
+      <div class="stat"><div class="n green">${done7}</div><div class="l">Done this week</div><div class="sub">${new7} new this week</div></div>
+      <div class="stat"><div class="n">${medianDays===null?'—':medianDays}</div><div class="l">Median days to finish</div><div class="sub">last 30 days</div></div>
       ${requests.length? `<div class="stat"><div class="n ${slaBreach.length?'red':'green'}">${slaBreach.length}</div><div class="l">SLA breached</div></div>`:''}
     </div>
     <div class="section-title" style="margin-top:22px;display:flex;align-items:center;gap:12px">Widgets
       <span style="flex:1"></span>${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="exportReportCSV()">Export report</button>`:''}${canEdit()? `<button class="btn btn-primary btn-sm" onclick="widgetModal(null,null,'${pid}')">＋ Add widget</button>`:''}</div>
-    <div class="wgrid" id="wgrid">${(S._widgets||[]).map(x=>widgetCard(x)).join('')
-      || `<div class="card empty" style="grid-column:1/-1">${canEdit()? 'No widgets yet — add the first one.':'No widgets on this report yet.'}</div>`}</div>`;
+    <div class="wgrid" id="wgrid">${widgetGridHTML(canEdit()? 'No widgets yet — add the first one.':'No widgets on this report yet.')}</div>`;
+  widgetFillAll();
 }
 
 let dashWs = 'all';
@@ -150,9 +152,15 @@ async function renderDashboard(){
     ${statRowHTML(k)}
     <div class="section-title" style="margin-top:22px;display:flex;align-items:center;gap:12px">Widgets
       <span style="flex:1"></span>${isStaff()? `<button class="btn btn-primary btn-sm" onclick="widgetModal()">＋ Add widget</button>`:''}</div>
-    <div class="wgrid" id="wgrid">${(S._widgets||[]).map(w=>widgetCard(w)).join('') || `<div class="card empty" style="grid-column:1/-1">No widgets yet — add your first one.</div>`}</div>
-    ${k.overdue.length? `<div class="section-title" style="margin-top:22px">Overdue tasks <span class="count">${k.overdue.length}</span></div>
-      <div class="card">${taskTable(k.overdue)}</div>`:''}`;
+    <div class="wgrid" id="wgrid">${widgetGridHTML('No widgets yet — add your first one.')}</div>
+    ${k.overdue? `<div class="section-title" style="margin-top:22px">Overdue tasks <span class="count">${k.overdue}</span></div>
+      <div class="card" id="dash-overdue"><div class="empty">Loading…</div></div>`:''}`;
+  widgetFillAll();
+  if(k.overdue){
+    const rows = await wRpc('widget_rows', {...wScopeArgs(), p_filters: W_SHOW_FILTERS.overdue, p_mine:false, p_order:'due', p_limit:50});
+    const host = document.getElementById('dash-overdue');
+    if(host && !navStale(_nav)) host.innerHTML = taskTable(rows||[]) + (k.overdue>50? `<div class="ca-hint">Showing the 50 most overdue of ${k.overdue}.</div>`:'');
+  }
 }
 
 /* ================= WORKSPACE REPORT ================= */
@@ -180,7 +188,7 @@ async function renderWorkspaceReport(wsId){
   }
   S._reportName = w.name + ' report';
   S._reportStats = [
-    ['Open tasks', k.open.length], ['Overdue', k.overdue.length], ['Due within 7 days', k.dueWeek.length],
+    ['Open tasks', k.open], ['Overdue', k.overdue], ['Due within 7 days', k.dueWeek],
     ['On-time completion', k.onTimePct===null? '—' : k.onTimePct+'%'], ['Open requests', k.openReqs.length],
     ['SLA breached', k.slaBreach.length], ['Pending approvals', k.pendingAppr],
   ];
@@ -192,8 +200,8 @@ async function renderWorkspaceReport(wsId){
     ${statRowHTML(k)}
     <div class="section-title" style="margin-top:22px;display:flex;align-items:center;gap:12px">Widgets
       <span style="flex:1"></span>${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="exportReportCSV()">Export report</button>`:''}${canEdit()? `<button class="btn btn-primary btn-sm" onclick="widgetModal(null,'${wsId}')">＋ Add widget</button>`:''}</div>
-    <div class="wgrid" id="wgrid">${(S._widgets||[]).map(x=>widgetCard(x)).join('')
-      || `<div class="card empty" style="grid-column:1/-1">${canEdit()? 'No widgets yet — add the first one.':'No widgets on this report yet.'}</div>`}</div>`;
+    <div class="wgrid" id="wgrid">${widgetGridHTML(canEdit()? 'No widgets yet — add the first one.':'No widgets on this report yet.')}</div>`;
+  widgetFillAll();
 }
 
 /* ================= DASHBOARD WIDGETS ================= */
@@ -201,39 +209,98 @@ const W_SHOWS_TASKS = [['open','Open'],['overdue','Overdue'],['due7','Due within
 const W_SHOWS_REQS  = [['open','Open'],['sla','SLA breached'],['all','All']];
 const W_GROUPS_TASKS= [['status','Status'],['priority','Priority'],['workspace','Workspace'],['project','Board'],['assignee','Assignee'],['group','Group']];
 const W_GROUPS_REQS = [['status','Status'],['type','Request type']];
+/* Each "Show" preset is a filter list the database understands; `today±N` is resolved server-side
+   in Bangkok time so a saved widget stays relative. */
+const W_SHOW_FILTERS = {
+  open:    [{f:'status',op:'neq',v:'done'}],
+  overdue: [{f:'status',op:'neq',v:'done'},{f:'due',op:'lt',v:'today'}],
+  due7:    [{f:'status',op:'neq',v:'done'},{f:'due',op:'gte',v:'today'},{f:'due',op:'lte',v:'today+7'}],
+  done:    [{f:'status',op:'eq',v:'done'}],
+  done7:   [{f:'status',op:'eq',v:'done'},{f:'completed',op:'gte',v:'today-7'}],
+  new7:    [{f:'created',op:'gte',v:'today-7'}],
+  blocked: [{f:'status',op:'eq',v:'blocked'}],
+  review:  [{f:'status',op:'eq',v:'review'}],
+  all:     [],
+};
+const W_OPS = [['eq','is'],['neq','is not'],['contains','contains'],['empty','is empty'],['notempty','is not empty']];
+const W_OPS_DATE = [['gte','on or after'],['lte','on or before'],['eq','on'],['empty','is empty'],['notempty','is not empty']];
+const W_RANGE_FIELDS = [['created','Created'],['completed','Completed'],['due','Due']];
+const W_RANGE_PRESETS = [['any','Any time'],['7d','Last 7 days'],['30d','Last 30 days'],['month','This month'],['lastmonth','Last month'],['quarter','This quarter'],['custom','Custom dates']];
+const W_PALETTE = ['#0F766E','#2273C9','#C2410C','#7C3AED','#12915E','#B45309','#BE185D','#0E7490','#4D7C0F','#6D28D9','#9F1239','#5B6472'];
+/* Board columns that make sense to count by / filter on. Dates and numbers filter but never group. */
+const W_GROUPABLE = new Set(['select','brand','platform','person','checkbox','text']);
+const W_FILTERABLE = new Set(['select','brand','platform','person','checkbox','text','date','number']);
 
-function widgetTaskRows(cfg){
-  const c=S._dashCtx;
-  let rows = cfg.entity==='requests'? c.requests : c.tasks;
-  if(cfg.entity==='requests'){
-    if(cfg.show==='open') rows=c.openReqs;
-    else if(cfg.show==='sla') rows=c.slaBreach;
-  } else {
-    if(cfg.show==='open') rows=c.open;
-    else if(cfg.show==='overdue') rows=c.overdue;
-    else if(cfg.show==='due7') rows=c.dueWeek;
-    else if(cfg.show==='done') rows=c.doneTasks;
-    else if(cfg.show==='done7') rows=c.done7 || c.doneTasks.filter(t=>(t.completed_at||'')>=daysAgoISO(7));
-    else if(cfg.show==='new7') rows=c.new7 || c.tasks.filter(t=>(t.created_at||'')>=daysAgoISO(7));
-    else if(cfg.show==='blocked') rows=rows.filter(t=>t.status==='blocked');
-    else if(cfg.show==='review') rows=rows.filter(t=>t.status==='review');
-    if(cfg.mine) rows=rows.filter(t=>t.assignee_id===S.me.id);
+const ymd = d => { const z=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };
+function wRangeDates(r){
+  const now = new Date(), y=now.getFullYear(), m=now.getMonth();
+  if(r.preset==='7d')  return {from:'today-7', to:null};
+  if(r.preset==='30d') return {from:'today-30', to:null};
+  if(r.preset==='month') return {from:ymd(new Date(y,m,1)), to:null};
+  if(r.preset==='lastmonth') return {from:ymd(new Date(y,m-1,1)), to:ymd(new Date(y,m,0))};
+  if(r.preset==='quarter') return {from:ymd(new Date(y,Math.floor(m/3)*3,1)), to:null};
+  if(r.preset==='custom') return {from:r.from||null, to:r.to||null};
+  return {from:null, to:null};
+}
+/* Everything a widget narrows by, as one filter list: the Show preset, the column filters,
+   the time range. Bar/Donut default to open tasks (status charts to all), as they always did. */
+function wFilters(cfg, wtype){
+  let show = cfg.show;
+  if(!show && (wtype==='bar'||wtype==='donut')) show = (cfg.groupBy==='status'||!cfg.groupBy)? 'all' : 'open';
+  const out = [...(W_SHOW_FILTERS[show||'all']||[])];
+  (cfg.filters||[]).forEach(f=>{
+    if(!f || !f.f) return;
+    if(f.op==='empty'||f.op==='notempty') out.push({f:f.f, op:f.op});
+    else if(f.v!==undefined && f.v!==null && String(f.v)!=='') out.push({f:f.f, op:f.op||'eq', v:String(f.v)});
+  });
+  const r = cfg.range;
+  if(r && r.f && r.preset && r.preset!=='any'){
+    const {from,to} = wRangeDates(r);
+    if(from) out.push({f:r.f, op:'gte', v:from});
+    if(to) out.push({f:r.f, op:'lte', v:to});
   }
+  return out;
+}
+function wGroupRow(g, r, i){
+  const n = +r.n||0;
+  if(g==='status'){ const s=STATUSES.find(x=>x.k===r.key); return {label:s?s.label:(r.key||'—'), color:s?s.color:'#8E93A8', n, ord:s?STATUSES.indexOf(s):99}; }
+  if(g==='priority'){ const p=PRIORITIES.find(x=>x.k===r.key); return {label:p?p.label:(r.key||'—'), color:p? (String(p.color).startsWith('var')?'#8E93A8':p.color):'#8E93A8', n, ord:p?PRIORITIES.indexOf(p):99}; }
+  if(g==='assignee'){ const p=prof(r.key); return {label: r.key? (p?p.full_name:(r.label||'Unknown')) : 'Unassigned', color: (p&&p.avatar_color)||'#8E93A8', n}; }
+  if(g==='project'){ const p=projById(r.key); return {label:r.label||(p?p.name:'—'), color:(p&&p.color)||'#0F766E', n}; }
+  if(g==='workspace'){ const w=wsById(r.key); return {label:r.label||(w?w.name:'—'), color:(w&&w.color)||'#0F766E', n}; }
+  if(g==='group'){ const gr=(S._groups||[]).find(x=>x.id===r.key); return {label: r.key? (r.label||(gr?gr.name:'—')) : 'No group', color:(gr&&gr.color)||W_PALETTE[i%W_PALETTE.length], n}; }
+  return {label: r.key==null? 'Not set' : (r.key==='true'?'Yes':r.key==='false'?'No':r.key), color: W_PALETTE[i%W_PALETTE.length], n};
+}
+/* Grouped counts for Bar / Donut. Requests stay client-side (small table, no custom columns). */
+async function widgetGroups(cfg, wtype){
+  const c=S._dashCtx||{};
+  if(cfg.entity==='requests'){
+    const reqs = c.requests||[];
+    if(cfg.groupBy==='type') return S.requestTypes.map(rt=>({label:rt.name, color:'#0F766E', n:reqs.filter(r=>r.request_type_id===rt.id).length})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,10);
+    return REQ_STATUSES.map(s=>({label:s.label, color:String(s.color).startsWith('var')? '#0F766E':s.color, n:reqs.filter(r=>r.status===s.k).length})).filter(x=>x.n>0);
+  }
+  const g = cfg.groupBy||'status';
+  const data = await wRpc('widget_counts', {...wScopeArgs(), p_group:g, p_filters:wFilters(cfg, wtype||'bar'), p_mine:!!cfg.mine, p_limit:12});
+  const rows = (data||[]).map((r,i)=>wGroupRow(g, r, i)).filter(x=>x.n>0);
+  if(g==='status'||g==='priority') rows.sort((a,b)=>a.ord-b.ord);
   return rows;
 }
-function widgetGroups(cfg){
-  const c=S._dashCtx;
+/* The rows a Number counts or a List shows. */
+async function widgetTaskRows(cfg, wtype, limit){
+  const c=S._dashCtx||{};
   if(cfg.entity==='requests'){
-    if(cfg.groupBy==='type') return S.requestTypes.map(rt=>({label:rt.name, color:'#0F766E', n:c.requests.filter(r=>r.request_type_id===rt.id).length})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,10);
-    return REQ_STATUSES.map(s=>({label:s.label, color:s.color.startsWith('var')? '#0F766E':s.color, n:c.requests.filter(r=>r.status===s.k).length})).filter(x=>x.n>0);
+    let rows = c.requests||[];
+    if(cfg.show==='open') rows=c.openReqs||[];
+    else if(cfg.show==='sla') rows=c.slaBreach||[];
+    return rows;
   }
-  if(cfg.groupBy==='priority') return PRIORITIES.map(p=>({label:p.label, color:p.color.startsWith('var')? '#8E93A8':p.color, n:c.open.filter(t=>t.priority===p.k).length})).filter(x=>x.n>0);
-  if(cfg.groupBy==='workspace') return (c.wsSel? c.scopeProjects.map(p=>({label:p.name,color:p.color,n:c.open.filter(t=>t.project_id===p.id).length}))
-    : S.workspaces.map(w=>{ const pids=new Set(S.projects.filter(p=>p.workspace_id===w.id).map(p=>p.id)); return {label:w.name,color:w.color,n:c.open.filter(t=>pids.has(t.project_id)).length}; })).filter(x=>x.n>0).sort((a,b)=>b.n-a.n);
-  if(cfg.groupBy==='project') return c.scopeProjects.map(p=>({label:p.name, color:p.color, n:c.open.filter(t=>t.project_id===p.id).length})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,10);
-  if(cfg.groupBy==='group') return (c.groups||[]).map(g=>({label:g.name, color:g.color, n:c.open.filter(t=>t.group_id===g.id).length})).filter(x=>x.n>0);
-  if(cfg.groupBy==='assignee') return S.profiles.map(p=>({label:p.full_name, color:p.avatar_color||'#0F766E', n:c.open.filter(t=>t.assignee_id===p.id).length})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n).slice(0,8);
-  return STATUSES.map(s=>({label:s.label, color:s.color, n:c.tasks.filter(t=>t.status===s.k).length})).filter(x=>x.n>0);
+  const data = await wRpc('widget_rows', {...wScopeArgs(), p_filters:wFilters(cfg, wtype||'list'), p_mine:!!cfg.mine, p_order:cfg.order||'due', p_limit:limit||6});
+  return data||[];
+}
+async function widgetCount(cfg, wtype){
+  if(cfg.entity==='requests') return (await widgetTaskRows(cfg, wtype)).length;
+  const data = await wRpc('widget_counts', {...wScopeArgs(), p_group:'status', p_filters:wFilters(cfg, wtype||'stat'), p_mine:!!cfg.mine, p_limit:100});
+  return (data||[]).reduce((a,r)=>a+(+r.n||0), 0);
 }
 function donutSVG(rows){
   const total = rows.reduce((a,r)=>a+r.n,0);
@@ -249,48 +316,90 @@ function donutSVG(rows){
       <text x="60" y="76" text-anchor="middle" style="font-size:9px;font-weight:700;fill:var(--ink3);letter-spacing:.6px">TOTAL</text></svg>
     <div class="donut-legend">${rows.map(r=>`<div class="dl-row"><span class="dl-dot" style="background:${r.color}"></span><span class="dl-l" title="${esc(r.label)}">${esc(r.label)}</span><b>${r.n}</b></div>`).join('')}</div></div>`;
 }
+/* One line under the title saying what the widget narrows by — so "Brand" on a card is never a mystery. */
+function widgetSubtitle(w){
+  const cfg = w.config||{}; if(cfg.entity==='requests') return '';
+  const bits = [];
+  const show = cfg.show || ((w.wtype==='bar'||w.wtype==='donut')? ((cfg.groupBy==='status'||!cfg.groupBy)? 'all':'open') : 'open');
+  const sl = (W_SHOWS_TASKS.find(x=>x[0]===show)||[])[1]; if(sl && show!=='all') bits.push(sl);
+  (cfg.filters||[]).forEach(f=>{ if(!f||!f.f) return; const name = f.f.startsWith('col:')? f.f.slice(4) : (wFieldLabel(f.f)); const op=(W_OPS.concat(W_OPS_DATE).find(o=>o[0]===f.op)||['','is'])[1]; bits.push(`${name} ${op}${(f.op==='empty'||f.op==='notempty')?'':' '+wValueLabel(f.f, f.v)}`); });
+  const r = cfg.range; if(r && r.f && r.preset && r.preset!=='any'){ const pl=(W_RANGE_PRESETS.find(x=>x[0]===r.preset)||[])[1]; bits.push(`${(W_RANGE_FIELDS.find(x=>x[0]===r.f)||[])[1]||r.f}: ${r.preset==='custom'? [r.from,r.to].filter(Boolean).join(' → ') : pl}`); }
+  if(cfg.mine) bits.push('assigned to me');
+  return bits.length? `<div class="w-sub">${esc(bits.join(' · '))}</div>` : '';
+}
+function wFieldLabel(f){ return ({status:'Status',priority:'Priority',assignee:'Assignee',group:'Group',project:'Board',workspace:'Workspace',due:'Due',created:'Created',completed:'Completed'})[f] || f; }
+function wValueLabel(f, v){
+  if(f==='status') return statusLabel(v); if(f==='priority') return prioLabel(v);
+  if(f==='assignee'){ const p=prof(v); return p? p.full_name : v; }
+  if(f==='group'){ const g=(S._groups||[]).find(x=>x.id===v); return g? g.name : v; }
+  if(f==='project'){ const p=projById(v); return p? p.name : v; }
+  return v==='true'?'Yes':v==='false'?'No':v;
+}
+function widgetGridHTML(emptyText){
+  return (S._widgets||[]).map(widgetCard).join('') || `<div class="card empty" style="grid-column:1/-1">${emptyText}</div>`;
+}
+/* The card shell draws at once; the body arrives from the database a moment later. */
 function widgetCard(w){
-  const cfg = w.config||{};
-  let body='';
-  if(w.wtype==='stat'){
-    const rows = widgetTaskRows(cfg);
-    const danger = ['overdue','sla'].includes(cfg.show);
-    body = `<div class="w-stat ${danger&&rows.length?'red':''}">${rows.length}</div><div class="w-stat-l">${esc(cfg.entity==='requests'?'requests':'tasks')}</div>`;
-  }
-  else if(w.wtype==='bar') body = hbars(widgetGroups(cfg));
-  else if(w.wtype==='donut') body = donutSVG(widgetGroups(cfg));
-  else if(w.wtype==='progress'){
-    const c=S._dashCtx, total=c.tasks.length, done=c.doneTasks.length;
-    const pct = total? Math.round(done/total*100):0;
-    body = `<div class="w-stat accent">${pct}%</div><div class="w-stat-l">${done} of ${total} tasks done</div>
-      <div class="prog-bar" style="margin-top:10px"><div class="prog-fill" style="width:${pct}%"></div></div>`;
-  }
-  else if(w.wtype==='list'){
-    let rows = widgetTaskRows(cfg);
-    if(cfg.entity==='requests') rows=[...rows].sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')).slice(0,6);
-    else rows=[...rows].sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999')).slice(0,6);
-    body = rows.length? (cfg.entity==='requests'? requestTable(rows): taskTable(rows)) : '<div style="color:var(--ink3);font-size:13px;padding:8px 0">Nothing here</div>';
-  }
   const acts = (isStaff()? `<span onclick="exportWidgetCSV('${w.id}')">Excel</span>`:'')
     + (widgetsEditable()? `<span onclick="widgetModal('${w.id}')">Edit</span><span onclick="deleteWidget('${w.id}')">Remove</span>`:'');
   return `<div class="card widget-card ${w.wtype==='list'?'w-wide':''}" draggable="${widgetsEditable()}" data-wid="${w.id}"
       ondragstart="wDragStart(event,'${w.id}')" ondragover="event.preventDefault()" ondrop="wDrop(event,'${w.id}')">
-    <div class="w-head"><h3>${esc(w.title)}</h3>
+    <div class="w-head"><div><h3>${esc(w.title)}</h3>${widgetSubtitle(w)}</div>
       ${acts? `<span class="w-actions">${acts}</span>`:''}</div>
-    ${body}</div>`;
+    <div class="w-body" id="wb-${w.id}"><div class="w-loading">…</div></div></div>`;
 }
-function exportWidgetCSV(id){
+let _wFillTok = 0;
+function widgetFillAll(){
+  const tok = ++_wFillTok;
+  (S._widgets||[]).forEach(w=> widgetFill(w, tok));
+}
+async function widgetFill(w, tok){
+  const cfg = w.config||{};
+  let body='';
+  try{
+    if(w.wtype==='stat'){
+      const n = await widgetCount(cfg, 'stat');
+      const danger = ['overdue','sla'].includes(cfg.show);
+      body = `<div class="w-stat ${danger&&n?'red':''}">${n}</div><div class="w-stat-l">${esc(cfg.entity==='requests'?'requests':'tasks')}</div>`;
+    }
+    else if(w.wtype==='bar') body = hbars(await widgetGroups(cfg, 'bar'));
+    else if(w.wtype==='donut') body = donutSVG(await widgetGroups(cfg, 'donut'));
+    else if(w.wtype==='progress'){
+      // Done vs everything, under the same column filters and time range.
+      const data = (await wRpc('widget_counts', {...wScopeArgs(), p_group:'status', p_filters:wFilters({...cfg, show:'all'}, 'progress'), p_mine:!!cfg.mine, p_limit:100}))||[];
+      const total = data.reduce((a,r)=>a+(+r.n||0),0), done = data.filter(r=>r.key==='done').reduce((a,r)=>a+(+r.n||0),0);
+      const pct = total? Math.round(done/total*100):0;
+      body = `<div class="w-stat accent">${pct}%</div><div class="w-stat-l">${done} of ${total} tasks done</div>
+        <div class="prog-bar" style="margin-top:10px"><div class="prog-fill" style="width:${pct}%"></div></div>`;
+    }
+    else if(w.wtype==='list'){
+      let rows = await widgetTaskRows(cfg, 'list', 6);
+      if(cfg.entity==='requests') rows=[...rows].sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||'')).slice(0,6);
+      body = rows.length? (cfg.entity==='requests'? requestTable(rows): taskTable(rows)) : '<div style="color:var(--ink3);font-size:13px;padding:8px 0">Nothing here</div>';
+    }
+  }catch(e){ body = `<div class="ca-hint">Could not load — ${esc(e.message||'error')}</div>`; }
+  if(tok!==undefined && tok!==_wFillTok) return;        // the page moved on while we were counting
+  const host = document.getElementById('wb-'+w.id);
+  if(host) host.innerHTML = body;
+}
+async function exportWidgetCSV(id){
   const w = (S._widgets||[]).find(x=>x.id===id); if(!w) return;
-  downloadXLSX(xlsxFilename(w.title||'Widget'),
-    [['Label','Count'], ...widgetGroups(w.config||{}).map(g=>[g.label, g.n])]);
+  const cfg = w.config||{};
+  if(w.wtype==='list'||w.wtype==='stat'){
+    const rows = await widgetTaskRows(cfg, w.wtype, 500);
+    if(cfg.entity==='requests') return downloadXLSX(xlsxFilename(w.title||'Widget'), [['Ticket','Title','Status','Created'], ...rows.map(r=>['WO-'+(r.ticket_no||''), r.title, r.status, (r.created_at||'').slice(0,10)])]);
+    return downloadXLSX(xlsxFilename(w.title||'Widget'), [['Ticket','Task','Board','Status','Priority','Due','Assignee'],
+      ...rows.map(t=>[t.ticket_no||'', t.title, (projById(t.project_id)||{}).name||'', statusLabel(t.status), prioLabel(t.priority), t.due_date||'', (prof(t.assignee_id)||{}).full_name||''])]);
+  }
+  downloadXLSX(xlsxFilename(w.title||'Widget'), [['Label','Count'], ...(await widgetGroups(cfg, w.wtype)).map(g=>[g.label, g.n])]);
 }
 /* Stat tiles, a blank line, then every widget's grouped numbers — one file. */
-function exportReportCSV(){
+async function exportReportCSV(){
   const out = [['Label','Value'], ...(S._reportStats||[])];
-  (S._widgets||[]).forEach(w=>{
+  for(const w of (S._widgets||[])){
     out.push([], [w.title], ['Label','Count']);
-    widgetGroups(w.config||{}).forEach(g=>out.push([g.label, g.n]));
-  });
+    (await widgetGroups({...(w.config||{}), groupBy:(w.config||{}).groupBy||'status'}, w.wtype)).forEach(g=>out.push([g.label, g.n]));
+  }
   downloadXLSX(xlsxFilename(S._reportName||'Report'), out);
 }
 let wDragId=null;
@@ -303,59 +412,174 @@ async function wDrop(e,targetId){
   if(from<0||to<0) return;
   const [m]=ws.splice(from,1); ws.splice(to,0,m); wDragId=null;
   document.getElementById('wgrid').innerHTML = ws.map(widgetCard).join('');
+  widgetFillAll();
   for(let i=0;i<ws.length;i++){ if(ws[i].position!==i){ ws[i].position=i; await db.from('dashboard_widgets').update({position:i}).eq('id',ws[i].id); } }
 }
 async function deleteWidget(id){
   const {error}=await db.from('dashboard_widgets').delete().eq('id',id);
   if(error) return toast(error.message,true);
   S._widgets = S._widgets.filter(w=>w.id!==id);
-  document.getElementById('wgrid').innerHTML = S._widgets.map(widgetCard).join('') || `<div class="card empty" style="grid-column:1/-1">No widgets yet — add your first one.</div>`;
+  document.getElementById('wgrid').innerHTML = widgetGridHTML('No widgets yet — add your first one.');
+  widgetFillAll();
   toast('Widget removed');
 }
+
+/* ---- Columns in scope: the board's own columns, or every column label across the boards in a
+   workspace (deduped by label, so one "Brand" entry covers all of them). ---- */
+async function wScopeColumns(){
+  let fields;
+  if(wData.project){
+    fields = (S._viewPid===wData.project && S._fields)? S._fields : ((await db.from('project_fields').select('label,ftype').eq('project_id', wData.project)).data||[]);
+  } else {
+    const pids = (wData.workspace? S.projects.filter(p=>p.workspace_id===wData.workspace) : S.projects).map(p=>p.id);
+    if(!pids.length) return [];
+    fields = (await db.from('project_fields').select('label,ftype').in('project_id', pids.slice(0,200))).data||[];
+  }
+  const seen = new Map();
+  (fields||[]).forEach(f=>{ const label=String(f.label||'').trim(); if(!label) return; const k=label.toLowerCase(); if(!seen.has(k)) seen.set(k, {key:'col:'+label, label, ftype:f.ftype}); });
+  return [...seen.values()].sort((a,b)=>a.label.localeCompare(b.label));
+}
+/* Fixed fields a filter row can use, before the board columns. */
+function wFixedFilterFields(){
+  const out = [{key:'status',label:'Status',ftype:'status'},{key:'priority',label:'Priority',ftype:'priority'},{key:'assignee',label:'Assignee',ftype:'assignee'},
+               {key:'due',label:'Due date',ftype:'date'},{key:'created',label:'Created',ftype:'date'},{key:'completed',label:'Completed',ftype:'date'}];
+  if(wData.project) out.push({key:'group',label:'Group',ftype:'group'});
+  else out.push({key:'project',label:'Board',ftype:'project'});
+  return out;
+}
+let wm = null;   // widget-modal draft: {filters:[{f,op,v}], range:{f,preset,from,to}, cols:[...]}
+function wmFieldDef(key){ return [...wFixedFilterFields(), ...(wm.cols||[])].find(x=>x.key===key) || {key, label:key.startsWith('col:')? key.slice(4):key, ftype:'text'}; }
+function wmOps(def){ return def.ftype==='date'? W_OPS_DATE : (['status','priority','assignee','group','project','select','brand','platform','person','checkbox'].includes(def.ftype)? W_OPS.filter(o=>o[0]!=='contains') : W_OPS); }
+/* Fixed value lists where the app knows them; board columns ask the database what the column holds. */
+async function wmValueOptions(def){
+  if(def.ftype==='status') return STATUSES.map(s=>[s.k, s.label]);
+  if(def.ftype==='priority') return PRIORITIES.map(p=>[p.k, p.label]);
+  if(def.ftype==='assignee') return S.profiles.filter(p=>p.active).sort((a,b)=>a.full_name.localeCompare(b.full_name)).map(p=>[p.id, p.full_name]);
+  if(def.ftype==='group') return (S._groups||[]).map(g=>[g.id, g.name]);
+  if(def.ftype==='project') return (wData.workspace? S.projects.filter(p=>p.workspace_id===wData.workspace) : S.projects).map(p=>[p.id, p.name]);
+  if(def.ftype==='checkbox') return [['true','Yes'],['false','No']];
+  if(def.ftype==='date') return null;
+  if(def.ftype==='person'){ const vals = await wRpc('widget_values', {...wScopeArgs(), p_field:def.key, p_limit:60}); return (vals||[]).map(v=>[v.v, (prof(v.v)||{}).full_name||v.v]); }
+  const vals = await wRpc('widget_values', {...wScopeArgs(), p_field:def.key, p_limit:60});
+  return (vals||[]).map(v=>[v.v, v.v]);
+}
+function wmFiltersHTML(){
+  const fields = [...wFixedFilterFields(), ...(wm.cols||[])];
+  const rows = (wm.filters||[]).map((f,i)=>{
+    const def = wmFieldDef(f.f);
+    const needsVal = !(f.op==='empty'||f.op==='notempty');
+    return `<div class="wm-frow" data-i="${i}">
+      <select onchange="wmSetF(${i},'f',this.value)">${fields.map(x=>`<option value="${esc(x.key)}" ${x.key===f.f?'selected':''}>${esc(x.label)}</option>`).join('')}</select>
+      <select onchange="wmSetF(${i},'op',this.value)">${wmOps(def).map(([k,l])=>`<option value="${k}" ${k===(f.op||'eq')?'selected':''}>${l}</option>`).join('')}</select>
+      ${needsVal? (def.ftype==='date'
+          ? `<input type="date" value="${esc(f.v||'')}" onchange="wmSetF(${i},'v',this.value)">`
+          : `<input list="wm-vals-${i}" value="${esc(f.v||'')}" placeholder="value" oninput="wmSetF(${i},'v',this.value)"><datalist id="wm-vals-${i}"></datalist>`)
+        : '<span></span>'}
+      <button class="btn btn-ghost btn-sm" aria-label="Remove filter" onclick="wmRmFilter(${i})">✕</button></div>`;
+  }).join('');
+  return `${rows}<button class="btn btn-ghost btn-sm" onclick="wmAddFilter()">＋ Add filter</button>`;
+}
+async function wmFillDatalists(){
+  for(const [i,f] of (wm.filters||[]).entries()){
+    const dl = document.getElementById('wm-vals-'+i); if(!dl) continue;
+    const def = wmFieldDef(f.f);
+    const opts = await wmValueOptions(def);
+    if(!opts || !document.getElementById('wm-vals-'+i)) continue;
+    dl.innerHTML = opts.map(([v,l])=>`<option value="${esc(v)}">${esc(l)}</option>`).join('');
+  }
+}
+function wmDrawFilters(){ const h=document.getElementById('wm-filters'); if(!h) return; h.innerHTML = wmFiltersHTML(); wmFillDatalists(); }
+function wmAddFilter(){ wm.filters.push({f:'status', op:'eq', v:''}); wmDrawFilters(); }
+function wmRmFilter(i){ wm.filters.splice(i,1); wmDrawFilters(); }
+function wmSetF(i,k,v){
+  const f = wm.filters[i]; if(!f) return;
+  f[k]=v;
+  if(k==='f'){ const def=wmFieldDef(v); const ops=wmOps(def); if(!ops.some(o=>o[0]===f.op)) f.op=ops[0][0]; f.v=''; wmDrawFilters(); }
+  else if(k==='op') wmDrawFilters();
+}
+function wmRangeHTML(){
+  const r = wm.range||{};
+  return `<div class="wm-frow wm-range">
+    <select onchange="wm.range.f=this.value">${W_RANGE_FIELDS.map(([k,l])=>`<option value="${k}" ${k===(r.f||'created')?'selected':''}>${l}</option>`).join('')}</select>
+    <select onchange="wm.range.preset=this.value;wmDrawRange()">${W_RANGE_PRESETS.map(([k,l])=>`<option value="${k}" ${k===(r.preset||'any')?'selected':''}>${l}</option>`).join('')}</select>
+    ${r.preset==='custom'? `<input type="date" value="${esc(r.from||'')}" onchange="wm.range.from=this.value"><input type="date" value="${esc(r.to||'')}" onchange="wm.range.to=this.value">` : '<span></span><span></span>'}
+  </div>`;
+}
+function wmDrawRange(){ const h=document.getElementById('wm-range'); if(h) h.innerHTML = wmRangeHTML(); }
+
 function widgetModal(id, wsId, projId){
   const w = id? S._widgets.find(x=>x.id===id): null;
   const scope = wsId || (w? w.workspace_id : null) || widgetScope || null;
   const pScope = projId || (w? w.project_id : null) || widgetProjScope || null;
-  const cfg = w? (w.config||{}) : {entity:'tasks', show:'open', groupBy:'status'};
+  const cfg = w? (w.config||{}) : {entity:'tasks', groupBy:'status'};
+  wm = {filters: JSON.parse(JSON.stringify(cfg.filters||[])), range: {f:'created', preset:'any', ...(cfg.range||{})}, cols: []};
   const types=[['stat','Number','A single big number'],['bar','Bar chart','Compare groups side by side'],['donut','Donut','Share of a total'],['list','List','The items themselves'],['progress','Progress','Done vs total']];
   const m = modal(`<div class="modal-head"><h2>${w?'Edit widget':'Add widget'}</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <label>Widget type</label>
       <div class="type-pick" id="wm-type">${types.map(([k,l,d])=>`<div class="tp ${ (w?w.wtype:'bar')===k?'sel':''}" data-k="${k}" onclick="[...this.parentNode.children].forEach(x=>x.classList.remove('sel'));this.classList.add('sel');wmRefresh()"><b>${l}</b>${helpIcon(d)}</div>`).join('')}</div>
-      <label>Title</label><input id="wm-title" value="${w? esc(w.title):''}" placeholder="e.g. Creative workload">
+      <label>Title</label><input id="wm-title" value="${w? esc(w.title):''}" placeholder="e.g. Open requests by brand">
       <div class="field-grid">
         <div><label>Source</label><select id="wm-entity" onchange="wmRefresh()">
           <option value="tasks" ${cfg.entity!=='requests'?'selected':''}>Tasks</option>
           <option value="requests" ${cfg.entity==='requests'?'selected':''}>Requests</option></select></div>
         <div id="wm-dim"></div>
       </div>
+      <div id="wm-show-wrap"></div>
+      <div id="wm-task-only">
+        <label style="margin-top:10px">Filters ${helpIcon('Count only the tasks that match every line. Board columns such as Brand or Platform are listed under the standard fields.')}</label>
+        <div id="wm-filters">${wmFiltersHTML()}</div>
+        <label style="margin-top:10px">Time range ${helpIcon('Narrow to tasks created, completed or due in a period. Relative periods move with the calendar; custom dates stay fixed.')}</label>
+        <div id="wm-range">${wmRangeHTML()}</div>
+      </div>
       <div class="chk" id="wm-mine-wrap" style="margin-top:6px"><input type="checkbox" id="wm-mine" ${cfg.mine?'checked':''}> <span>Only items assigned to me</span></div>
-      <div style="margin-top:12px;font-size:12.5px;color:var(--ink3)">${pScope? 'On this board\'s report' : scope? 'On the workspace report' : 'On your dashboard'}${helpIcon(pScope? 'Everyone who can open the board sees this widget.' : scope? 'Everyone on the team sees this widget.' : 'Widgets follow the workspace selector at the top of the dashboard, and only you see them.')}</div>
+      <div style="margin-top:12px;font-size:12.5px;color:var(--ink3)">${pScope? 'On this board\'s report' : scope? 'On the workspace report' : 'On your dashboard'}${helpIcon(pScope? 'Everyone who can open the board sees this widget.' : scope? 'Everyone on the workspace sees this widget.' : 'Only you see this widget.')}</div>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="wm-save">${w?'Save':'Add widget'}</button></div>`);
+  m.querySelector('.modal').classList.add('wide');
   window.wmRefresh = ()=>{
     const t = m.querySelector('#wm-type .sel')?.dataset.k || 'bar';
     const ent = m.querySelector('#wm-entity').value;
-    const dim = m.querySelector('#wm-dim');
+    const dim = m.querySelector('#wm-dim'), showWrap = m.querySelector('#wm-show-wrap');
+    const cur = m.querySelector('#wm-group')?.value ?? cfg.groupBy;
+    const curShow = m.querySelector('#wm-show')?.value ?? cfg.show;
     if(t==='bar'||t==='donut'){
-      const gs = ent==='requests'? W_GROUPS_REQS: W_GROUPS_TASKS;
-      dim.innerHTML = `<label>Group by</label><select id="wm-group">${gs.map(([k,l])=>`<option value="${k}" ${cfg.groupBy===k?'selected':''}>${l}</option>`).join('')}</select>`;
+      const gs = ent==='requests'? W_GROUPS_REQS : W_GROUPS_TASKS.filter(([k])=> k!=='group' || !!wData.project).filter(([k])=> !(k==='workspace' && wData.project));
+      const cols = ent==='requests'? [] : (wm.cols||[]).filter(c=>W_GROUPABLE.has(c.ftype));
+      dim.innerHTML = `<label>Group by</label><select id="wm-group">${gs.map(([k,l])=>`<option value="${k}" ${cur===k?'selected':''}>${l}</option>`).join('')}${cols.length? `<optgroup label="Board columns">${cols.map(c=>`<option value="${esc(c.key)}" ${cur===c.key?'selected':''}>${esc(c.label)}</option>`).join('')}</optgroup>`:''}</select>`;
+      if(ent==='tasks'){
+        const ss = [['','Default (open tasks; all for Status)'], ...W_SHOWS_TASKS];
+        showWrap.innerHTML = `<label>Count</label><select id="wm-show">${ss.map(([k,l])=>`<option value="${k}" ${(curShow||'')===k?'selected':''}>${l}</option>`).join('')}</select>`;
+      } else showWrap.innerHTML='';
     } else if(t==='stat'||t==='list'){
       const ss = ent==='requests'? W_SHOWS_REQS: W_SHOWS_TASKS;
-      dim.innerHTML = `<label>Show</label><select id="wm-show">${ss.map(([k,l])=>`<option value="${k}" ${cfg.show===k?'selected':''}>${l}</option>`).join('')}</select>`;
-    } else dim.innerHTML='';
+      dim.innerHTML = `<label>Show</label><select id="wm-show">${ss.map(([k,l])=>`<option value="${k}" ${(curShow||'open')===k?'selected':''}>${l}</option>`).join('')}</select>`;
+      showWrap.innerHTML='';
+    } else { dim.innerHTML=''; showWrap.innerHTML=''; }
+    m.querySelector('#wm-task-only').style.display = ent==='tasks'? '' : 'none';
     m.querySelector('#wm-mine-wrap').style.display = (ent==='tasks' && (t==='stat'||t==='list'))? 'flex':'none';
   };
   wmRefresh();
+  wmFillDatalists();
+  // Board columns arrive a moment later; the fixed options are usable straight away.
+  wScopeColumns().then(cols=>{ if(!document.getElementById('wm-filters')) return; wm.cols = cols; wmRefresh(); wmDrawFilters(); });
   m.querySelector('#wm-save').onclick = async ()=>{
     const wtype = m.querySelector('#wm-type .sel')?.dataset.k || 'bar';
     const entity = m.querySelector('#wm-entity').value;
     const config = {entity};
     if(wtype==='bar'||wtype==='donut') config.groupBy = m.querySelector('#wm-group')?.value || 'status';
-    if(wtype==='stat'||wtype==='list'){ config.show = m.querySelector('#wm-show')?.value || 'open'; config.mine = m.querySelector('#wm-mine')?.checked || false; }
+    const showEl = m.querySelector('#wm-show'); if(showEl && showEl.value) config.show = showEl.value;
+    if(wtype==='stat'||wtype==='list'){ config.show = config.show || 'open'; config.mine = m.querySelector('#wm-mine')?.checked || false; }
+    if(entity==='tasks'){
+      const fl = (wm.filters||[]).filter(f=>f.f && ((f.op==='empty'||f.op==='notempty') || String(f.v||'').trim()!=='')).map(f=>({f:f.f, op:f.op||'eq', ...((f.op==='empty'||f.op==='notempty')? {} : {v:String(f.v).trim()})}));
+      if(fl.length) config.filters = fl;
+      const r = wm.range||{};
+      if(r.preset && r.preset!=='any'){ config.range = {f:r.f||'created', preset:r.preset}; if(r.preset==='custom'){ if(r.from) config.range.from=r.from; if(r.to) config.range.to=r.to; } }
+    }
     let title = m.querySelector('#wm-title').value.trim();
     if(!title){
-      const dimL = config.groupBy? ' by '+config.groupBy : config.show? ' — '+config.show : '';
+      const g = config.groupBy; const gl = g? (g.startsWith('col:')? g.slice(4) : (W_GROUPS_TASKS.concat(W_GROUPS_REQS).find(x=>x[0]===g)||[])[1]||g) : '';
+      const dimL = g? ' by '+gl : config.show? ' — '+((W_SHOWS_TASKS.concat(W_SHOWS_REQS).find(x=>x[0]===config.show)||[])[1]||config.show) : '';
       title = (entity==='requests'?'Requests':'Tasks') + dimL;
     }
     let error;
