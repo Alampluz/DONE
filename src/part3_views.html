@@ -152,27 +152,43 @@ async function renderWorkspace(id, tab){
   }
   if(navStale(_nav)) return;
   C.innerHTML = `
-    ${wsTabsHTML(id,'boards')}
     <div class="page-head"><div><h1>${esc(w.name)}</h1><div class="sub">${esc(w.description)}</div></div></div>
-    ${projects.length? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
-      ${projects.map(p=>{
-        const c = counts[p.id]||{open:0,done:0}; const total=c.open+c.done;
-        const pct = total? Math.round(c.done/total*100):0;
-        return `<div class="card" style="padding:16px;cursor:pointer" onclick="location.hash='#/project/${p.id}'">
-          <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
-            <span class="ws-dot" style="background:${p.color};width:11px;height:11px"></span>
-            <b style="font-size:14.5px;flex:1">${esc(p.name)}</b>
-            ${visChip(p.visibility)}
-            ${p.status!=='active'? `<span class="chip" style="background:var(--gray-soft);color:var(--ink2)">${p.status.replace('_',' ')}</span>`:''}
-            ${canEdit()? `<span class="pj-menu" title="Board options" onclick="event.stopPropagation();projMenu(this,'${p.id}')">⋯</span>`:''}
-          </div>
-          <div style="color:var(--ink2);font-size:12.5px;min-height:18px;margin-bottom:12px">${esc(p.description||'')}</div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink2)">
-            <div style="flex:1;height:6px;background:var(--gray-soft);border-radius:4px"><div style="width:${pct}%;height:100%;border-radius:4px;background:${p.color}"></div></div>
-            <span style="font-weight:700">${pct}%</span><span>${c.open} open</span>
-          </div></div>`;
-      }).join('')}</div>`
+    ${wsTabsHTML(id,'boards')}
+    ${projects.length? `<section class="ws-board-directory" aria-label="Workspace boards">
+      <div class="ws-board-toolbar"><input type="search" id="ws-board-search" aria-label="Search boards" placeholder="Search boards…">
+        <div class="ws-board-filters" aria-label="Board filters"><button class="btn btn-sm btn-primary" id="ws-board-all" aria-pressed="true">All boards · ${projects.length}</button>
+        <button class="btn btn-sm btn-ghost" id="ws-board-open" aria-pressed="false">Open work · ${projects.filter(p=>(counts[p.id]?.open||0)>0).length}</button></div>
+      </div><div class="ws-board-list" id="ws-board-list"></div><div class="ws-board-count" id="ws-board-count" role="status"></div></section>`
     : `<div class="card empty">No boards yet in this workspace${isStaff()? ' — create the first one.':''}</div>`}`;
+  if(!projects.length) return;
+  let onlyOpen=false;
+  const drawBoards=()=>{
+    const query=C.querySelector('#ws-board-search').value.trim().toLowerCase();
+    const visible=projects.filter(p=>(!onlyOpen||(counts[p.id]?.open||0)>0) && (p.name+' '+(p.description||'')).toLowerCase().includes(query))
+      .sort((a,b)=>(counts[b.id]?.open||0)-(counts[a.id]?.open||0)||a.name.localeCompare(b.name));
+    C.querySelector('#ws-board-list').innerHTML=visible.map(p=>{
+      const c=counts[p.id]||{open:0,done:0};
+      const imported=/imported from|sample import|monday\.com|monday board/i.test(p.description||'');
+      return `<div class="ws-board-row"><a class="ws-board-link" href="#/project/${p.id}">
+        <span class="ws-dot" style="background:${esc(p.color||'var(--accent)')}"></span>
+        <span class="ws-board-identity"><strong>${esc(p.name)}</strong>${p.description&&!imported? `<span>${esc(p.description)}</span>`:''}</span></a>
+        <div class="ws-board-metrics"><span class="ws-board-open ${c.open?'has-work':''}">${c.open} open</span><span>${c.done} done</span></div>
+        <div class="ws-board-options">${visChip(p.visibility)}${p.status!=='active'? `<span class="chip">${esc(p.status.replace('_',' '))}</span>`:''}
+        ${canEdit()? `<button class="pj-menu" aria-label="Options for ${esc(p.name)}" onclick="projMenu(this,'${p.id}')">⋯</button>`:''}</div></div>`;
+    }).join('')||'<div class="empty">No boards match. Try another search or choose All boards.</div>';
+    C.querySelector('#ws-board-count').textContent=visible.length+' of '+projects.length+' boards';
+  };
+  C.querySelector('#ws-board-search').oninput=drawBoards;
+  [['#ws-board-all',false],['#ws-board-open',true]].forEach(([selector,value])=>{
+    C.querySelector(selector).onclick=()=>{
+      onlyOpen=value;
+      [['#ws-board-all',!onlyOpen],['#ws-board-open',onlyOpen]].forEach(([s,active])=>{
+        const button=C.querySelector(s);button.setAttribute('aria-pressed',String(active));
+        button.classList.toggle('btn-primary',active);button.classList.toggle('btn-ghost',!active);
+      });drawBoards();
+    };
+  });
+  drawBoards();
 }
 /* ---- Board visibility: private | collaborate | shareable ---- */
 const ico = p => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;

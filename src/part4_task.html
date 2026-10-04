@@ -70,7 +70,8 @@ async function openTask(id){
   S._commentCache = {}; (comments||[]).forEach(c=> S._commentCache[c.id]=c);
   const p = projById(t.project_id);
   const m = modal(`<div class="modal-head">
-      <h2>${ticketTag(t)}<span id="tv-title-view">${esc(t.title)}</span></h2>
+      <div class="task-heading"><div class="task-context">${esc(S.workspaces.find(w=>w.id===p?.workspace_id)?.name||'')} / ${esc(p?.name||'Task')}</div>
+      <h2>${ticketTag(t)}<span id="tv-title-view">${esc(t.title)}</span></h2></div>
       <button class="x" aria-label="Close" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <div class="field-grid">
@@ -105,6 +106,9 @@ async function openTask(id){
       ${isStaff()? `<button class="btn btn-ghost btn-danger-ghost" onclick="deleteTask('${t.id}','${t.project_id}')">Delete task</button>`:''}
       <span style="flex:1"></span>
       <button class="btn btn-ghost" onclick="closeModals()">Close</button>${canEdit()? `<button class="btn btn-primary" id="tv-save">Save changes</button>`:''}</div>`, true);
+
+  m.classList.add('task-modal-back');
+  m.querySelector('.modal').classList.add('task-modal');
 
   if(m.querySelector('#tv-save')) m.querySelector('#tv-save').onclick = async ()=>{
     const desc = m.querySelector('#tv-desc');
