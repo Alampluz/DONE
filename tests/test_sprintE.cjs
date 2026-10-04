@@ -129,6 +129,15 @@ const driver=String.raw`window.__run=async function(){const r={};try{
    && rins.payload.every==='daily' && rins.payload.next_run==='2026-09-02'
    && rins.payload.due_in_days===3 && rins.payload.enabled===true;
  r.rcInactiveHidden = ![...body.querySelectorAll('#rc-assignee option')].some(o=>o.value==='u5');
+ // recurring rule as a dated subtask on a standing task (4 Oct): weekdays cadence, parent_task_id, no group
+ S._tasksAll=[{id:'tp',title:'Daily Flash Sale check',status:'todo',archived_at:null}];
+ closeModals(); await recurringModal('p1'); const body2=document.querySelector('.modal-body');
+ body2.querySelector('#rc-title').value='Check new campaigns'; body2.querySelector('#rc-mode').value='sub';
+ body2.querySelector('#rc-parent').value='Daily Flash Sale check'; body2.querySelector('#rc-every').value='weekdays'; body2.querySelector('#rc-next').value='2026-10-05';
+ window.__calls.length=0; await body2.parentNode.querySelector('#rc-add').onclick();
+ const sins=window.__calls.find(c=>c.table==='recurring_tasks'&&c.op==='insert');
+ r.rcSubtaskRule = !!sins && sins.payload.parent_task_id==='tp' && sins.payload.group_id===null && sins.payload.every==='weekdays';
+ r.rcWeekdaysOffered = /weekdays/.test(body2.querySelector('#rc-every').innerHTML);
  closeModals();
  window.__calls.length=0;
  await rcToggle('rc1', false, 'p1');
@@ -202,4 +211,9 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  r.sweepCountsRecurring = toasts2.some(x=>x.m==='3 alerts sent');
 }catch(e){r.error=e.message+' | '+(e.stack||'').split('\n').slice(0,4).join(' / ');}return r;};`;
 try{w.eval(scripts.join('\n')+'\n'+driver);}catch(e){console.log('EVAL ERROR:',e.message);}
-(async()=>{try{console.log(JSON.stringify(await w.eval('window.__run()'),null,2));}catch(e){console.log('RUN ERROR:',e.message);}process.exit(0);})();
+(async()=>{ const r=await w.eval('window.__run()'); let ok=true;
+ // Every boolean result is an assertion (the suite used to print JSON and exit 0 — it was never a gate).
+ const check=(n,c)=>{ console.log((c?'PASS':'FAIL')+' '+n); if(!c) ok=false; };
+ check('no error', !r.error); if(r.error) console.log(r.error);
+ for(const [k,v] of Object.entries(r)) if(typeof v==='boolean') check(k, v===true);
+ console.log(ok?'sprintE: all checks passed':'sprintE: FAILED'); process.exit(ok?0:1); })();
