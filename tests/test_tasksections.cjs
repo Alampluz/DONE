@@ -41,7 +41,7 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  window.__sel.tasks=[task('p1')];
  await openTask('t-p1');
  const body=document.querySelector('.modal-body');
- const labels=()=>[...document.querySelectorAll('.modal-body > label')].map(l=>l.textContent.trim().replace(/\s+/g,' '));
+ const labels=()=>[...document.querySelectorAll(".modal-body .tv-sec > label, .task-modal .tv-tab")].map(l=>l.textContent.trim().replace(/\s+/g,' '));
  r.csLabels = labels().join(' | ');
  r.csNoSubInput = !document.getElementById('tv-sub-new') && !document.getElementById('tv-chk-new');
  r.csKeepsDesc  = !!document.getElementById('tv-desc');
