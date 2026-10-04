@@ -12,7 +12,12 @@ cp "$root/app/index.html" ./index.html || exit 1
 export NODE_PATH="$run/node_modules"
 pass=0; fail=0; failed=""
 for f in "$root"/tests/*.cjs; do
-  if node "$f" >/dev/null 2>&1; then pass=$((pass+1)); else fail=$((fail+1)); failed="$failed $(basename "$f")"; fi
+  out="$(node "$f" 2>&1)"
+  if [ $? -eq 0 ]; then pass=$((pass+1)); else
+    fail=$((fail+1)); failed="$failed $(basename "$f")"
+    # show what the failing suite said (its FAIL lines and any error), so CI logs are diagnosable
+    echo "---- $(basename "$f") ----"; printf '%s\n' "$out" | grep -v '^PASS ' | tail -40
+  fi
 done
 echo "PASS=$pass FAIL=$fail"
 [ "$fail" -eq 0 ] || { echo "FAILING:$failed"; exit 1; }
