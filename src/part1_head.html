@@ -643,15 +643,85 @@ td.tv-name .tv-open{padding-left:20px}
 .task-modal .modal-head,.task-modal .modal-foot{flex:none}
 .task-modal .modal-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
 .task-modal .task-heading{flex:1;min-width:0}
-.task-modal .task-context{font-size:12px;color:var(--ink2);margin-bottom:6px;overflow-wrap:anywhere}
 .task-modal .modal-head{align-items:flex-start}
-.task-modal .modal-head h2{font-size:20px;line-height:1.4;overflow-wrap:anywhere}
-.task-modal .modal-head .tkt{display:block;width:fit-content;margin-bottom:5px}
 @media(max-width:600px){
   .modal-back.task-modal-back{padding:12px 8px}
   .task-modal-back .modal.task-modal{max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px)}
-  .task-modal .modal-head h2{font-size:18px}
   .task-modal .modal-foot{flex-wrap:wrap}
+}
+/* Task popup layout (4 Oct 2026, after April's mockup): breadcrumb, big title, meta line,
+   status/priority pills + owner + due, Details/Comments/Activity tabs, two-column details. */
+.task-modal-back .modal.task-modal{max-width:920px;height:min(880px,calc(100vh - 48px));height:min(880px,calc(100dvh - 48px))}
+.task-modal .tv-head{padding:22px 28px 6px;border-bottom:0}
+.task-modal .task-context{font-size:13px;color:var(--ink2);margin-bottom:8px}
+.task-modal .task-context b{color:var(--ink);font-weight:600}
+.task-modal .modal-head h2.tv-h2{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:600;line-height:1.25;letter-spacing:.1px;margin:0}
+.task-modal .tv-title-view[role=button]{cursor:text;border-radius:6px;outline-offset:3px}
+.task-modal .tv-title-view[role=button]:focus:not(:focus-visible){outline:none}
+.modal.task-modal:focus{outline:none}
+.task-modal .tv-title-view[role=button]:hover{background:var(--gray-soft);box-shadow:0 0 0 4px var(--gray-soft)}
+.task-modal .tv-title-input{font-family:'Fraunces',Georgia,serif;font-size:24px;font-weight:600;padding:4px 8px;margin:-5px 0 0 -9px}
+.task-modal .tv-meta{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:14px;color:var(--ink2)}
+.task-modal .tv-meta .tv-tkt{display:inline-block;font-size:12.5px;margin:0}
+.task-modal .tv-sep{color:var(--ink3)}
+.task-modal .tv-props{display:flex;align-items:stretch;flex-wrap:wrap;gap:0;padding:14px 28px 16px;flex:none}
+.task-modal .tv-props>*{display:flex;flex-direction:column;justify-content:center;padding:0 24px;border-left:1px solid var(--line)}
+.task-modal .tv-props>*:first-child{padding-left:0;border-left:0}
+.task-modal .tv-props>[hidden]{display:none}
+.task-modal .tv-pills{flex-direction:row;align-items:center;gap:8px}
+.task-modal .tv-pill{width:auto;padding:7px 28px 7px 14px;border-radius:8px;font-size:13px;font-weight:600;border:1px solid transparent;cursor:pointer;-webkit-appearance:none;appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 13px) 52%,calc(100% - 9px) 52%;background-size:4px 4px;background-repeat:no-repeat}
+.task-modal .tv-pill:disabled{cursor:default;background-image:none;padding-right:14px;opacity:1}
+.task-modal .tv-prop label{margin:0 0 4px;font-size:12.5px;font-weight:500;color:var(--ink2)}
+.task-modal .tv-prop-val{display:flex;align-items:center;gap:8px}
+.task-modal .tv-bare{width:auto;border:1px solid transparent;background:none;padding:4px 6px;margin-left:-6px;font-size:15px;font-weight:500;cursor:pointer}
+.task-modal .tv-bare:hover:not(:disabled),.task-modal .tv-bare:focus{border-color:var(--line);background:var(--field)}
+.task-modal .tv-bare:disabled{opacity:1;cursor:default}
+.task-modal .tv-tabs{display:flex;gap:4px;padding:0 28px;border-bottom:1px solid var(--line);flex:none}
+.task-modal .tv-tab{padding:10px 18px 11px;font-size:14px;font-weight:600;color:var(--ink2);border-bottom:2px solid transparent;margin-bottom:-1px;display:inline-flex;align-items:center;gap:8px}
+.task-modal .tv-tab:hover{color:var(--ink)}
+.task-modal .tv-tab.on{color:var(--accent-ink);border-bottom-color:var(--accent)}
+.task-modal .tv-count{font-size:11.5px;font-weight:700;color:var(--ink2);background:var(--gray-soft);border-radius:10px;padding:1px 8px;min-width:22px;text-align:center}
+.task-modal .tv-count:empty{display:none}
+.task-modal .modal-body{padding:18px 28px 22px}
+.task-modal .tv-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:0 28px}
+.task-modal .tv-grid[hidden]{display:none}
+.task-modal .tv-side{border-left:1px solid var(--line);padding-left:28px}
+.task-modal .tv-side:empty{display:none}
+.task-modal .tv-sec+.tv-sec{margin-top:22px}
+.task-modal .tv-sec>label,.task-modal .tv-sec label:first-child{font-size:15px;font-weight:700;color:var(--ink);margin:0 0 8px}
+.task-modal .tv-sub{font-weight:500;color:var(--ink2)}
+.task-modal .tv-add{display:flex;gap:8px;margin-top:8px}
+.task-modal .tv-add input{flex:1}
+.task-modal .tv-deps.is-waiting #tv-deps{background:var(--amber-soft);border-radius:10px;padding:8px 12px}
+.task-modal .tv-created{grid-column:1/-1;margin-top:20px;font-size:11.5px;color:var(--ink3)}
+.task-modal .tv-main .strow{grid-template-columns:118px minmax(0,1fr) minmax(0,1fr) 26px;grid-template-areas:"st ti ti x" "ty as du .";padding:8px 0;border-bottom:1px solid var(--line)}
+.task-modal .tv-main .strow .st-status{grid-area:st}
+.task-modal .tv-main .strow .st-title{grid-area:ti}
+.task-modal .tv-main .strow .del{grid-area:x}
+.task-modal .tv-main .strow .st-type{grid-area:ty}
+.task-modal .tv-main .strow .st-asg{grid-area:as}
+.task-modal .tv-main .strow .st-due{grid-area:du}
+.task-modal .tv-main .strow.ro{grid-template-areas:none;grid-template-columns:auto minmax(0,1fr) auto auto auto 0}
+.task-modal .modal-foot{padding:16px 28px}
+.task-modal .modal-foot .btn{min-width:110px;justify-content:center}
+@media(max-width:760px){
+  .task-modal .tv-head,.task-modal .tv-props,.task-modal .tv-tabs,.task-modal .modal-body,.task-modal .modal-foot{padding-left:16px;padding-right:16px}
+  .task-modal .modal-head h2.tv-h2{font-size:21px}
+  .task-modal .tv-props{gap:12px 0}
+  .task-modal .tv-props>*{padding:0 16px}
+  .task-modal .tv-pills{flex-basis:100%;padding:0;border:0}
+  .task-modal .tv-props>.tv-prop:nth-child(2){padding-left:0;border-left:0}
+  .task-modal .tv-props>.tv-prop{flex:1 1 0;min-width:0}
+  .task-modal .tv-pill{flex:1 1 0;min-width:0}
+  .task-modal .tv-prop-val{min-width:0}
+  .task-modal .tv-prop-val .tv-bare{width:100%;min-width:0;font-size:14px}
+  .task-modal-back .modal.task-modal{height:calc(100vh - 24px);height:calc(100dvh - 24px)}
+  .task-modal .tv-grid{grid-template-columns:1fr}
+  .task-modal .tv-side{border-left:0;padding-left:0;margin-top:22px}
+  .task-modal .tv-tab{padding:10px 12px 11px}
+  .task-modal .modal-foot .btn{min-width:0}
 }
 .pick{display:inline-flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:180px;max-width:100%;background:var(--field);border:1px solid var(--line);border-radius:9px;padding:0 10px;height:36px;cursor:pointer;font:500 13.5px inherit;color:var(--ink);text-align:left}
 .pick:hover{border-color:var(--ink3)} .pick.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)} .pick.empty .pick-cur{color:var(--ink3)}

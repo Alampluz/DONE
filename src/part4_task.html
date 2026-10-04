@@ -69,46 +69,79 @@ async function openTask(id){
   await hydrateCommentAtts(comments||[]);
   S._commentCache = {}; (comments||[]).forEach(c=> S._commentCache[c.id]=c);
   const p = projById(t.project_id);
-  const m = modal(`<div class="modal-head">
-      <div class="task-heading"><div class="task-context">${esc(S.workspaces.find(w=>w.id===p?.workspace_id)?.name||'')} / ${esc(p?.name||'Task')}</div>
-      <h2>${ticketTag(t)}<span id="tv-title-view">${esc(t.title)}</span></h2></div>
-      <button class="x" aria-label="Close" onclick="closeModals()">✕</button></div>
-    <div class="modal-body">
-      <div class="field-grid">
-        <div><label>${esc(coreLabel(t.project_id,'status'))}</label><select id="tv-status" ${canEdit()?'':'disabled'}>${STATUSES.map(s=>`<option value="${s.k}" ${s.k===t.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
-        <div ${coreHidden(t.project_id,'priority')?'hidden':''}><label>${esc(coreLabel(t.project_id,'priority'))}</label><select id="tv-prio" ${canEdit()?'':'disabled'}>${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k===t.priority?'selected':''}>${x.label}</option>`).join('')}</select></div>
-        <div ${coreHidden(t.project_id,'assignee')?'hidden':''}><label>${esc(coreLabel(t.project_id,'assignee'))}</label><select id="tv-assignee" ${canEdit()?'':'disabled'}><option value="">Unassigned</option>${assigneeOptions(t.project_id, t.assignee_id)}</select></div>
-        <div ${coreHidden(t.project_id,'due_date')?'hidden':''}><label>${esc(coreLabel(t.project_id,'due_date'))}</label><input id="tv-due" type="date" value="${t.due_date||''}" ${canEdit()?'':'disabled'}></div>
+  const ws = S.workspaces.find(w=>w.id===p?.workspace_id);
+  const edit = canEdit();
+  // Brand / platform columns on this board give the meta line its "Revlon · Lazada".
+  const metaVals = (S._fields||[]).filter(f=>f.project_id===t.project_id && (f.ftype==='brand'||f.ftype==='platform'))
+    .map(f=>bfColValue(t,f)).filter(Boolean);
+  const meta = [ticketTag(t,'tv-tkt'), ...metaVals.map(v=>`<span>${esc(v)}</span>`)].filter(Boolean);
+  const nComments = (comments||[]).filter(c=>!c.deleted_at).length;
+  const showComments = sectionOn(t.project_id,'comments'), showActivity = !isExternal();
+  const chkDone = (chk||[]).filter(c=>c.done).length;
+  const owner = prof(t.assignee_id);
+  const m = modal(`<div class="modal-head tv-head">
+      <div class="task-heading">
+        <div class="task-context">${esc(ws?.name||'')}${ws?' <span aria-hidden="true">/</span> ':''}<b>${esc(p?.name||'Task')}</b></div>
+        <h2 class="tv-h2"><span id="tv-title-view" class="tv-title-view" ${edit?'role="button" tabindex="0" title="Click to rename"':''}>${esc(t.title)}</span></h2>
+        <input id="tv-title" class="tv-title-input" aria-label="Task title" value="${esc(t.title)}" ${edit?'':'disabled'} hidden>
+        ${meta.length? `<div class="tv-meta">${meta.join(' <span class="tv-sep" aria-hidden="true">·</span> ')}</div>`:''}
       </div>
-      <label>Title</label><input id="tv-title" value="${esc(t.title)}" ${canEdit()?'':'disabled'}>
-      ${sectionOn(t.project_id,'description')? `<label>Description</label><textarea id="tv-desc" rows="3" ${canEdit()?'':'disabled'}>${esc(t.description)}</textarea>`:''}
-      ${sectionOn(t.project_id,'subtasks')? `<label>Subtasks</label>
-      <div id="tv-subprog">${subProgressBar(subs||[])}</div>
-      <div id="tv-subs">${(subs||[]).map(stRow).join('')}</div>
-      ${canCreate()? `<div style="display:flex;gap:8px;margin-top:6px"><input id="tv-sub-new" placeholder="Add a subtask…" style="flex:1">
-        <button class="btn btn-ghost btn-sm" id="tv-sub-add">Add</button></div>`:''}`:''}
-      ${sectionOn(t.project_id,'checklist')? `<label>Checklist</label>
-      <div id="tv-chk">${(chk||[]).map(c=>chkRow(c)).join('')}</div>
-      ${canEdit()? `<div style="display:flex;gap:8px;margin-top:6px"><input id="tv-chk-new" placeholder="Add checklist item…" style="flex:1">
-        <button class="btn btn-ghost btn-sm" id="tv-chk-add">Add</button></div>`:''}`:''}
-      ${sectionOn(t.project_id,'attachments')? `<label>Attachments</label>
-      <div id="tv-atts">${attListHTML(atts, canEdit())}</div>
-      ${canCreate()? attachZoneHTML('tv-drop') : ''}`:''}
-      ${(p?.approval_gate?.on || (apprs||[]).length)? signoffSectionHTML(t, apprs||[], p?.approval_gate||{}) : ''}
-      ${sectionOn(t.project_id,'deps') && (isStaff() || (depsOn||[]).length || (depsBy||[]).length)? depsSectionHTML(t, depsOn||[], depsBy||[], depTasks) : ''}
-      ${sectionOn(t.project_id,'comments')? `<label>Comments</label>
-      <div id="tv-comments">${(comments||[]).map(commentRow).join('')||'<div style="color:var(--ink3);font-size:13px">No comments yet</div>'}</div>
-      ${canCreate()? commentComposerHTML('tv') : ''}`:''}
-      ${historySectionHTML()}
-      <div style="margin-top:14px;font-size:11.5px;color:var(--ink3)">Created ${fmtDateTime(t.created_at)} by ${esc(prof(t.created_by)?.full_name||'—')} · in ${esc(p?.name||'')}</div>
+      <button class="x" aria-label="Close" onclick="closeModals()">✕</button></div>
+    <div class="tv-props">
+      <div class="tv-pills">
+        <select id="tv-status" class="tv-pill tv-pill-status" aria-label="${esc(coreLabel(t.project_id,'status'))}" ${edit?'':'disabled'}>${STATUSES.map(s=>`<option value="${s.k}" ${s.k===t.status?'selected':''}>${s.label}</option>`).join('')}</select>
+        <select id="tv-prio" class="tv-pill tv-pill-prio" aria-label="${esc(coreLabel(t.project_id,'priority'))}" ${edit?'':'disabled'} ${coreHidden(t.project_id,'priority')?'hidden':''}>${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k===t.priority?'selected':''}>${x.label}</option>`).join('')}</select>
+      </div>
+      <div class="tv-prop" ${coreHidden(t.project_id,'assignee')?'hidden':''}>
+        <label for="tv-assignee">${esc(coreLabel(t.project_id,'assignee'))}</label>
+        <div class="tv-prop-val"><span id="tv-owner-av">${owner? avatar(owner,true):''}</span>
+          <select id="tv-assignee" class="tv-bare" ${edit?'':'disabled'}><option value="">Unassigned</option>${assigneeOptions(t.project_id, t.assignee_id)}</select></div>
+      </div>
+      <div class="tv-prop" ${coreHidden(t.project_id,'due_date')?'hidden':''}>
+        <label for="tv-due">${esc(coreLabel(t.project_id,'due_date'))}</label>
+        <div class="tv-prop-val"><input id="tv-due" class="tv-bare" type="date" value="${t.due_date||''}" ${edit?'':'disabled'}></div>
+      </div>
+    </div>
+    <div class="tv-tabs" role="tablist" aria-label="Task sections">
+      <button role="tab" class="tv-tab on" id="tv-tab-details" aria-controls="tv-pane-details" aria-selected="true">Details</button>
+      ${showComments? `<button role="tab" class="tv-tab" id="tv-tab-comments" aria-controls="tv-pane-comments" aria-selected="false" tabindex="-1">Comments <span class="tv-count" id="tv-comment-count">${nComments||''}</span></button>`:''}
+      ${showActivity? `<button role="tab" class="tv-tab" id="tv-tab-activity" aria-controls="tv-pane-activity" aria-selected="false" tabindex="-1">Activity</button>`:''}
+    </div>
+    <div class="modal-body">
+      <div role="tabpanel" id="tv-pane-details" aria-labelledby="tv-tab-details" class="tv-grid">
+        <div class="tv-main">
+          ${sectionOn(t.project_id,'description')? `<section class="tv-sec"><label for="tv-desc">Description</label><textarea id="tv-desc" rows="4" placeholder="${edit?'Add a description…':''}" ${edit?'':'disabled'}>${esc(t.description)}</textarea></section>`:''}
+          ${sectionOn(t.project_id,'checklist')? `<section class="tv-sec"><label>Checklist <span class="tv-sub" id="tv-chk-count">${(chk||[]).length? `(${chkDone} of ${(chk||[]).length} complete)`:''}</span></label>
+            <div id="tv-chk">${(chk||[]).map(c=>chkRow(c)).join('')}</div>
+            ${edit? `<div class="tv-add"><input id="tv-chk-new" placeholder="Add checklist item…"><button class="btn btn-ghost btn-sm" id="tv-chk-add">Add</button></div>`:''}</section>`:''}
+          ${sectionOn(t.project_id,'subtasks')? `<section class="tv-sec"><label>Subtasks</label>
+            <div id="tv-subprog">${subProgressBar(subs||[])}</div>
+            <div id="tv-subs">${(subs||[]).map(stRow).join('')}</div>
+            ${canCreate()? `<div class="tv-add"><input id="tv-sub-new" placeholder="Add a subtask…"><button class="btn btn-ghost btn-sm" id="tv-sub-add">Add</button></div>`:''}</section>`:''}
+        </div>
+        <div class="tv-side">
+          ${sectionOn(t.project_id,'attachments')? `<section class="tv-sec"><label>Attachments</label>
+            <div id="tv-atts">${attListHTML(atts, edit)}</div>
+            ${canCreate()? attachZoneHTML('tv-drop') : ''}</section>`:''}
+          ${sectionOn(t.project_id,'deps') && (isStaff() || (depsOn||[]).length || (depsBy||[]).length)? `<section class="tv-sec tv-deps${(depsOn||[]).length?' is-waiting':''}">${depsSectionHTML(t, depsOn||[], depsBy||[], depTasks)}</section>` : ''}
+          ${(p?.approval_gate?.on || (apprs||[]).length)? `<section class="tv-sec">${signoffSectionHTML(t, apprs||[], p?.approval_gate||{})}</section>` : ''}
+        </div>
+        <div class="tv-created">Created ${fmtDateTime(t.created_at)} by ${esc(prof(t.created_by)?.full_name||'—')} · in ${esc(p?.name||'')}</div>
+      </div>
+      ${showComments? `<div role="tabpanel" id="tv-pane-comments" aria-labelledby="tv-tab-comments" hidden>
+        <div id="tv-comments">${(comments||[]).map(commentRow).join('')||'<div style="color:var(--ink3);font-size:13px">No comments yet</div>'}</div>
+        ${canCreate()? commentComposerHTML('tv') : ''}</div>`:''}
+      ${showActivity? `<div role="tabpanel" id="tv-pane-activity" aria-labelledby="tv-tab-activity" hidden>
+        <div id="tv-history">${historyHTML(S._taskHist)}</div></div>`:''}
     </div>
     <div class="modal-foot">
       ${isStaff()? `<button class="btn btn-ghost btn-danger-ghost" onclick="deleteTask('${t.id}','${t.project_id}')">Delete task</button>`:''}
       <span style="flex:1"></span>
-      <button class="btn btn-ghost" onclick="closeModals()">Close</button>${canEdit()? `<button class="btn btn-primary" id="tv-save">Save changes</button>`:''}</div>`, true);
+      <button class="btn btn-ghost" onclick="closeModals()">${edit?'Cancel':'Close'}</button>${edit? `<button class="btn btn-primary" id="tv-save">Save changes</button>`:''}</div>`, true);
 
   m.classList.add('task-modal-back');
   m.querySelector('.modal').classList.add('task-modal');
+  wireTaskView(m, t);
 
   if(m.querySelector('#tv-save')) m.querySelector('#tv-save').onclick = async ()=>{
     const desc = m.querySelector('#tv-desc');
@@ -148,6 +181,65 @@ async function openTask(id){
     cIn.addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey && !document.querySelector('.mention-menu')){ e.preventDefault(); m.querySelector('#tv-comment-add').click(); } });
     m.querySelector('#tv-comment-add').onclick = ()=> postComment('task', t.id, t.title, cIn, m.querySelector('#tv-comments'));
   }
+}
+/* Task popup chrome (4 Oct 2026): tabs, click-to-rename title, coloured status/priority
+   pills, and live counts. Everything here is presentation; the Save handler in openTask
+   still reads #tv-title / #tv-status / #tv-prio / #tv-assignee / #tv-due as before. */
+function tvPaintPills(m){
+  const st = m.querySelector('#tv-status'), pr = m.querySelector('#tv-prio');
+  if(st){ const s = STATUSES.find(x=>x.k===st.value)||STATUSES[0];
+    st.style.background = `color-mix(in srgb, ${s.color} 16%, var(--panel))`; st.style.color = s.ink||s.color; st.style.borderColor = 'transparent'; }
+  if(pr){ const x = PRIORITIES.find(y=>y.k===pr.value)||PRIORITIES[2];
+    pr.style.background = x.soft; pr.style.color = x.color; pr.style.borderColor = 'transparent'; }
+}
+function tvShowTab(m, which){
+  m.querySelectorAll('.tv-tab').forEach(b=>{
+    const on = b.id==='tv-tab-'+which;
+    b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); b.tabIndex = on? 0 : -1;
+    const pane = m.querySelector('#'+b.getAttribute('aria-controls')); if(pane) pane.hidden = !on;
+  });
+}
+function tvCounts(m){
+  const chk = m.querySelector('#tv-chk'), cc = m.querySelector('#tv-chk-count');
+  if(chk && cc){ const all = chk.querySelectorAll('.chk').length, done = chk.querySelectorAll('.chk.done').length;
+    cc.textContent = all? `(${done} of ${all} complete)` : ''; }
+  const cm = m.querySelector('#tv-comments'), cn = m.querySelector('#tv-comment-count');
+  if(cm && cn){ const n = cm.querySelectorAll('.comment').length; cn.textContent = n||''; }
+}
+function wireTaskView(m, t){
+  tvPaintPills(m);
+  setTimeout(()=>{ const box=m.querySelector('.modal'); if(box && box.contains(document.activeElement) && document.activeElement.id==='tv-title-view') box.focus({preventScroll:true}); }, 0);
+  ['#tv-status','#tv-prio'].forEach(sel=>{ const el=m.querySelector(sel); if(el) el.addEventListener('change', ()=>tvPaintPills(m)); });
+  const asg = m.querySelector('#tv-assignee'), av = m.querySelector('#tv-owner-av');
+  if(asg && av) asg.addEventListener('change', ()=>{ const p = prof(asg.value); av.innerHTML = p? avatar(p,true) : ''; });
+  // Tabs: click, and ←/→/Home/End between them (WAI-ARIA tabs pattern)
+  const tabs = [...m.querySelectorAll('.tv-tab')];
+  tabs.forEach((b,i)=>{
+    b.onclick = ()=> tvShowTab(m, b.id.replace('tv-tab-',''));
+    b.onkeydown = e=>{
+      let j = null;
+      if(e.key==='ArrowRight') j=(i+1)%tabs.length; else if(e.key==='ArrowLeft') j=(i-1+tabs.length)%tabs.length;
+      else if(e.key==='Home') j=0; else if(e.key==='End') j=tabs.length-1;
+      if(j==null) return; e.preventDefault(); tabs[j].click(); tabs[j].focus();
+    };
+  });
+  // Title: reads as a heading, becomes an input on click / Enter
+  const view = m.querySelector('#tv-title-view'), inp = m.querySelector('#tv-title');
+  if(view && inp && !inp.disabled){
+    const open = ()=>{ view.parentElement.hidden = true; inp.hidden = false; inp.focus(); inp.select(); };
+    const shut = ()=>{ view.textContent = inp.value.trim() || t.title; view.parentElement.hidden = false; inp.hidden = true; };
+    view.onclick = open;
+    view.onkeydown = e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } };
+    inp.addEventListener('blur', shut);
+    inp.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){ e.preventDefault(); inp.blur(); }
+      else if(e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); inp.value = view.textContent; inp.blur(); }
+    });
+  }
+  // Counts follow the lists however rows get added (Add, paste, re-render) or removed
+  const sync = ()=> tvCounts(m);
+  ['#tv-chk','#tv-comments'].forEach(sel=>{ const el=m.querySelector(sel);
+    if(el){ new MutationObserver(sync).observe(el, {childList:true, subtree:true, attributes:true, attributeFilter:['class']}); el.addEventListener('change', ()=>setTimeout(sync,0)); } });
 }
 /* ---- sign-off (maker-checker) ----
    The DB enforces the gate: moving into the gated status without an approved
@@ -314,12 +406,12 @@ function stRow(s){
     <span style="font-size:12px">${s.assignee_id? esc(prof(s.assignee_id)?.full_name||''):''}</span>
     <span style="font-size:12px;color:var(--ink3)">${s.due_date||''}</span><span></span></div>`;
   return `<div class="strow" id="st-${s.id}" data-task="${s.task_id}">
-    <select onchange="stUpd('${s.id}','status',this.value,'${s.task_id}')">${STATUSES.map(x=>`<option value="${x.k}" ${x.k===s.status?'selected':''}>${x.label}</option>`).join('')}</select>
-    <input type="text" value="${esc(s.title)}" onchange="stUpd('${s.id}','title',this.value.trim(),'${s.task_id}')">
-    <input type="text" value="${esc(s.stype||'')}" placeholder="Type" onchange="stUpd('${s.id}','stype',this.value.trim()||null,'${s.task_id}')">
-    <select onchange="stUpd('${s.id}','assignee_id',this.value||null,'${s.task_id}')"><option value="">Unassigned</option>${S.profiles.filter(p=>p.active && !(p.email||'').startsWith('forms+')).map(p=>`<option value="${p.id}" ${p.id===s.assignee_id?'selected':''}>${esc(p.full_name)}</option>`).join('')}</select>
-    <input type="date" value="${s.due_date||''}" onchange="stUpd('${s.id}','due_date',this.value||null,'${s.task_id}')">
-    <button class="del" onclick="delSubtask('${s.id}','${s.task_id}')">✕</button></div>`;
+    <select class="st-status" aria-label="Subtask status" onchange="stUpd('${s.id}','status',this.value,'${s.task_id}')">${STATUSES.map(x=>`<option value="${x.k}" ${x.k===s.status?'selected':''}>${x.label}</option>`).join('')}</select>
+    <input class="st-title" aria-label="Subtask title" type="text" value="${esc(s.title)}" onchange="stUpd('${s.id}','title',this.value.trim(),'${s.task_id}')">
+    <input class="st-type" aria-label="Subtask type" type="text" value="${esc(s.stype||'')}" placeholder="Type" onchange="stUpd('${s.id}','stype',this.value.trim()||null,'${s.task_id}')">
+    <select class="st-asg" aria-label="Subtask assignee" onchange="stUpd('${s.id}','assignee_id',this.value||null,'${s.task_id}')"><option value="">Unassigned</option>${S.profiles.filter(p=>p.active && !(p.email||'').startsWith('forms+')).map(p=>`<option value="${p.id}" ${p.id===s.assignee_id?'selected':''}>${esc(p.full_name)}</option>`).join('')}</select>
+    <input class="st-due" aria-label="Subtask due date" type="date" value="${s.due_date||''}" onchange="stUpd('${s.id}','due_date',this.value||null,'${s.task_id}')">
+    <button class="del" aria-label="Delete subtask" onclick="delSubtask('${s.id}','${s.task_id}')">✕</button></div>`;
 }
 async function stUpd(id, field, val, taskId){
   const {error} = await db.from('subtasks').update({[field]:val}).eq('id',id);
