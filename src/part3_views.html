@@ -356,18 +356,19 @@ async function recurringModal(pid){
       priority:m.querySelector('#rc-prio').value, assignee_id:m.querySelector('#rc-assignee').value||null,
       every:m.querySelector('#rc-every').value, next_run, due_in_days, enabled:true, parent_task_id});
     if(error) return toast(error.message, true);
-    toast('Recurring task added'); closeModals(); recurringModal(pid);
+    toast('Recurring task added'); closeModals(); await recurringModal(pid);
   };
 }
 async function rcToggle(id, enabled, pid){
   const {error} = await db.from('recurring_tasks').update({enabled}).eq('id',id);
-  if(error){ toast(error.message, true); closeModals(); recurringModal(pid); return; }
+  if(error){ toast(error.message, true); closeModals(); await recurringModal(pid); return; }
   toast(enabled? 'Rule switched on':'Rule paused');
 }
 async function rcDelete(id, pid){
   const {error} = await db.from('recurring_tasks').delete().eq('id',id);
   if(error) return toast(error.message, true);
-  toast('Rule deleted'); closeModals(); recurringModal(pid);
+  // awaited so a caller (or test) that continues right after never races the re-opened dialog
+  toast('Rule deleted'); closeModals(); await recurringModal(pid);
 }
 function editProjectModal(pid){
   const p = (S.projects||[]).find(x=>x.id===pid); if(!p) return;
