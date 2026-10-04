@@ -3208,13 +3208,13 @@ async function applyTemplate(pid, spec){
   }
 }
 /* ---- Recurring tasks: rules only — a 15-min DB sweep creates the tasks ---- */
-const RC_EVERY = {daily:'Every day', weekly:'Every week', monthly:'Every month'};
+const RC_EVERY = {daily:'Every day', weekdays:'Every weekday (Mon–Fri)', weekly:'Every week', monthly:'Every month'};
 function rcRow(r, groups){
   const g = (groups||[]).find(x=>x.id===r.group_id);
   return `<div class="rc-row" style="display:flex;align-items:center;gap:8px;padding:7px 0;font-size:13px;border-bottom:1px solid var(--line)">
     <label class="sw"><input type="checkbox" ${r.enabled?'checked':''} onchange="rcToggle('${r.id}',this.checked,'${r.project_id}')"><span></span></label>
     <b>${esc(r.title)}</b> ${prioChip(r.priority)}
-    <span style="color:var(--ink3);font-size:12px">${RC_EVERY[r.every]||esc(r.every)} · next ${esc(r.next_run||'—')}${g? ' · '+esc(g.name):''}${r.due_in_days? ` · due +${r.due_in_days}d`:''}</span>
+    <span style="color:var(--ink3);font-size:12px">${RC_EVERY[r.every]||esc(r.every)} · next ${esc(r.next_run||'—')}${r.parent_task_id? ' · subtask of “'+esc(((S._tasksAll||[]).find(t=>t.id===r.parent_task_id)||{}).title||'a task')+'”' : (g? ' · '+esc(g.name):'')}${r.due_in_days? ` · due +${r.due_in_days}d`:''}</span>
     <span style="margin-left:auto;display:flex;align-items:center;gap:8px">${avatar(prof(r.assignee_id), true)}
       <span style="cursor:pointer;color:var(--ink3)" title="Delete rule" onclick="rcDelete('${r.id}','${r.project_id}')">✕</span></span>
   </div>`;
@@ -3234,7 +3234,12 @@ async function recurringModal(pid){
       <label style="margin-top:14px">New rule</label>
       <input id="rc-title" placeholder="Task title, e.g. Weekly stock check">
       <div class="field-grid">
-        <div><label>Group</label><select id="rc-group"><option value="">No group</option>${(groups||[]).map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select></div>
+        <div><label>Create as ${helpIcon('A new task each time, or a dated subtask added to one standing task — the way a daily check is one task that collects its days.')}</label>
+          <select id="rc-mode" onchange="document.getElementById('rc-parent-wrap').style.display=this.value==='sub'?'':'none';document.getElementById('rc-group-wrap').style.display=this.value==='sub'?'none':''">
+            <option value="task">A new task</option><option value="sub">A subtask on an existing task</option></select></div>
+        <div id="rc-parent-wrap" style="display:none"><label>Parent task</label>
+          <input id="rc-parent" list="rc-parent-list" placeholder="Type to find the task…"><datalist id="rc-parent-list">${(S._tasksAll||[]).filter(t=>!t.archived_at && t.status!=='done').slice(0,400).map(t=>`<option value="${esc(t.title)}"></option>`).join('')}</datalist></div>
+        <div id="rc-group-wrap"><label>Group</label><select id="rc-group"><option value="">No group</option>${(groups||[]).map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select></div>
         <div><label>Priority</label><select id="rc-prio">${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k==='normal'?'selected':''}>${x.label}</option>`).join('')}</select></div>
         <div><label>Assignee</label><select id="rc-assignee"><option value="">Unassigned</option>${people.map(u=>`<option value="${u.id}">${esc(u.full_name)}</option>`).join('')}</select></div>
         <div><label>Repeats</label><select id="rc-every">${Object.entries(RC_EVERY).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></div>
@@ -3247,23 +3252,31 @@ async function recurringModal(pid){
     const title = m.querySelector('#rc-title').value.trim(); if(!title) return toast('Title is required', true);
     const next_run = m.querySelector('#rc-next').value; if(!next_run) return toast('Pick a first run date', true);
     const due_in_days = Math.min(365, Math.max(0, parseInt(m.querySelector('#rc-due').value,10)||0));
+    let parent_task_id = null;
+    if(m.querySelector('#rc-mode').value==='sub'){
+      const name = m.querySelector('#rc-parent').value.trim();
+      const pt = (S._tasksAll||[]).find(t=>t.title===name && !t.archived_at) || (S._tasksAll||[]).find(t=>t.title.toLowerCase()===name.toLowerCase() && !t.archived_at);
+      if(!pt) return toast('Pick the parent task from the list', true);
+      parent_task_id = pt.id;
+    }
     const {error} = await db.from('recurring_tasks').insert({
-      project_id:pid, group_id:m.querySelector('#rc-group').value||null, title, description:'',
+      project_id:pid, group_id: parent_task_id? null : (m.querySelector('#rc-group').value||null), title, description:'',
       priority:m.querySelector('#rc-prio').value, assignee_id:m.querySelector('#rc-assignee').value||null,
-      every:m.querySelector('#rc-every').value, next_run, due_in_days, enabled:true});
+      every:m.querySelector('#rc-every').value, next_run, due_in_days, enabled:true, parent_task_id});
     if(error) return toast(error.message, true);
-    toast('Recurring task added'); closeModals(); recurringModal(pid);
+    toast('Recurring task added'); closeModals(); await recurringModal(pid);
   };
 }
 async function rcToggle(id, enabled, pid){
   const {error} = await db.from('recurring_tasks').update({enabled}).eq('id',id);
-  if(error){ toast(error.message, true); closeModals(); recurringModal(pid); return; }
+  if(error){ toast(error.message, true); closeModals(); await recurringModal(pid); return; }
   toast(enabled? 'Rule switched on':'Rule paused');
 }
 async function rcDelete(id, pid){
   const {error} = await db.from('recurring_tasks').delete().eq('id',id);
   if(error) return toast(error.message, true);
-  toast('Rule deleted'); closeModals(); recurringModal(pid);
+  // awaited so a caller (or test) that continues right after never races the re-opened dialog
+  toast('Rule deleted'); closeModals(); await recurringModal(pid);
 }
 function editProjectModal(pid){
   const p = (S.projects||[]).find(x=>x.id===pid); if(!p) return;
