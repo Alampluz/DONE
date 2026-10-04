@@ -610,9 +610,49 @@ td.tv-name .tv-open{padding-left:20px}
 @keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
 
 /* modal */
+.ws-board-directory{max-width:1120px}
+.ws-board-toolbar{display:flex;align-items:center;gap:16px;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap}
+.ws-board-toolbar input{width:320px;max-width:100%;margin:0}
+.ws-board-filters{display:flex;gap:8px;flex-wrap:wrap}
+.ws-board-list{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.ws-board-row{display:flex;align-items:center;gap:20px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.ws-board-row:last-child{border-bottom:0}
+.ws-board-row:hover{background:var(--accent-soft)}
+.ws-board-link{display:flex;align-items:center;gap:12px;flex:1;min-width:0;color:var(--ink);text-decoration:none}
+.ws-board-link .ws-dot{flex:none}
+.ws-board-identity{display:flex;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}
+.ws-board-identity strong{font-size:14px}
+.ws-board-identity>span{font-size:12px;color:var(--ink2)}
+.ws-board-metrics{display:flex;gap:20px;font-size:12px;color:var(--ink2);white-space:nowrap}
+.ws-board-open.has-work{font-weight:700;color:var(--accent-ink)}
+.ws-board-options{display:flex;align-items:center;gap:8px}
+.ws-board-count{font-size:12px;color:var(--ink2);padding:12px 2px}
+@media(max-width:600px){
+  .ws-board-toolbar input{width:100%}
+  .ws-board-row{gap:12px;padding:14px 12px;flex-wrap:wrap}
+  .ws-board-link{flex-basis:calc(100% - 50px)}
+  .ws-board-metrics{order:3;margin-left:20px;flex:1}
+  .ws-board-options .vis-chip{display:none}
+}
 .modal-back{position:fixed;inset:0;background:rgba(15,16,26,.45);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow-y:auto}
 .modal{background:var(--panel);border-radius:14px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:pop .16s ease;margin-bottom:5vh}
 .modal.wide{max-width:820px}
+/* Task details stay centered; long tasks scroll inside the dialog, not off screen. */
+.modal-back.task-modal-back{align-items:center;padding:24px 16px;overflow:hidden;background:rgba(15,16,26,.6)}
+.task-modal-back .modal.task-modal{display:flex;flex-direction:column;max-width:820px;max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);margin:0;overflow:hidden}
+.task-modal .modal-head,.task-modal .modal-foot{flex:none}
+.task-modal .modal-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+.task-modal .task-heading{flex:1;min-width:0}
+.task-modal .task-context{font-size:12px;color:var(--ink2);margin-bottom:6px;overflow-wrap:anywhere}
+.task-modal .modal-head{align-items:flex-start}
+.task-modal .modal-head h2{font-size:20px;line-height:1.4;overflow-wrap:anywhere}
+.task-modal .modal-head .tkt{display:block;width:fit-content;margin-bottom:5px}
+@media(max-width:600px){
+  .modal-back.task-modal-back{padding:12px 8px}
+  .task-modal-back .modal.task-modal{max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px)}
+  .task-modal .modal-head h2{font-size:18px}
+  .task-modal .modal-foot{flex-wrap:wrap}
+}
 .pick{display:inline-flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:180px;max-width:100%;background:var(--field);border:1px solid var(--line);border-radius:9px;padding:0 10px;height:36px;cursor:pointer;font:500 13.5px inherit;color:var(--ink);text-align:left}
 .pick:hover{border-color:var(--ink3)} .pick.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)} .pick.empty .pick-cur{color:var(--ink3)}
 .pick-cur{overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .pick-chev{font-size:11px;color:var(--ink3);flex:none}
@@ -3060,27 +3100,43 @@ async function renderWorkspace(id, tab){
   }
   if(navStale(_nav)) return;
   C.innerHTML = `
-    ${wsTabsHTML(id,'boards')}
     <div class="page-head"><div><h1>${esc(w.name)}</h1><div class="sub">${esc(w.description)}</div></div></div>
-    ${projects.length? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
-      ${projects.map(p=>{
-        const c = counts[p.id]||{open:0,done:0}; const total=c.open+c.done;
-        const pct = total? Math.round(c.done/total*100):0;
-        return `<div class="card" style="padding:16px;cursor:pointer" onclick="location.hash='#/project/${p.id}'">
-          <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px">
-            <span class="ws-dot" style="background:${p.color};width:11px;height:11px"></span>
-            <b style="font-size:14.5px;flex:1">${esc(p.name)}</b>
-            ${visChip(p.visibility)}
-            ${p.status!=='active'? `<span class="chip" style="background:var(--gray-soft);color:var(--ink2)">${p.status.replace('_',' ')}</span>`:''}
-            ${canEdit()? `<span class="pj-menu" title="Board options" onclick="event.stopPropagation();projMenu(this,'${p.id}')">⋯</span>`:''}
-          </div>
-          <div style="color:var(--ink2);font-size:12.5px;min-height:18px;margin-bottom:12px">${esc(p.description||'')}</div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink2)">
-            <div style="flex:1;height:6px;background:var(--gray-soft);border-radius:4px"><div style="width:${pct}%;height:100%;border-radius:4px;background:${p.color}"></div></div>
-            <span style="font-weight:700">${pct}%</span><span>${c.open} open</span>
-          </div></div>`;
-      }).join('')}</div>`
+    ${wsTabsHTML(id,'boards')}
+    ${projects.length? `<section class="ws-board-directory" aria-label="Workspace boards">
+      <div class="ws-board-toolbar"><input type="search" id="ws-board-search" aria-label="Search boards" placeholder="Search boards…">
+        <div class="ws-board-filters" aria-label="Board filters"><button class="btn btn-sm btn-primary" id="ws-board-all" aria-pressed="true">All boards · ${projects.length}</button>
+        <button class="btn btn-sm btn-ghost" id="ws-board-open" aria-pressed="false">Open work · ${projects.filter(p=>(counts[p.id]?.open||0)>0).length}</button></div>
+      </div><div class="ws-board-list" id="ws-board-list"></div><div class="ws-board-count" id="ws-board-count" role="status"></div></section>`
     : `<div class="card empty">No boards yet in this workspace${isStaff()? ' — create the first one.':''}</div>`}`;
+  if(!projects.length) return;
+  let onlyOpen=false;
+  const drawBoards=()=>{
+    const query=C.querySelector('#ws-board-search').value.trim().toLowerCase();
+    const visible=projects.filter(p=>(!onlyOpen||(counts[p.id]?.open||0)>0) && (p.name+' '+(p.description||'')).toLowerCase().includes(query))
+      .sort((a,b)=>(counts[b.id]?.open||0)-(counts[a.id]?.open||0)||a.name.localeCompare(b.name));
+    C.querySelector('#ws-board-list').innerHTML=visible.map(p=>{
+      const c=counts[p.id]||{open:0,done:0};
+      const imported=/imported from|sample import|monday\.com|monday board/i.test(p.description||'');
+      return `<div class="ws-board-row"><a class="ws-board-link" href="#/project/${p.id}">
+        <span class="ws-dot" style="background:${esc(p.color||'var(--accent)')}"></span>
+        <span class="ws-board-identity"><strong>${esc(p.name)}</strong>${p.description&&!imported? `<span>${esc(p.description)}</span>`:''}</span></a>
+        <div class="ws-board-metrics"><span class="ws-board-open ${c.open?'has-work':''}">${c.open} open</span><span>${c.done} done</span></div>
+        <div class="ws-board-options">${visChip(p.visibility)}${p.status!=='active'? `<span class="chip">${esc(p.status.replace('_',' '))}</span>`:''}
+        ${canEdit()? `<button class="pj-menu" aria-label="Options for ${esc(p.name)}" onclick="projMenu(this,'${p.id}')">⋯</button>`:''}</div></div>`;
+    }).join('')||'<div class="empty">No boards match. Try another search or choose All boards.</div>';
+    C.querySelector('#ws-board-count').textContent=visible.length+' of '+projects.length+' boards';
+  };
+  C.querySelector('#ws-board-search').oninput=drawBoards;
+  [['#ws-board-all',false],['#ws-board-open',true]].forEach(([selector,value])=>{
+    C.querySelector(selector).onclick=()=>{
+      onlyOpen=value;
+      [['#ws-board-all',!onlyOpen],['#ws-board-open',onlyOpen]].forEach(([s,active])=>{
+        const button=C.querySelector(s);button.setAttribute('aria-pressed',String(active));
+        button.classList.toggle('btn-primary',active);button.classList.toggle('btn-ghost',!active);
+      });drawBoards();
+    };
+  });
+  drawBoards();
 }
 /* ---- Board visibility: private | collaborate | shareable ---- */
 const ico = p => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
@@ -6037,7 +6093,8 @@ async function openTask(id){
   S._commentCache = {}; (comments||[]).forEach(c=> S._commentCache[c.id]=c);
   const p = projById(t.project_id);
   const m = modal(`<div class="modal-head">
-      <h2>${ticketTag(t)}<span id="tv-title-view">${esc(t.title)}</span></h2>
+      <div class="task-heading"><div class="task-context">${esc(S.workspaces.find(w=>w.id===p?.workspace_id)?.name||'')} / ${esc(p?.name||'Task')}</div>
+      <h2>${ticketTag(t)}<span id="tv-title-view">${esc(t.title)}</span></h2></div>
       <button class="x" aria-label="Close" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <div class="field-grid">
@@ -6072,6 +6129,9 @@ async function openTask(id){
       ${isStaff()? `<button class="btn btn-ghost btn-danger-ghost" onclick="deleteTask('${t.id}','${t.project_id}')">Delete task</button>`:''}
       <span style="flex:1"></span>
       <button class="btn btn-ghost" onclick="closeModals()">Close</button>${canEdit()? `<button class="btn btn-primary" id="tv-save">Save changes</button>`:''}</div>`, true);
+
+  m.classList.add('task-modal-back');
+  m.querySelector('.modal').classList.add('task-modal');
 
   if(m.querySelector('#tv-save')) m.querySelector('#tv-save').onclick = async ()=>{
     const desc = m.querySelector('#tv-desc');
