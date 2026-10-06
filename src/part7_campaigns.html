@@ -225,6 +225,9 @@ table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:10
 .cp-tools{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;margin:0;flex:0 0 auto}
 .cp-tools label{display:inline;width:auto;margin:0;font-size:12px;font-weight:600;color:var(--ink3);white-space:nowrap}
 .cp-toolbar .cp-tools select{width:max-content;max-width:220px;flex:0 0 auto;height:28px;padding:2px 8px;font-size:12.5px}
+/* Plain selects are upgraded to .sel-pick buttons (width 100%, min 180px). Size those to the label. */
+.cp-toolbar .sel-pick,.cp-vlist .sel-pick,#cp-imp-map .sel-pick{width:auto;min-width:0;max-width:220px;height:28px;flex:0 0 auto;padding:0 8px;font-size:12.5px;font-weight:600}
+.cp-toolbar .sel-pick .pick-cur,.cp-vlist .sel-pick .pick-cur,#cp-imp-map .sel-pick .pick-cur{overflow:hidden;text-overflow:ellipsis;max-width:190px}
 .cp-bulk{display:flex;gap:6px;align-items:center;margin-left:auto;flex:0 0 auto}
 .cp-tgt{border-collapse:separate;border-spacing:0;font-size:12px;min-width:1280px}
 .cp-tgt th{position:sticky;top:0;background:var(--panel-2);z-index:2;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
