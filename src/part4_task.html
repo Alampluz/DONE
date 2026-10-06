@@ -67,18 +67,35 @@ async function openTask(id){
     if(missing.length){ const {data:mt} = await db.from('tasks').select('id,title,status').in('id',missing); depTasks = depTasks.concat(mt||[]); }
   }
   await hydrateCommentAtts(comments||[]);
+  // this board's columns (fetched when the popup opens from somewhere other than the board)
+  const flds = await icLoadFields(t);
+  const bt = (S._tasks||[]).find(x=>x.id===t.id);
+  S._popTask = bt? Object.assign(bt, {custom:t.custom}) : t;    // edits land on the board's row too
+  const cfg = icConfig(t.project_id, flds);
   S._commentCache = {}; (comments||[]).forEach(c=> S._commentCache[c.id]=c);
   const p = projById(t.project_id);
   const ws = S.workspaces.find(w=>w.id===p?.workspace_id);
   const edit = canEdit();
   // Brand / platform columns on this board give the meta line its "Revlon · Lazada".
-  const metaVals = (S._fields||[]).filter(f=>f.project_id===t.project_id && (f.ftype==='brand'||f.ftype==='platform'))
+  const metaVals = flds.filter(f=>f.ftype==='brand'||f.ftype==='platform')
     .map(f=>bfColValue(t,f)).filter(Boolean);
   const meta = [ticketTag(t,'tv-tkt'), ...metaVals.map(v=>`<span>${esc(v)}</span>`)].filter(Boolean);
   const nComments = (comments||[]).filter(c=>!c.deleted_at).length;
   const showComments = sectionOn(t.project_id,'comments'), showActivity = !isExternal();
   const chkDone = (chk||[]).filter(c=>c.done).length;
   const owner = prof(t.assignee_id);
+  const tabOn = {fields: flds.length>0, subtasks: cfg.tabs.includes('subtasks') && sectionOn(t.project_id,'subtasks'),
+    files: cfg.tabs.includes('files'), comments: showComments, activity: showActivity};
+  const first = tabOn.fields? 'fields' : 'details';
+  const tabDefs = [['fields','Fields'],['details','Details'],['subtasks','Subtasks'],['files','Files'],['comments','Comments'],['activity','Activity']]
+    .filter(([k])=> k==='details' || tabOn[k]);
+  const subsHTML = sectionOn(t.project_id,'subtasks')? `<section class="tv-sec"><label>Subtasks</label>
+            <div id="tv-subprog">${subProgressBar(subs||[])}</div>
+            <div id="tv-subs">${(subs||[]).map(stRow).join('')}</div>
+            ${canCreate()? `<div class="tv-add"><input id="tv-sub-new" placeholder="Add a subtask…"><button class="btn btn-ghost btn-sm" id="tv-sub-add">Add</button></div>`:''}</section>`:'';
+  const attsHTML = sectionOn(t.project_id,'attachments')? `<section class="tv-sec"><label>Attachments</label>
+            <div id="tv-atts">${attListHTML(atts, edit)}</div>
+            ${canCreate()? attachZoneHTML('tv-drop') : ''}</section>`:'';
   const m = modal(`<div class="modal-head tv-head">
       <div class="task-heading">
         <div class="task-context">${esc(ws?.name||'')}${ws?' <span aria-hidden="true">/</span> ':''}<b>${esc(p?.name||'Task')}</b></div>
@@ -102,32 +119,30 @@ async function openTask(id){
         <div class="tv-prop-val"><input id="tv-due" class="tv-bare" type="date" value="${t.due_date||''}" ${edit?'':'disabled'}></div>
       </div>
     </div>
-    <div class="tv-tabs" role="tablist" aria-label="Task sections">
-      <button role="tab" class="tv-tab on" id="tv-tab-details" aria-controls="tv-pane-details" aria-selected="true">Details</button>
-      ${showComments? `<button role="tab" class="tv-tab" id="tv-tab-comments" aria-controls="tv-pane-comments" aria-selected="false" tabindex="-1">Comments <span class="tv-count" id="tv-comment-count">${nComments||''}</span></button>`:''}
-      ${showActivity? `<button role="tab" class="tv-tab" id="tv-tab-activity" aria-controls="tv-pane-activity" aria-selected="false" tabindex="-1">Activity</button>`:''}
-    </div>
+    <div class="tv-tabbar"><div class="tv-tabs" role="tablist" aria-label="Task sections">${tabDefs.map(([k,l])=>
+        `<button role="tab" class="tv-tab${k===first?' on':''}" id="tv-tab-${k}" aria-controls="tv-pane-${k}" aria-selected="${k===first}" ${k===first?'':'tabindex="-1"'}>${l}${k==='comments'? ` <span class="tv-count" id="tv-comment-count">${nComments||''}</span>`:''}</button>`).join('')}</div>
+      ${canManageBoard(t.project_id)? `<button class="tv-tab-add" aria-label="Add or remove tabs" title="Add or remove tabs" onclick="icTabMenu(this,'${t.id}','${t.project_id}')">＋</button>`:''}</div>
     <div class="modal-body">
-      <div role="tabpanel" id="tv-pane-details" aria-labelledby="tv-tab-details" class="tv-grid">
+      ${tabOn.fields? `<div role="tabpanel" id="tv-pane-fields" aria-labelledby="tv-tab-fields">
+        ${canManageBoard(t.project_id)? `<div class="ic-bar"><button class="btn btn-ghost btn-sm" onclick="icLayoutModal('${t.id}')">Edit layout</button></div>`:''}
+        <div id="ic-cards" class="ic-grid">${icCardsHTML(S._popTask, flds, cfg)}</div></div>`:''}
+      <div role="tabpanel" id="tv-pane-details" aria-labelledby="tv-tab-details" class="tv-grid" ${first==='details'?'':'hidden'}>
         <div class="tv-main">
           ${sectionOn(t.project_id,'description')? `<section class="tv-sec"><label for="tv-desc">Description</label><textarea id="tv-desc" rows="4" placeholder="${edit?'Add a description…':''}" ${edit?'':'disabled'}>${esc(t.description)}</textarea></section>`:''}
           ${sectionOn(t.project_id,'checklist')? `<section class="tv-sec"><label>Checklist <span class="tv-sub" id="tv-chk-count">${(chk||[]).length? `(${chkDone} of ${(chk||[]).length} complete)`:''}</span></label>
             <div id="tv-chk">${(chk||[]).map(c=>chkRow(c)).join('')}</div>
             ${edit? `<div class="tv-add"><input id="tv-chk-new" placeholder="Add checklist item…"><button class="btn btn-ghost btn-sm" id="tv-chk-add">Add</button></div>`:''}</section>`:''}
-          ${sectionOn(t.project_id,'subtasks')? `<section class="tv-sec"><label>Subtasks</label>
-            <div id="tv-subprog">${subProgressBar(subs||[])}</div>
-            <div id="tv-subs">${(subs||[]).map(stRow).join('')}</div>
-            ${canCreate()? `<div class="tv-add"><input id="tv-sub-new" placeholder="Add a subtask…"><button class="btn btn-ghost btn-sm" id="tv-sub-add">Add</button></div>`:''}</section>`:''}
+          ${tabOn.subtasks? '' : subsHTML}
         </div>
         <div class="tv-side">
-          ${sectionOn(t.project_id,'attachments')? `<section class="tv-sec"><label>Attachments</label>
-            <div id="tv-atts">${attListHTML(atts, edit)}</div>
-            ${canCreate()? attachZoneHTML('tv-drop') : ''}</section>`:''}
+          ${tabOn.files? '' : attsHTML}
           ${sectionOn(t.project_id,'deps') && (isStaff() || (depsOn||[]).length || (depsBy||[]).length)? `<section class="tv-sec tv-deps${(depsOn||[]).length?' is-waiting':''}">${depsSectionHTML(t, depsOn||[], depsBy||[], depTasks)}</section>` : ''}
           ${(p?.approval_gate?.on || (apprs||[]).length)? `<section class="tv-sec">${signoffSectionHTML(t, apprs||[], p?.approval_gate||{})}</section>` : ''}
         </div>
         <div class="tv-created">Created ${fmtDateTime(t.created_at)} by ${esc(prof(t.created_by)?.full_name||'—')} · in ${esc(p?.name||'')}</div>
       </div>
+      ${tabOn.subtasks? `<div role="tabpanel" id="tv-pane-subtasks" aria-labelledby="tv-tab-subtasks" hidden>${subsHTML}</div>`:''}
+      ${tabOn.files? `<div role="tabpanel" id="tv-pane-files" aria-labelledby="tv-tab-files" hidden>${attsHTML}${icFilesHTML(S._popTask, flds, comments)}</div>`:''}
       ${showComments? `<div role="tabpanel" id="tv-pane-comments" aria-labelledby="tv-tab-comments" hidden>
         <div id="tv-comments">${(comments||[]).map(commentRow).join('')||'<div style="color:var(--ink3);font-size:13px">No comments yet</div>'}</div>
         ${canCreate()? commentComposerHTML('tv') : ''}</div>`:''}
@@ -208,6 +223,11 @@ function tvCounts(m){
 }
 function wireTaskView(m, t){
   tvPaintPills(m);
+  const cards = m.querySelector('#ic-cards');
+  if(cards){ icWire(cards);
+    cards.addEventListener('keydown', e=>{ if(e.key==='Escape' && e.target.matches('input')) e.stopPropagation(); }); }
+  const side = m.querySelector('#tv-pane-details .tv-side');
+  if(side && !side.children.length){ side.remove(); m.querySelector('#tv-pane-details').classList.add('solo'); }
   setTimeout(()=>{ const box=m.querySelector('.modal'); if(box && box.contains(document.activeElement) && document.activeElement.id==='tv-title-view') box.focus({preventScroll:true}); }, 0);
   ['#tv-status','#tv-prio'].forEach(sel=>{ const el=m.querySelector(sel); if(el) el.addEventListener('change', ()=>tvPaintPills(m)); });
   const asg = m.querySelector('#tv-assignee'), av = m.querySelector('#tv-owner-av');
@@ -240,6 +260,251 @@ function wireTaskView(m, t){
   const sync = ()=> tvCounts(m);
   ['#tv-chk','#tv-comments'].forEach(sel=>{ const el=m.querySelector(sel);
     if(el){ new MutationObserver(sync).observe(el, {childList:true, subtree:true, attributes:true, attributeFilter:['class']}); el.addEventListener('change', ()=>setTimeout(sync,0)); } });
+}
+/* ---- Task popup: board columns as cards (6 Oct 2026) ----
+   Every board column shows in the popup as an editable field, grouped into named cards.
+   The layout is per board and shared by everyone: projects.field_config.item_card =
+   {cards:[{id,title,fields:[fid]}], hidden:[fid], tabs:['subtasks','files']}. It lives on
+   projects, so projects_update (can_manage_board) is what guards it — no new policy.
+   Cells are the table's own editors (tvCell / tvEdit / tvCustom), so a value edited here
+   saves, validates and runs automations exactly as it does on the board. */
+const IC_TABS = [{k:'subtasks', label:'Subtasks'}, {k:'files', label:'Files'}];
+const IC_FTYPE = {text:'Text', number:'Number', date:'Date', select:'Dropdown', checkbox:'Checkbox', person:'Person',
+  brand:'Brand', platform:'Platform', file:'File', formula:'Formula', link:'Link to board', mirror:'Mirror'};
+const icTabs = v => Array.isArray(v)? IC_TABS.map(x=>x.k).filter(k=>v.includes(k)) : [];
+function icDefaultCards(flds){
+  const dp = new Set(['date','person','file']);
+  const a = flds.filter(f=>!dp.has(f.ftype)).map(f=>f.id), b = flds.filter(f=>dp.has(f.ftype)).map(f=>f.id);
+  const cards = [];
+  if(a.length) cards.push({id:'info', title:'Information', fields:a});
+  if(b.length) cards.push({id:'dates', title:'Dates & people', fields:b});
+  if(!cards.length) cards.push({id:'info', title:'Information', fields:[]});
+  return cards;
+}
+/* Reads whatever is stored defensively — a hand-edited or stale config must never break the
+   popup. Columns added after the layout was saved land in the last card, so nothing new goes
+   missing; columns deleted since simply drop out. */
+function icConfig(pid, flds){
+  const raw = ((projById(pid)||{}).field_config||{}).item_card;
+  const ok = raw && typeof raw==='object' && !Array.isArray(raw);
+  const tabs = icTabs(ok? raw.tabs : null);
+  if(!(ok && Array.isArray(raw.cards) && raw.cards.length))
+    return {cards:icDefaultCards(flds), hidden:[], tabs, custom:false};
+  const ids = new Set(flds.map(f=>f.id));
+  const hidden = [...new Set((Array.isArray(raw.hidden)? raw.hidden : []).filter(id=>ids.has(id)))];
+  const seen = new Set(hidden);
+  const cards = raw.cards.filter(c=>c && typeof c==='object').map((c,i)=>({
+    id: String(c.id||('c'+i)).slice(0,40),
+    title: String(c.title==null? 'Information' : c.title).slice(0,60),
+    fields: (Array.isArray(c.fields)? c.fields : []).filter(id=>{ if(!ids.has(id) || seen.has(id)) return false; seen.add(id); return true; }),
+  }));
+  if(!cards.length) return {cards:icDefaultCards(flds), hidden:[], tabs, custom:false};
+  flds.forEach(f=>{ if(!seen.has(f.id)) cards[cards.length-1].fields.push(f.id); });
+  return {cards, hidden, tabs, custom:true};
+}
+/* The popup can open a task from Home, the calendar or search, where the board behind it is a
+   different one (or none). Load this task's own columns then; add to the option lists and the
+   link caches, never rebuild them — the open board still renders from them. */
+async function icLoadFields(t){
+  let flds = (S._fields||[]).filter(f=>f.project_id===t.project_id);
+  if(!flds.length){
+    const {data} = await db.from('project_fields').select('*').eq('project_id',t.project_id).order('position').order('created_at');
+    flds = data||[];
+    const links = flds.filter(f=>f.ftype==='link');
+    if(links.length){
+      const ids = links.map(f=>(t.custom||{})[f.id]).filter(v=>typeof v==='string' && LINK_ID_RE.test(v));
+      const targets = [...new Set(links.map(f=>(f.options||{}).project_id).filter(Boolean))];
+      const [lt, lf] = await Promise.all([
+        ids.length? db.from('tasks').select('id,title,status,priority,assignee_id,due_date,group_id,project_id,custom').in('id',ids) : Promise.resolve({data:[]}),
+        targets.length? db.from('project_fields').select('id,label,ftype,options').in('project_id',targets) : Promise.resolve({data:[]}),
+      ]);
+      S._linkedTasks = S._linkedTasks||{}; S._linkedFields = S._linkedFields||{};
+      ((lt&&lt.data)||[]).forEach(x=> S._linkedTasks[x.id]=x);
+      ((lf&&lf.data)||[]).forEach(x=> S._linkedFields[x.id]=x);
+    }
+  }
+  S._popFields = flds;
+  if(!TVO.status) tvBuildOpts(S._fields||[]);
+  flds.forEach(f=>{ if(f.ftype==='select') TVO['f_'+f.id] = (f.options||[]).map(o=>({v:o, l:o})); });
+  return flds;
+}
+function icCardsHTML(t, flds, cfg){
+  const byId = Object.fromEntries(flds.map(f=>[f.id,f]));
+  const html = cfg.cards.filter(c=>c.fields.length).map(c=>`<section class="ic-card" aria-label="${esc(c.title)}">
+      <h3 class="ic-title">${esc(c.title)}</h3>
+      ${c.fields.map(id=>{ const f=byId[id]; return `<div class="ic-field" data-fid="${esc(f.id)}">
+        <div class="ic-label">${esc(f.label)}</div><div class="ic-val ic-${esc(f.ftype)}">${tvCell(t,f)}</div></div>`; }).join('')}
+    </section>`).join('');
+  return html || `<div class="ic-empty">No columns are shown on this board's tasks${canManageBoard(t.project_id)? '. Use Edit layout to add some back.' : '.'}</div>`;
+}
+/* Table cells are mouse-only <div>s; in the popup they become keyboard buttons with a name. */
+function icWire(root){
+  if(!root) return;
+  root.querySelectorAll('.ic-val .tv-pickv[onclick]').forEach(el=>{
+    el.tabIndex = 0; el.setAttribute('role','button');
+    const lab = el.closest('.ic-field')?.querySelector('.ic-label')?.textContent||'';
+    el.setAttribute('aria-label', `${lab}: ${el.textContent.trim()||'empty'}. Edit`);
+    el.addEventListener('keydown', e=>{ if(e.target!==el) return; if(e.key==='Enter'||e.key===' '){ e.preventDefault(); el.click(); } });
+  });
+}
+function icRefresh(){
+  const box = document.querySelector('.task-modal #ic-cards'), t = S._popTask;
+  if(!box || !t) return;
+  box.innerHTML = icCardsHTML(t, S._popFields||[], icConfig(t.project_id, S._popFields||[]));
+  icWire(box);
+}
+/* Called by tvCustom / the mirror editor after a save: redraw the cards, and the board behind
+   the popup once a burst of edits settles. */
+function icAfterEdit(tid){
+  if(!S._popTask || S._popTask.id!==tid || !document.querySelector('.task-modal #ic-cards')) return;
+  icRefresh();
+  if(S.route && S.route.view==='project' && tvPid===S._popTask.project_id){
+    clearTimeout(icAfterEdit._t);
+    icAfterEdit._t = setTimeout(()=>{ const y=scrollY; renderBoardBody(tvPid); scrollTo(0,y); }, 400);
+  }
+}
+async function icSaveItemCard(pid, patch){
+  const p = projById(pid); if(!p) return false;
+  const fc = Object.assign({}, p.field_config||{});
+  const ic = Object.assign({}, (fc.item_card && typeof fc.item_card==='object')? fc.item_card : {}, patch);
+  Object.keys(ic).forEach(k=>{ if(ic[k]==null) delete ic[k]; });     // null = back to the default for that part
+  if(Object.keys(ic).length) fc.item_card = ic; else delete fc.item_card;
+  const {error} = await db.from('projects').update({field_config:fc}).eq('id',pid);
+  if(error){ toast(error.message, true); return false; }
+  p.field_config = fc; return true;
+}
+function icTabMenu(btn, taskId, pid){
+  const cur = icConfig(pid, S._popFields||[]).tabs;
+  ctxMenu(btn, IC_TABS.map(x=>({
+    label: (cur.includes(x.k)? 'Remove the ' : 'Add a ')+x.label+' tab',
+    info: x.k==='files'? 'Every file on the task in one place: attachments, files in comments and file columns.' : 'Subtasks get a full-width tab of their own instead of sitting under Details.',
+    fn: async ()=>{
+      const tabs = cur.includes(x.k)? cur.filter(k=>k!==x.k) : cur.concat(x.k);
+      if(!await icSaveItemCard(pid, {tabs})) return;
+      toast('Tabs updated for every task on this board');
+      closeModals(); openTask(taskId);
+    },
+  })));
+}
+/* ---- Edit layout: cards, their columns and order, hidden columns, extra tabs ---- */
+function icLayListHTML(d, byId){
+  const opts = cur => d.cards.map((c,i)=>`<option value="${i}" ${String(i)===String(cur)?'selected':''}>${esc(c.title||'Untitled')}</option>`).join('')
+    + `<option value="hide" ${cur==='hide'?'selected':''}>Not shown</option>`;
+  const row = (fid, ci, i, len)=>{ const f = byId[fid]; const nm = esc(f.label);
+    return `<div class="icl-row" draggable="true" data-fid="${esc(fid)}" data-ci="${ci}">
+      <span class="icl-grip" aria-hidden="true">⠿</span>
+      <span class="icl-name">${nm}<span class="icl-type">${esc(IC_FTYPE[f.ftype]||f.ftype)}</span></span>
+      ${ci!=='hide'? `<button class="icl-ib" data-act="f-up" ${i===0?'disabled':''} aria-label="Move ${nm} up">↑</button>
+      <button class="icl-ib" data-act="f-down" ${i===len-1?'disabled':''} aria-label="Move ${nm} down">↓</button>`:''}
+      <select class="icl-move" data-act="f-move" aria-label="Where ${nm} shows">${opts(ci)}</select></div>`; };
+  return d.cards.map((c,ci)=>`<div class="icl-card" data-ci="${ci}">
+      <div class="icl-card-head"><input class="icl-title" data-ci="${ci}" value="${esc(c.title)}" aria-label="Card name" maxlength="60">
+        <button class="icl-ib" data-act="c-up" data-ci="${ci}" ${ci===0?'disabled':''} aria-label="Move card ${esc(c.title)} up">↑</button>
+        <button class="icl-ib" data-act="c-down" data-ci="${ci}" ${ci===d.cards.length-1?'disabled':''} aria-label="Move card ${esc(c.title)} down">↓</button>
+        ${d.cards.length>1? `<button class="icl-ib" data-act="c-del" data-ci="${ci}" aria-label="Remove card ${esc(c.title)}">✕</button>`:''}</div>
+      <div class="icl-fields" data-ci="${ci}">${c.fields.map((fid,i)=>row(fid,ci,i,c.fields.length)).join('') || '<div class="icl-empty">Drop columns here</div>'}</div></div>`).join('')
+    + `<div class="icl-card icl-hidden"><div class="icl-card-head"><b>Not shown</b></div>
+      <div class="icl-fields" data-ci="hide">${d.hidden.map((fid,i)=>row(fid,'hide',i,d.hidden.length)).join('') || '<div class="icl-empty">Every column is shown</div>'}</div></div>`;
+}
+function icLayoutModal(taskId){
+  const t = S._popTask; if(!t || t.id!==taskId) return;
+  const pid = t.project_id, flds = S._popFields||[];
+  if(!canManageBoard(pid)) return;
+  const byId = Object.fromEntries(flds.map(f=>[f.id,f]));
+  const cfg = icConfig(pid, flds);
+  const d = {cards: cfg.cards.map(c=>({id:c.id, title:c.title, fields:c.fields.slice()})), hidden: cfg.hidden.slice(), tabs: cfg.tabs.slice(), reset:false};
+  let n = 0; const newId = ()=> 'c'+Date.now().toString(36)+(n++);
+  const m = modal(`<div class="modal-head"><h2>Task layout</h2><button class="x" aria-label="Close" onclick="closeTopModal()">✕</button></div>
+    <div class="modal-body icl">
+      <div class="icl-note">Changes apply to every task on ${esc(projById(pid)?.name||'this board')}, for everyone.</div>
+      <div id="icl-list">${icLayListHTML(d, byId)}</div>
+      <button class="btn btn-ghost btn-sm" data-act="add-card">＋ Add card</button>
+      <div class="icl-h">Extra tabs</div>
+      ${IC_TABS.map(x=>`<label class="icl-tab"><input type="checkbox" data-tab="${x.k}" ${d.tabs.includes(x.k)?'checked':''}> ${x.label} tab</label>`).join('')}
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-act="reset">Reset to default</button><span style="flex:1"></span>
+      <button class="btn btn-ghost" onclick="closeTopModal()">Cancel</button><button class="btn btn-primary" data-act="save">Save layout</button></div>`, true);
+  m.querySelector('.modal').classList.add('icl-modal');
+  const list = m.querySelector('#icl-list');
+  const listOf = ci => ci==='hide'? d.hidden : d.cards[+ci].fields;
+  const draw = (focusSel)=>{
+    list.innerHTML = icLayListHTML(d, byId);
+    if(focusSel){ const el = list.querySelector(focusSel); if(el && !el.disabled) el.focus(); else list.querySelector(focusSel.replace(/\[data-act="[^"]+"\]/,'select'))?.focus(); }
+  };
+  const moveField = (fid, from, to, at)=>{
+    const src = listOf(from), i = src.indexOf(fid); if(i<0) return;
+    src.splice(i,1);
+    const dst = listOf(to); dst.splice(at==null? dst.length : Math.min(at, dst.length), 0, fid);
+    d.reset = false;
+  };
+  m.addEventListener('input', e=>{ if(e.target.classList.contains('icl-title')){ d.cards[+e.target.dataset.ci].title = e.target.value; d.reset=false; } });
+  m.addEventListener('change', e=>{
+    const el = e.target;
+    if(el.dataset.tab){ const k=el.dataset.tab; d.tabs = el.checked? IC_TABS.map(x=>x.k).filter(x=>x===k||d.tabs.includes(x)) : d.tabs.filter(x=>x!==k); return; }
+    if(el.dataset.act==='f-move'){
+      const row = el.closest('.icl-row'); moveField(row.dataset.fid, row.dataset.ci, el.value);
+      draw(`.icl-row[data-fid="${row.dataset.fid}"] select`);
+    }
+  });
+  m.addEventListener('click', async e=>{
+    const b = e.target.closest('[data-act]'); if(!b || b.tagName==='SELECT') return;
+    const act = b.dataset.act, row = b.closest('.icl-row');
+    if(act==='f-up'||act==='f-down'){
+      const L = listOf(row.dataset.ci), i = L.indexOf(row.dataset.fid), j = act==='f-up'? i-1 : i+1;
+      if(j<0 || j>=L.length) return; [L[i],L[j]] = [L[j],L[i]]; d.reset=false;
+      draw(`.icl-row[data-fid="${row.dataset.fid}"] [data-act="${act}"]`);
+    } else if(act==='c-up'||act==='c-down'){
+      const i = +b.dataset.ci, j = act==='c-up'? i-1 : i+1; if(j<0 || j>=d.cards.length) return;
+      [d.cards[i], d.cards[j]] = [d.cards[j], d.cards[i]]; d.reset=false;
+      draw(`[data-act="${act}"][data-ci="${j}"]`);
+    } else if(act==='c-del'){
+      const i = +b.dataset.ci; if(d.cards.length<2) return;
+      const keep = d.cards[i===0? 1 : i-1];                // its columns move to the neighbouring card, never vanish
+      keep.fields.push(...d.cards[i].fields); d.cards.splice(i,1); d.reset=false;
+      draw('.icl-title');
+    } else if(act==='add-card'){
+      d.cards.push({id:newId(), title:'New card', fields:[]}); d.reset=false;
+      draw(`.icl-title[data-ci="${d.cards.length-1}"]`);
+      const inp = list.querySelector(`.icl-title[data-ci="${d.cards.length-1}"]`); if(inp){ inp.focus(); inp.select(); }
+    } else if(act==='reset'){
+      d.cards = icDefaultCards(flds); d.hidden = []; d.reset = true; draw();
+      toast('Default layout restored here — Save layout to keep it');
+    } else if(act==='save'){
+      const patch = d.reset? {cards:null, hidden:null, tabs:d.tabs}
+        : {v:1, cards:d.cards.map(c=>({id:c.id, title:(c.title||'').trim()||'Untitled', fields:c.fields.slice()})), hidden:d.hidden.slice(), tabs:d.tabs};
+      b.disabled = true;
+      const ok = await icSaveItemCard(pid, patch);
+      b.disabled = false; if(!ok) return;
+      const tabsChanged = d.tabs.join()!==cfg.tabs.join();
+      closeTopModal();
+      toast('Layout saved for every task on this board');
+      if(tabsChanged){ closeModals(); openTask(taskId); } else icRefresh();
+    }
+  });
+  // drag a column onto a card (or onto a row to land just before it); the buttons and the
+  // "where it shows" select do everything drag does, for keyboard users
+  let drag = null;
+  m.addEventListener('dragstart', e=>{ const r = e.target.closest?.('.icl-row'); if(!r) return;
+    drag = {fid:r.dataset.fid, from:r.dataset.ci}; r.classList.add('dragging');
+    try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', r.dataset.fid); }catch(x){} });
+  m.addEventListener('dragend', ()=>{ drag = null; m.querySelectorAll('.dragging,.dragover').forEach(x=>x.classList.remove('dragging','dragover')); });
+  m.addEventListener('dragover', e=>{ const z = e.target.closest?.('.icl-fields'); if(!z || !drag) return; e.preventDefault();
+    m.querySelectorAll('.icl-fields.dragover').forEach(x=>{ if(x!==z) x.classList.remove('dragover'); }); z.classList.add('dragover'); });
+  m.addEventListener('drop', e=>{ const z = e.target.closest?.('.icl-fields'); if(!z || !drag) return; e.preventDefault();
+    const before = e.target.closest('.icl-row'); const to = z.dataset.ci;
+    let at = null;
+    if(before && before.dataset.fid!==drag.fid){ at = listOf(to).indexOf(before.dataset.fid);
+      if(to===drag.from && listOf(to).indexOf(drag.fid) < at) at -= 1; }
+    moveField(drag.fid, drag.from, to, at); const fid = drag.fid; drag = null; draw(`.icl-row[data-fid="${fid}"] select`); });
+}
+/* Every file on the task, for the Files tab: what's attached, what came in comments, and
+   what sits in file columns. */
+function icFilesHTML(t, flds, comments){
+  const fromComments = (comments||[]).filter(c=>!c.deleted_at).flatMap(c=>c.atts||[]);
+  const inCols = flds.filter(f=>f.ftype==='file').map(f=>{ const v=(t.custom||{})[f.id];
+    return (v && v.path)? {f, a:{id:'col-'+f.id, storage_path:v.path, file_name:v.name||'file', size_bytes:null}} : null; }).filter(Boolean);
+  return (fromComments.length? `<section class="tv-sec"><label>From comments</label>${attListHTML(fromComments, false)}</section>` : '')
+    + (inCols.length? `<section class="tv-sec"><label>In columns</label><div class="att-list">${inCols.map(x=>`<span class="ic-colfile">${attLink(x.a,{})}<span class="ic-colname">${esc(x.f.label)}</span></span>`).join('')}</div></section>` : '');
 }
 /* ---- sign-off (maker-checker) ----
    The DB enforces the gate: moving into the gated status without an approved
