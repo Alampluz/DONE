@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>DONE</title>
+<style>
+  :root { color-scheme: light dark; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; align-items: center; justify-content: center; font-family: "Segoe UI", system-ui, sans-serif; background: #f6f7f9; color: #1c2430; }
+  .card { max-width: 420px; padding: 40px 36px; text-align: center; }
+  h1 { font-size: 22px; margin: 0 0 8px; font-weight: 600; }
+  p { margin: 0 0 24px; line-height: 1.5; color: #566070; }
+  button { font: inherit; font-weight: 600; padding: 10px 22px; border: 0; border-radius: 8px; background: #1c2430; color: #fff; cursor: pointer; }
+  button:hover { background: #2c3a4d; }
+  button:focus-visible { outline: 3px solid #6aa6ff; outline-offset: 2px; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #14181f; color: #e8ecf2; }
+    p { color: #a3adbb; }
+    button { background: #e8ecf2; color: #14181f; }
+    button:hover { background: #fff; }
+  }
+</style>
+</head>
+<body>
+<main class="card">
+  <h1>Can't reach DONE</h1>
+  <p>Check your internet connection or VPN, then try again. Your tasks are safe - nothing is stored on this computer that could be lost.</p>
+  <button id="retry" type="button">Try again</button>
+</main>
+<script>
+  // main.js passes the app URL in the hash. Only ever navigate to https.
+  var target = decodeURIComponent(location.hash.slice(1));
+  document.getElementById('retry').addEventListener('click', function () {
+    if (/^https:\/\//.test(target)) location.href = target;
+  });
+  // Retry quietly when the connection comes back.
+  window.addEventListener('online', function () { if (/^https:\/\//.test(target)) location.href = target; });
+</script>
+</body>
+</html>

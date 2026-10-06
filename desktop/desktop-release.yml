@@ -1,0 +1,52 @@
+name: Desktop release (Windows)
+
+# Builds the DONE Windows installer and publishes it as a GitHub Release.
+# Trigger: push a tag such as  desktop-v1.0.0  (or run it by hand from the Actions tab).
+# Installed copies check this release for updates and install them when the user next quits.
+on:
+  push:
+    tags:
+      - 'desktop-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, e.g. 1.0.1 (manual runs only; tag runs use the tag)'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set version from the tag or input
+        run: |
+          V="${{ github.event.inputs.version }}"
+          if [[ "${GITHUB_REF}" == refs/tags/desktop-v* ]]; then V="${GITHUB_REF#refs/tags/desktop-v}"; fi
+          if [[ -n "$V" ]]; then npm version "$V" --no-git-tag-version --allow-same-version; fi
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Syntax check the shell
+        run: node --check main.js
+
+      # CSC_LINK / CSC_KEY_PASSWORD are optional repo secrets for a code-signing certificate.
+      # Without them the installer is unsigned and Windows SmartScreen warns on first run.
+      - name: Build and publish
+        run: npx electron-builder --win --x64 --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
