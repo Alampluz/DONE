@@ -1471,6 +1471,10 @@ function renderProjectFromCache(id){
   wireDnD(id);
 }
 /* ================= TABLE VIEW (custom columns) ================= */
+/* The task popup can open a task from Home, the calendar or search, where the board behind it
+   is another one. These look in the open board first, then at what the popup loaded. */
+function tvTaskById(tid){ return (S._tasks||[]).find(x=>x.id===tid) || (S._popTask && S._popTask.id===tid? S._popTask : null); }
+function tvFieldById(fid){ return (S._fields||[]).find(x=>x.id===fid) || (S._popFields||[]).find(x=>x.id===fid) || null; }
 function tvPeople(){
   return S.profiles.filter(p=> p.active!==false && !(p.email||'').startsWith('forms+'));
 }
@@ -1520,7 +1524,7 @@ function tvDisplay(kind, val, t){
 }
 function tvPickHTML(kind, tid, field, isCustom, val, t){
   const fill = (kind==='status'||kind==='priority')? ' fillcell':'';
-  const tk = t || (S._tasksAll||S._tasks||[]).find(x=>x.id===tid);
+  const tk = t || (S._tasksAll||S._tasks||[]).find(x=>x.id===tid) || tvTaskById(tid);
   if(!canEditTask(tk)) return `<div class="tv-pickv${fill} ro">${tvDisplay(kind, val, t)}</div>`;
   return `<div class="tv-pickv${fill}" data-kind="${kind}" data-tid="${tid}" data-field="${esc(field)}" data-cust="${isCustom?1:0}" onclick="tvEdit(this,event)">${tvDisplay(kind, val, t)}</div>`;
 }
@@ -1529,7 +1533,7 @@ function tvCloseMenu(){ document.getElementById('tvmenu')?.remove(); document.re
 function tvMenuOutside(e){ if(!document.getElementById('tvmenu')?.contains(e.target)) tvCloseMenu(); }
 function tvEdit(el, ev){
   const {kind, tid, field, cust} = el.dataset;
-  const t = S._tasks.find(x=>x.id===tid); if(!t) return;
+  const t = tvTaskById(tid); if(!t) return;
   const cur = cust==='1' ? (t.custom||{})[field] : t[field];
   const save = async (val)=>{
     if(cust!=='1' && (field==='status'||field==='priority') && (val===null||val==='')) return;
@@ -1768,7 +1772,7 @@ function tvLinkCell(t, f){
 /* Target-board task lists for the link picker, cached per board for the session. */
 const _linkPickCache = {};
 async function tvLinkPick(el, tid, fid){
-  const f = (S._fields||[]).find(x=>x.id===fid); if(!f) return;
+  const f = tvFieldById(fid); if(!f) return;
   const target = (f.options||{}).project_id;
   if(!target) return toast('This link column has no target board yet — edit the column', true);
   let opts = _linkPickCache[target];
@@ -1829,8 +1833,8 @@ function tvMirrorCell(t, f){
   return `<div class="tv-pickv ro tv-mirror" title="Mirrored from the linked task">${inner}</div>`;
 }
 async function tvMirrorEdit(el, tid, fid){
-  const f = (S._fields||[]).find(x=>x.id===fid); if(!f) return;
-  const t = (S._tasks||[]).find(x=>x.id===tid); if(!t) return;
+  const f = tvFieldById(fid); if(!f) return;
+  const t = tvTaskById(tid); if(!t) return;
   const lt = mirrorResolve(t, f); if(!lt) return toast('Link this row to a task first', true);
   const show = (f.options||{}).show;
   const save = async patch=>{
@@ -1838,6 +1842,7 @@ async function tvMirrorEdit(el, tid, fid){
     if(error) return toast(error.message, true);
     Object.assign(lt, patch);
     const y=scrollY; renderBoardBody(tvPid); scrollTo(0,y);
+    if(typeof icAfterEdit==='function') icAfterEdit(tid);
     toast('Updated on the linked board');
   };
   if(show==='status')
@@ -2839,7 +2844,7 @@ function groupModal(pid, g){
   };
 }
 async function tvCore(tid, field, val){
-  const t=S._tasks.find(x=>x.id===tid); if(!t) return;
+  const t=tvTaskById(tid); if(!t) return;
   const old=t[field]; t[field]=val;
   const {error}=await db.from('tasks').update({[field]:val}).eq('id',tid);
   if(error){ t[field]=old; toast(error.message, true); return; }
@@ -2849,13 +2854,14 @@ async function tvCore(tid, field, val){
   if(changed.length){ automationToast(changed); const y=scrollY; renderBoardBody(tvPid); scrollTo(0,y); }
 }
 async function tvCustom(tid, fid, val){
-  const t=S._tasks.find(x=>x.id===tid); if(!t) return;
+  const t=tvTaskById(tid); if(!t) return;
   t.custom = Object.assign({}, t.custom||{});
   if(val===''||val===null){ delete t.custom[fid]; } else { t.custom[fid]=val; }
   const {error}=await db.from('tasks').update({custom:t.custom}).eq('id',tid);
   if(error) return toast(error.message, true);
   const changed = await echoAutomation(tid, null);
   if(changed.length){ automationToast(changed); const y=scrollY; renderBoardBody(tvPid); scrollTo(0,y); }
+  if(typeof icAfterEdit==='function') icAfterEdit(tid);
 }
 function addColumnModal(pid){ columnModal(pid, null); }
 function editColumnModal(fid, pid){ const f=(S._fields||[]).find(x=>x.id===fid); if(f) columnModal(pid, f); }
