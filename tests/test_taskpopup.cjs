@@ -44,7 +44,7 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  r.owner=$('#tv-assignee').value; r.ownerAv=!!$('#tv-owner-av').innerHTML.trim();
  r.due=$('#tv-due').value;
  r.tabs=[...m.querySelectorAll('.tv-tab')].map(b=>b.textContent.replace(/\s+/g,' ').trim()+':'+b.getAttribute('aria-selected')).join('|');
- r.panes=['details','comments','activity'].map(k=>k+':'+($('#tv-pane-'+k).hidden?'hidden':'shown')).join(',');
+ r.panes=['fields','details','comments','activity'].map(k=>k+':'+($('#tv-pane-'+k).hidden?'hidden':'shown')).join(',');
  r.twoCols=!!$('#tv-pane-details .tv-main') && !!$('#tv-pane-details .tv-side');
  r.chkCount=$('#tv-chk-count').textContent;
  // checklist count follows a toggle (class flip) and a removal
@@ -58,7 +58,7 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  $('#tv-tab-comments').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
  r.afterArrow=['details','comments','activity'].map(k=>$('#tv-pane-'+k).hidden?0:1).join('')+':'+(document.activeElement&&document.activeElement.id);
  $('#tv-tab-activity').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true}));
- r.afterHome=$('#tv-tab-details').getAttribute('aria-selected');
+ r.afterHome=$('#tv-tab-fields').getAttribute('aria-selected');
  // edits on a hidden pane survive a tab switch
  $('#tv-desc').value='Changed while on Details'; $('#tv-tab-activity').click(); $('#tv-tab-details').click();
  r.descKept=$('#tv-desc').value==='Changed while on Details';
@@ -93,18 +93,18 @@ check('breadcrumb is workspace / board', r.crumb==='Store Operation / Flash Sale
 check('title is the heading, escaped, and names the dialog', r.title==='October flash sale <pricing>' && r.titleEscaped && r.labelled);
 check('meta line: ticket · brand · platform, only from this board', r.meta==='FS-1048 · Revlon · Lazada');
 check('status pill painted, owner and due filled', r.statusPainted && r.owner==='u2' && r.ownerAv && r.due==='2026-10-05');
-check('tabs: Details selected, Comments shows its count, Activity for staff', r.tabs==='Details:true|Comments 3:false|Activity:false');
-check('only Details is shown at first, in two columns', r.panes==='details:shown,comments:hidden,activity:hidden' && r.twoCols);
+check('tabs: Fields first on a board with columns, Comments shows its count, Activity for staff', r.tabs==='Fields:true|Details:false|Comments 3:false|Activity:false');
+check('only Fields is shown at first; Details keeps its two columns', r.panes==='fields:shown,details:hidden,comments:hidden,activity:hidden' && r.twoCols);
 check('checklist header counts done items', r.chkCount==='(2 of 3 complete)');
 check('count follows a toggle and a removal', r.chkAfterToggle==='(3 of 3 complete)' && r.chkAfterRemove==='(2 of 2 complete)');
 check('click switches tab', r.afterClick==='010');
 check('arrow key moves to the next tab and focuses it', r.afterArrow==='001:tv-tab-activity');
-check('Home goes back to Details', r.afterHome==='true');
+check('Home goes back to the first tab', r.afterHome==='true');
 check('unsaved edits survive switching tabs', r.descKept);
 check('clicking the title opens the rename input', r.inputOpen);
 check('Escape in the rename restores the title and does not close the popup', r.escapeKeptModal && r.escapeRestored);
 check('Enter/blur keeps the new title in the heading', r.viewUpdated==='October flash sale pricing v2' && r.inputClosed);
 check('status change repaints the pill; clearing owner clears the avatar', r.repainted && r.avCleared);
 check('Save sends the rename and the edits', !!r.saved && r.saved.title==='October flash sale pricing v2' && r.saved.status==='done' && r.saved.assignee_id===null && r.saved.description==='Changed while on Details');
-check('partners get Details and Comments, no Activity', r.partnerTabs==='tv-tab-details,tv-tab-comments');
+check('partners get Fields, Details and Comments, no Activity', r.partnerTabs==='tv-tab-fields,tv-tab-details,tv-tab-comments');
 if(!ok) process.exit(1); });
