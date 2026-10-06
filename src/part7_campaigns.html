@@ -194,25 +194,37 @@ table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:10
 @media(max-width:760px){ .cp-plan{grid-template-columns:1fr} }
 
 /* ---- campaign record (slice 1) ---- */
-.cp-demo{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;margin-bottom:12px;background:var(--amber-soft);border:1px solid #E6D9B8;border-radius:10px;font-size:12.6px;color:var(--ink2)}
+.cp-demo{display:flex;gap:10px;align-items:flex-start;padding:6px 10px;margin-bottom:8px;background:var(--amber-soft);border:1px solid #E6D9B8;border-radius:10px;font-size:12.6px;color:var(--ink2)}
 .cp-demo b{color:var(--ink)}
-.cp-asof{font-size:12px;color:var(--ink3);margin:0 0 12px}
-.cp-phases{display:flex;flex-wrap:wrap;gap:0;align-items:center;margin:4px 0 12px}
+.cp-asof{font-size:12px;color:var(--ink3);margin:0 0 6px}
+.cp-page .page-head{margin-bottom:4px}
+.cp-page .stat-row{gap:8px;margin-bottom:8px}
+.cp-page .stat{padding:8px 12px}
+.cp-page .cp-stat .n{font-size:20px}
+.cp-page .cp-stat .cp-l{margin-bottom:2px}
+.cp-page .cp-stat .sub{margin-top:2px}
+.cp-phases{display:flex;flex-wrap:wrap;gap:0;align-items:center;margin:2px 0 6px}
 .cp-phs{display:flex;align-items:center;gap:8px;padding:4px 12px 4px 0;font-size:12.5px;color:var(--ink2)}
 .cp-phs+.cp-phs{border-left:1px solid var(--line);padding-left:12px}
 .cp-phs b{font-weight:700;color:var(--ink)}
 .cp-phs .when{color:var(--ink3);font-variant-numeric:tabular-nums}
 .cp-phs.now b{color:var(--cp-navy)}
-.cp-shell{display:grid;grid-template-columns:196px minmax(0,1fr);gap:14px;align-items:start}
+.cp-shell{display:grid;grid-template-columns:196px minmax(0,1fr);gap:8px 14px;align-items:start}
+.cp-shell.has-bar>.cp-bar{grid-column:1 / -1;grid-row:1}
+.cp-shell.has-bar>.cp-rail{grid-column:1;grid-row:2}
+.cp-shell.has-bar>.cp-main{grid-column:2;grid-row:2}
 .cp-rail{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:8px;position:sticky;top:8px}
 .cp-rail h3{margin:0 0 2px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
 .cp-rail label{font-size:11px;color:var(--ink3);font-weight:700;margin:0}
 .cp-rail select{padding:6px 8px;font-size:12.5px}
-.cp-strip{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 12px;margin-bottom:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;font-size:12.6px;color:var(--ink2)}
+.cp-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px}
+.cp-strip{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:4px 10px;margin:0;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;font-size:12.6px;color:var(--ink2);flex:0 1 auto;min-height:28px}
 .cp-strip b{color:var(--ink);font-variant-numeric:tabular-nums}
 .cp-strip .hot{color:var(--amber);font-weight:700}
-.cp-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
-.cp-tools select{width:auto;padding:6px 8px;font-size:12.5px}
+.cp-tools{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;margin:0;flex:0 0 auto}
+.cp-tools label{display:inline;width:auto;margin:0;font-size:12px;font-weight:600;color:var(--ink3);white-space:nowrap}
+.cp-bar .cp-tools select{width:max-content;max-width:220px;flex:0 0 auto;height:28px;padding:2px 8px;font-size:12.5px}
+.cp-bulk{display:flex;gap:6px;align-items:center;margin-left:auto;flex:0 0 auto}
 .cp-tgt{border-collapse:separate;border-spacing:0;font-size:12px;min-width:1280px}
 .cp-tgt th{position:sticky;top:0;background:var(--panel-2);z-index:2;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
 .cp-tgt th.tx{text-align:left}
@@ -244,7 +256,8 @@ table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:10
 .cp-vlist li.bad{background:var(--red-soft);color:var(--red)}
 .cp-vlist li.warn{background:var(--amber-soft);color:var(--amber)}
 .cp-vlist li.ok{background:var(--green-soft);color:var(--green)}
-.cp-vlist select{width:auto;min-width:180px;padding:5px 8px;font-size:12.5px}
+.cp-vlist select,#cp-imp-map .imp-to select{width:max-content;max-width:220px;flex:0 0 auto;min-width:0;padding:4px 8px;font-size:12.5px;height:28px}
+#cp-imp-map .imp-to{flex:0 0 auto;width:auto}
 .cp-prevtbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
 .cp-prevtbl th,.cp-prevtbl td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left;font-variant-numeric:tabular-nums}
 .cp-prevtbl td.num,.cp-prevtbl th.num{text-align:right}
@@ -1017,13 +1030,13 @@ function cpRenderOne(c, tab){
              : cpDetOverview(c);
   const showRail = ['overview','targets','readiness','live','compare','data'].includes(tab);
   const tabs = [['overview','Overview'],['targets','Targets'],['readiness','Readiness'],['live','Live'],['compare','Compare'],['data','Data']];
-  $('#content').innerHTML = `
+  $('#content').innerHTML = `<div class="cp-page">
     ${cpCampaignHead(c)}
-    <div class="tabs" style="margin-bottom:14px;width:max-content;max-width:100%;overflow-x:auto">
+    <div class="tabs" style="margin-bottom:8px;width:max-content;max-width:100%;overflow-x:auto">
       ${tabs.map(([k,l])=>`<button class="tab ${tab===k?'active':''}" onclick="cpGo('${c.id}','${k}')">${l}</button>`).join('')}
     </div>
     ${cpAsOfBanner(c)}
-    ${showRail ? `<div class="cp-shell"><aside class="cp-rail">${cpFilterRail(c)}</aside><div class="cp-main">${body}</div></div>` : body}`;
+    ${showRail ? `<div class="cp-shell${tab==='targets'?' has-bar':''}">${tab==='targets' ? cpTargetBar(c) : ''}<aside class="cp-rail">${cpFilterRail(c)}</aside><div class="cp-main">${body}</div></div>` : body}</div>`;
 }
 function cpDetOverview(c){
   const byDiv = {};
@@ -2219,6 +2232,41 @@ function cpRerenderKeep(){
   const sc2 = document.querySelector('.cp-gw');
   if(sc2) sc2.scrollTop = top;
 }
+function cpTargetBar(c){
+  const camps = (S.campaigns||[]).filter(x=>x.id!==c.id);
+  const n = (c.lines||[]).length;
+  const proposed = (c.lines||[]).filter(l=> (CP_STATE_RANK[cpLineState(l)]||0)>=1 && cpRollup(l.targets,'target').gmv!=null).length;
+  const approved = (c.lines||[]).filter(l=> (CP_STATE_RANK[cpLineState(l)]||0)>=2 && cpRollup(l.targets,'target').gmv!=null).length;
+  const outliers = (c.lines||[]).filter(l=>cpNeedsReason(c,l)).length;
+  const f = cpFilters();
+  const sel = [...(S.cpSel||[])].filter(id=>(c.lines||[]).some(l=>l.id===id));
+  const bulk = [
+    sel.length && canEdit() ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','propose')">Propose ${sel.length}</button>` : '',
+    sel.length && cpIsSuper() ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','approve')">Approve</button>` : '',
+    sel.length && (cpIsSuper()||canEdit()) ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','align')">Brand aligned</button>` : '',
+    sel.length && cpCanLock() ? `<button class="btn btn-primary btn-sm" onclick="cpBulk('${c.id}','lock')">Lock</button>` : '',
+    sel.length && canEdit() ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','draft')">Back to draft</button>` : ''
+  ].join('');
+  return `<div class="cp-bar">
+    <div class="cp-strip"><span><b>${proposed}</b> / ${n} lines proposed</span><span>·</span><span><b>${approved}</b> approved</span><span>·</span><span class="${outliers?'hot':''}"><b>${outliers}</b> outlier${outliers===1?'':'s'} need a reason</span></div>
+    <div class="cp-tools">
+      <label>Baseline</label>
+      <select aria-label="Reference campaign" onchange="cpSetBaseline('${c.id}','id', this.value)">
+        <option value="">Choose a reference…</option>
+        ${camps.map(x=>`<option value="${x.id}" ${c.baselineId===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}
+      </select>
+      <select aria-label="Baseline is target or actual" onchange="cpSetBaseline('${c.id}','mode', this.value)">
+        <option value="target" ${c.baselineMode!=='actual'?'selected':''}>Target</option>
+        <option value="actual" ${c.baselineMode==='actual'?'selected':''}>Actual</option>
+      </select>
+      <label>Group by</label>
+      <select aria-label="Group by" onchange="cpSetFilter('group', this.value)">
+        ${[['vertical','Vertical'],['platform','Platform'],['lead','Lead'],['kam','KAM']].map(([k,l])=>`<option value="${k}" ${f.group===k?'selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>
+    ${bulk ? `<div class="cp-bulk">${bulk}</div>` : ''}
+  </div>`;
+}
 function cpViewLineTargets(c){
   const lines = cpVisibleLines(c);
   const f = cpFilters();
@@ -2282,35 +2330,7 @@ function cpViewLineTargets(c){
   body += `<tr class="total"><td class="tx">${totalLabel}</td><td></td><td></td><td></td><td></td>
     <td>${baseAll==null?'—':cpBaht(baseAll)}</td><td>${tot.gmv==null?'—':cpBaht(tot.gmv)}</td>
     <td class="${tg.hot?'hot':''}">${esc(tg.text)}</td>${cpMetricCells(tot)}<td></td></tr>`;
-  const camps = (S.campaigns||[]).filter(x=>x.id!==c.id);
-  const n = (c.lines||[]).length;
-  const proposed = (c.lines||[]).filter(l=> (CP_STATE_RANK[cpLineState(l)]||0)>=1 && cpRollup(l.targets,'target').gmv!=null).length;
-  const approved = (c.lines||[]).filter(l=> (CP_STATE_RANK[cpLineState(l)]||0)>=2 && cpRollup(l.targets,'target').gmv!=null).length;
-  const outliers = (c.lines||[]).filter(l=>cpNeedsReason(c,l)).length;
-  const sel = [...S.cpSel].filter(id=>(c.lines||[]).some(l=>l.id===id));
   return `
-    <div class="cp-strip"><span><b>${proposed}</b> / ${n} lines proposed</span><span>·</span><span><b>${approved}</b> approved</span><span>·</span><span class="${outliers?'hot':''}"><b>${outliers}</b> outlier${outliers===1?'':'s'} need a reason</span></div>
-    <div class="cp-tools">
-      <label style="font-size:12px;color:var(--ink3)">Baseline</label>
-      <select aria-label="Reference campaign" onchange="cpSetBaseline('${c.id}','id', this.value)">
-        <option value="">Choose a reference…</option>
-        ${camps.map(x=>`<option value="${x.id}" ${c.baselineId===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}
-      </select>
-      <select aria-label="Baseline is target or actual" onchange="cpSetBaseline('${c.id}','mode', this.value)">
-        <option value="target" ${c.baselineMode!=='actual'?'selected':''}>Target</option>
-        <option value="actual" ${c.baselineMode==='actual'?'selected':''}>Actual</option>
-      </select>
-      <label style="font-size:12px;color:var(--ink3);margin-left:8px">Group by</label>
-      <select aria-label="Group by" onchange="cpSetFilter('group', this.value)">
-        ${[['vertical','Vertical'],['platform','Platform'],['lead','Lead'],['kam','KAM']].map(([k,l])=>`<option value="${k}" ${f.group===k?'selected':''}>${l}</option>`).join('')}
-      </select>
-      <span style="flex:1"></span>
-      ${sel.length && canEdit() ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','propose')">Propose ${sel.length}</button>` : ''}
-      ${sel.length && cpIsSuper() ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','approve')">Approve</button>` : ''}
-      ${sel.length && (cpIsSuper()||canEdit()) ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','align')">Brand aligned</button>` : ''}
-      ${sel.length && cpCanLock() ? `<button class="btn btn-primary btn-sm" onclick="cpBulk('${c.id}','lock')">Lock</button>` : ''}
-      ${sel.length && canEdit() ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','draft')">Back to draft</button>` : ''}
-    </div>
     ${lines.length? `<div class="card"><div class="cp-gw"><table class="cp-tgt"><thead>${head}</thead><tbody>${body}</tbody></table></div>
       <div class="cp-legend"><span>Amber growth is beyond ±30% and needs a reason before Propose.</span><span>Typed cells are inputs. Plain numbers are calculated.</span><span style="margin-left:auto">฿ full amounts · % to 1 decimal</span></div></div>`
       : `<div class="card empty"><div style="font-weight:600">No brand lines${(c.lines||[]).length?' match these filters':' yet'}</div><p style="color:var(--ink3)">Import a CUSP daily-target file on the Data tab. Shop name, channel and date become a brand line.</p></div>`}`;
