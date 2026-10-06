@@ -210,20 +210,21 @@ table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:10
 .cp-phs .when{color:var(--ink3);font-variant-numeric:tabular-nums}
 .cp-phs.now b{color:var(--cp-navy)}
 .cp-shell{display:grid;grid-template-columns:196px minmax(0,1fr);gap:8px 14px;align-items:start}
-.cp-shell.has-bar>.cp-bar{grid-column:1 / -1;grid-row:1}
+.cp-shell.has-bar>.cp-toolbar{grid-column:1 / -1;grid-row:1}
 .cp-shell.has-bar>.cp-rail{grid-column:1;grid-row:2}
 .cp-shell.has-bar>.cp-main{grid-column:2;grid-row:2}
 .cp-rail{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:8px;position:sticky;top:8px}
 .cp-rail h3{margin:0 0 2px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
 .cp-rail label{font-size:11px;color:var(--ink3);font-weight:700;margin:0}
 .cp-rail select{padding:6px 8px;font-size:12.5px}
-.cp-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px}
-.cp-strip{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:4px 10px;margin:0;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;font-size:12.6px;color:var(--ink2);flex:0 1 auto;min-height:28px}
+/* Timeline bars already own .cp-bar (absolute, 26px, white). This row is separate. */
+.cp-toolbar{position:static;display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;margin:0;height:auto;overflow:visible;padding:0;color:inherit;background:transparent;box-shadow:none;white-space:normal;font-weight:inherit;cursor:default;z-index:auto}
+.cp-strip{display:flex;gap:8px;flex-wrap:nowrap;align-items:center;padding:4px 10px;margin:0;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;font-size:12.6px;color:var(--ink2);flex:0 1 auto;min-height:28px;white-space:nowrap}
 .cp-strip b{color:var(--ink);font-variant-numeric:tabular-nums}
 .cp-strip .hot{color:var(--amber);font-weight:700}
 .cp-tools{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;margin:0;flex:0 0 auto}
 .cp-tools label{display:inline;width:auto;margin:0;font-size:12px;font-weight:600;color:var(--ink3);white-space:nowrap}
-.cp-bar .cp-tools select{width:max-content;max-width:220px;flex:0 0 auto;height:28px;padding:2px 8px;font-size:12.5px}
+.cp-toolbar .cp-tools select{width:max-content;max-width:220px;flex:0 0 auto;height:28px;padding:2px 8px;font-size:12.5px}
 .cp-bulk{display:flex;gap:6px;align-items:center;margin-left:auto;flex:0 0 auto}
 .cp-tgt{border-collapse:separate;border-spacing:0;font-size:12px;min-width:1280px}
 .cp-tgt th{position:sticky;top:0;background:var(--panel-2);z-index:2;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
@@ -252,11 +253,13 @@ table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:10
 .cp-steps b.on{color:var(--ink)}
 .cp-steps b.done{color:var(--green)}
 .cp-vlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto}
-.cp-vlist li{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;padding:8px 10px;border-radius:8px}
+.cp-vlist li{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;font-size:13px;padding:8px 10px;border-radius:8px}
 .cp-vlist li.bad{background:var(--red-soft);color:var(--red)}
 .cp-vlist li.warn{background:var(--amber-soft);color:var(--amber)}
 .cp-vlist li.ok{background:var(--green-soft);color:var(--green)}
-.cp-vlist select,#cp-imp-map .imp-to select{width:max-content;max-width:220px;flex:0 0 auto;min-width:0;padding:4px 8px;font-size:12.5px;height:28px}
+.cp-vmsg{flex:1 1 auto;min-width:12em}
+.cp-vlist select,#cp-imp-map .imp-to select{width:max-content;max-width:240px;flex:0 0 auto;min-width:max-content;padding:4px 8px;font-size:12.5px;height:28px}
+#cp-imp-map .imp-row{flex-wrap:nowrap}
 #cp-imp-map .imp-to{flex:0 0 auto;width:auto}
 .cp-prevtbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
 .cp-prevtbl th,.cp-prevtbl td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left;font-variant-numeric:tabular-nums}
@@ -2247,7 +2250,7 @@ function cpTargetBar(c){
     sel.length && cpCanLock() ? `<button class="btn btn-primary btn-sm" onclick="cpBulk('${c.id}','lock')">Lock</button>` : '',
     sel.length && canEdit() ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','draft')">Back to draft</button>` : ''
   ].join('');
-  return `<div class="cp-bar">
+  return `<div class="cp-toolbar">
     <div class="cp-strip"><span><b>${proposed}</b> / ${n} lines proposed</span><span>·</span><span><b>${approved}</b> approved</span><span>·</span><span class="${outliers?'hot':''}"><b>${outliers}</b> outlier${outliers===1?'':'s'} need a reason</span></div>
     <div class="cp-tools">
       <label>Baseline</label>
@@ -2938,14 +2941,14 @@ function cpRenderImport(){
   const other = rep.errors.filter(e=>e.code!=='unknown'&&e.code!=='column');
   const errHtml = primary.concat(other.slice(0,30)).map(e=>{
     if(e.code==='unknown'){
-      return `<li class="bad">✗ ${esc(e.message)} <select aria-label="Alias for ${esc(e.shop)}" onchange="cpAliasPick(${jsArg(e.shop)}, this.value)"><option value="">Choose the brand…</option>${brands.map(b=>`<option value="${b.id}" ${(im.aliases||{})[e.shop]===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}</select></li>`;
+      return `<li class="bad"><span class="cp-vmsg">✗ ${esc(e.message)}</span><select aria-label="Alias for ${esc(e.shop)}" onchange="cpAliasPick(${jsArg(e.shop)}, this.value)"><option value="">Choose the brand…</option>${brands.map(b=>`<option value="${b.id}" ${(im.aliases||{})[e.shop]===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}</select></li>`;
     }
     return `<li class="bad">✗ ${esc(e.message)}</li>`;
   }).join('');
   const moreE = other.length>30 ? `<li class="bad">✗ And ${other.length-30} more</li>` : '';
   const warnHtml = rep.warnings.map(w=>{
     if(w.code==='tag'){
-      return `<li class="warn">⚠ ${esc(w.message)} <select aria-label="Phase for ${esc(w.tag)}" onchange="cpPhasePick(${jsArg(w.tag)}, this.value)"><option value="">Leave unmapped</option>${CP_PHASES.map(p=>`<option value="${p.kind}" ${(im.phaseMap||{})[w.tag]===p.kind?'selected':''}>${p.label}</option>`).join('')}</select></li>`;
+      return `<li class="warn"><span class="cp-vmsg">⚠ ${esc(w.message)}</span><select aria-label="Phase for ${esc(w.tag)}" onchange="cpPhasePick(${jsArg(w.tag)}, this.value)"><option value="">Leave unmapped</option>${CP_PHASES.map(p=>`<option value="${p.kind}" ${(im.phaseMap||{})[w.tag]===p.kind?'selected':''}>${p.label}</option>`).join('')}</select></li>`;
     }
     return `<li class="warn">⚠ ${esc(w.message)}</li>`;
   }).join('');
