@@ -702,13 +702,16 @@ async function renderAdmin(){
         <input id="nb-name" placeholder="New brand name" style="flex:1">
         <input id="nb-group" placeholder="Group (optional)" style="width:140px">
         <button class="btn btn-primary btn-sm" id="nb-add">Add</button></div>
-      <div class="card"><table class="tbl"><thead><tr><th>Brand</th><th>Group</th><th>Platforms</th><th>Status</th><th></th></tr></thead><tbody>
+      <div class="card"><table class="tbl"><thead><tr><th>Brand</th><th>Vertical</th><th>Country</th><th>Group</th><th>Status</th><th></th></tr></thead><tbody>
       ${brs.map(b=>`<tr>
         <td style="font-weight:600">${esc(b.name)}</td>
+        <td style="color:var(--ink2)">${esc(b.vertical||'—')}</td>
+        <td style="color:var(--ink2)">${esc(b.country||'—')}</td>
         <td style="color:var(--ink2)">${esc(b.brand_group||'')}</td>
-        <td style="color:var(--ink2)">${(b.platforms||[]).map(esc).join(', ')}</td>
         <td><span class="chip" style="background:${b.active?'var(--green-soft);color:var(--green)':'var(--gray-soft);color:var(--ink3)'}">${b.active?'active':'offboarded'}</span></td>
-        <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="toggleBrand('${b.id}', ${!b.active})">${b.active?'Offboard':'Reactivate'}</button></td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn btn-ghost btn-sm" onclick="brandMasterModal('${b.id}')">Details</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleBrand('${b.id}', ${!b.active})">${b.active?'Offboard':'Reactivate'}</button></td>
       </tr>`).join('')}</tbody></table></div>
       <p style="margin-top:12px;font-size:12.5px;color:var(--ink2)">${brs.filter(b=>b.active).length} active · ${brs.filter(b=>!b.active).length} offboarded</p>`;
     B.querySelector('#nb-add').onclick = async ()=>{
@@ -1814,5 +1817,73 @@ async function deleteTeamModal(tid){
   const {error} = await db.from('teams').delete().eq('id', tid);
   if(error) return toast(error.message, true);
   toast('Team deleted'); await refreshCore(); renderAdmin();
+}
+/* Brand master extensions used by campaign targets. Same vertical list as CP_VERTICALS in part7.
+   Writes the columns from migrations/2026-10-06_campaign_targets.sql — until that migration
+   is applied, Save reports the database error and leaves the row as it was. */
+const BRAND_VERTICALS = ['Beauty','Fashion – Mass','Fashion – Premium','FMCG','Electronics','PVH SG','PVH MY'];
+const BRAND_PLATFORMS = [['shopee','Shopee'],['lazada','Lazada'],['tiktok','TikTok Shop'],['shopify','Shopify']];
+async function brandMasterModal(id){
+  const b = (S.brandsList||[]).find(x=>x.id===id); if(!b) return;
+  let aliases = [], assign = [];
+  try{
+    const [al, asg] = await Promise.all([
+      db.from('brand_aliases').select('*').eq('brand_id', id),
+      db.from('brand_assignments').select('*').eq('brand_id', id),
+    ]);
+    aliases = al.data||[]; assign = asg.data||[];
+  }catch(e){}
+  const who = (plat, role)=> (assign.find(a=>a.platform===plat && a.role===role)||{}).person_name||'';
+  modal(`<div class="modal-head"><h2>${esc(b.name)}</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 140px;gap:12px">
+        <div><label>Vertical</label>
+          <select id="bm-vert"><option value="">—</option>${BRAND_VERTICALS.map(v=>`<option ${b.vertical===v?'selected':''}>${esc(v)}</option>`).join('')}</select></div>
+        <div><label>Country</label><input id="bm-co" value="${esc(b.country||'')}" placeholder="TH"></div>
+      </div>
+      <label style="margin-top:12px">Service model</label><input id="bm-svc" value="${esc(b.service_model||'')}" placeholder="Retail, Service, …">
+      <label style="margin-top:12px">Aliases ${helpIcon('CUSP shop names and old spellings. The daily-target import matches these before it calls a brand unknown.')}</label>
+      <textarea id="bm-al" rows="3" placeholder="One name per line">${esc(aliases.map(a=>a.alias).join('\n'))}</textarea>
+      <div class="section-title" style="margin-top:14px">People per platform</div>
+      <table class="tbl"><thead><tr><th>Platform</th><th>Lead</th><th>KAM</th><th>Associate</th></tr></thead><tbody>
+        ${BRAND_PLATFORMS.map(([k,l])=>`<tr><td>${l}</td>
+          <td><input data-asg="${k}:lead" value="${esc(who(k,'lead'))}" placeholder="Name"></td>
+          <td><input data-asg="${k}:kam" value="${esc(who(k,'kam'))}" placeholder="Name"></td>
+          <td><input data-asg="${k}:associate" value="${esc(who(k,'associate'))}" placeholder="Name"></td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="brandMasterSave('${id}')">Save</button></div>`, true);
+}
+async function brandMasterSave(id){
+  const v = s => (document.querySelector(s)?.value||'').trim();
+  const vertical = v('#bm-vert') || null;
+  const country = v('#bm-co').toUpperCase() || null;
+  const service_model = v('#bm-svc') || null;
+  const {error} = await db.from('brands').update({vertical, country, service_model}).eq('id', id);
+  if(error) return toast(error.message, true);
+  const names = v('#bm-al').split('\n').map(s=>s.trim()).filter(Boolean);
+  const delA = await db.from('brand_aliases').delete().eq('brand_id', id);
+  if(delA.error) return toast(delA.error.message, true);
+  if(names.length){
+    const ins = await db.from('brand_aliases').insert(names.map(alias=>({brand_id:id, alias, source:'manual'})));
+    if(ins.error) return toast(ins.error.message, true);
+  }
+  const rows = [...document.querySelectorAll('[data-asg]')].map(el=>{
+    const [platform, role] = el.dataset.asg.split(':');
+    const person_name = el.value.trim();
+    if(!person_name) return null;
+    const profHit = (S.profiles||[]).find(p=> (p.full_name||'').trim().toLowerCase()===person_name.toLowerCase()
+      || (p.full_name||'').split(' ')[0].toLowerCase()===person_name.toLowerCase());
+    return {brand_id:id, platform, role, person_name, user_id: profHit? profHit.id : null};
+  }).filter(Boolean);
+  const delP = await db.from('brand_assignments').delete().eq('brand_id', id);
+  if(delP.error) return toast(delP.error.message, true);
+  if(rows.length){
+    const insP = await db.from('brand_assignments').insert(rows);
+    if(insP.error) return toast(insP.error.message, true);
+  }
+  toast('Brand saved'); closeModals(); await refreshCore(); renderAdmin();
 }
 </script>
