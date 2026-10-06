@@ -752,6 +752,14 @@ function showResetCard(p){
   $('#su-fields').classList.add('hidden'); $('#li-email-lbl').classList.add('hidden'); $('#li-email').classList.add('hidden');
   $('#li-pass-lbl').textContent='New password'; $('#li-pass').placeholder='At least 8 characters'; $('#li-pass').autocomplete='new-password';
   $('#li-btn').textContent='Save new password'; $('#li-toggle-wrap').classList.add('hidden'); $('#li-forgot').classList.add('hidden');
+  /* In a normal browser offer the desktop app. The token is only consumed on Save, so handing
+     the link over is safe. Inside the desktop app (user agent has "Electron/") there is nothing to offer. */
+  if(!/Electron\//.test(navigator.userAgent) && /^[A-Za-z0-9_-]{8,256}$/.test(p.token_hash) && !$('#li-open-app')){
+    const a=document.createElement('a'); a.id='li-open-app'; a.className='link';
+    a.href='done://reset?token_hash='+encodeURIComponent(p.token_hash)+'&type=recovery';
+    a.textContent='Use the DONE desktop app instead'; a.style.cssText='display:block;margin-top:12px;text-align:center;font-size:13px';
+    $('#li-btn').insertAdjacentElement('afterend', a);
+  }
 }
 function leaveResetCard(){
   S._resetFlow = null;
