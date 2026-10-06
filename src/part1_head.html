@@ -706,6 +706,64 @@ td.tv-name .tv-open{padding-left:20px}
 .task-modal .tv-main .strow.ro{grid-template-areas:none;grid-template-columns:auto minmax(0,1fr) auto auto auto 0}
 .task-modal .modal-foot{padding:16px 28px}
 .task-modal .modal-foot .btn{min-width:110px;justify-content:center}
+/* Task popup: tab bar with the board-owner ＋, Fields cards, Files tab, layout editor (6 Oct 2026) */
+.task-modal .tv-tabbar{display:flex;align-items:center;gap:6px;padding:0 28px;border-bottom:1px solid var(--line);flex:none}
+.task-modal .tv-tabbar .tv-tabs{padding:0;border-bottom:0;min-width:0;overflow-x:auto;scrollbar-width:none}
+.task-modal .tv-tab-add{flex:none;width:30px;height:30px;border-radius:8px;color:var(--ink2);font-size:16px;line-height:1}
+.task-modal .tv-tab-add:hover,.task-modal .tv-tab-add.on{background:var(--gray-soft);color:var(--ink)}
+.task-modal .tv-grid.solo{grid-template-columns:1fr}
+.task-modal .ic-bar{display:flex;justify-content:flex-end;margin:-4px 0 12px}
+.task-modal .ic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;align-items:start}
+.task-modal .ic-card{border:1px solid var(--line);border-radius:12px;padding:14px 18px 10px;background:var(--panel)}
+.task-modal .ic-title{font-size:15px;font-weight:700;margin:0 0 4px}
+.task-modal .ic-field{padding:7px 0}
+.task-modal .ic-label{font-size:12.5px;font-weight:500;color:var(--ink2);margin-bottom:5px;overflow-wrap:anywhere}
+.task-modal .ic-val{display:flex;align-items:stretch;min-height:38px;border:1px solid var(--line);border-radius:8px;background:var(--field);overflow:hidden}
+.task-modal .ic-val>*{flex:1;min-width:0}
+.task-modal .ic-val .tv-pickv{min-height:36px;padding:6px 12px;white-space:normal;overflow-wrap:anywhere;border-radius:0}
+.task-modal .ic-val .tv-pickv:hover{box-shadow:none;background:var(--hover,var(--gray-soft))}
+.task-modal .ic-val .tv-pickv:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.task-modal .ic-val .tv-pickv.fillcell{padding:0}
+.task-modal .ic-val .tv-fill{min-height:36px}
+.task-modal .ic-val .tv-pickv input{border:0;background:none;padding:0;height:24px;font-size:13.5px}
+.task-modal .ic-val .tv-pickv input:focus{box-shadow:none}
+.task-modal .ic-val.ic-checkbox{border:0;background:none;min-height:0}
+.task-modal .ic-val.ic-checkbox input{width:18px;height:18px;flex:none;accent-color:var(--accent);margin:4px 0}
+.task-modal .ic-val .tv-fxv{display:flex;align-items:center;padding:6px 12px;font-variant-numeric:tabular-nums}
+.task-modal .ic-empty{color:var(--ink3);font-size:13px;padding:8px 0}
+.task-modal .ic-colfile{display:inline-flex;flex-direction:column;gap:4px}
+.task-modal .ic-colname{font-size:11.5px;color:var(--ink3)}
+.icl-modal .modal-body{max-height:calc(100dvh - 200px);overflow:auto}
+.icl-note{font-size:13px;color:var(--ink2);margin:10px 0 14px}
+.icl-card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px;background:var(--panel)}
+.icl-card.icl-hidden{background:var(--gray-soft);border-style:dashed}
+.icl-card-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:6px;margin-bottom:6px}
+.icl-card-head .icl-title{font-weight:700;min-width:0}
+.icl-card-head b{font-size:13.5px;padding:4px 2px}
+.icl-fields{min-height:34px;border-radius:8px;padding:2px 0}
+.icl-fields.dragover{background:var(--accent-soft);outline:2px dashed var(--accent);outline-offset:2px}
+.icl-row{display:grid;grid-template-columns:16px minmax(0,1fr) 28px 28px minmax(120px,170px);align-items:center;gap:6px;padding:5px 6px;border-radius:8px;background:var(--panel);border:1px solid transparent}
+.icl-hidden .icl-row{grid-template-columns:16px minmax(0,1fr) minmax(120px,170px)}
+.icl-row>:last-child{width:100%;min-width:0}
+.icl-row:hover{border-color:var(--line)}
+.icl-row.dragging{opacity:.45}
+.icl-grip{cursor:grab;color:var(--ink3);font-size:13px;padding:0 2px}
+.icl-name{min-width:0;font-size:13.5px;overflow-wrap:anywhere}
+.icl-type{margin-left:8px;font-size:11.5px;color:var(--ink3)}
+.icl-ib{width:28px;height:28px;border-radius:7px;color:var(--ink2);flex:none}
+.icl-ib:hover:not(:disabled){background:var(--gray-soft);color:var(--ink)}
+.icl-ib:disabled{opacity:.3;cursor:default}
+.icl-move{padding:5px 8px;font-size:12.5px}
+.icl-empty{font-size:12.5px;color:var(--ink3);padding:8px 6px}
+.icl-h{font-size:13.5px;font-weight:700;margin:18px 0 6px}
+.icl-tab{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13.5px;font-weight:500;color:var(--ink)}
+.icl-tab input{width:auto;margin:0;accent-color:var(--accent)}
+@media(max-width:760px){
+  .task-modal .tv-tabbar{padding:0 16px}
+  .task-modal .ic-grid{grid-template-columns:1fr}
+  .icl-row{grid-template-columns:16px minmax(0,1fr) 28px 28px 110px}
+  .icl-hidden .icl-row{grid-template-columns:16px minmax(0,1fr) 110px}
+}
 @media(max-width:760px){
   .task-modal .tv-head,.task-modal .tv-props,.task-modal .tv-tabs,.task-modal .modal-body,.task-modal .modal-foot{padding-left:16px;padding-right:16px}
   .task-modal .modal-head h2.tv-h2{font-size:21px}
