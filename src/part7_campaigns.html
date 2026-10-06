@@ -192,6 +192,83 @@ table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:10
 .cp-pk{border:1px solid var(--line);border-radius:10px;padding:11px 12px;text-align:left;display:flex;flex-direction:column;gap:4px;background:var(--panel);font:inherit;color:inherit}
 .cp-pk.on{border-color:var(--cp-navy);background:var(--cp-navy-soft)} .cp-pk b{font-size:13px} .cp-pk span{font-size:11.5px;color:var(--ink3)}
 @media(max-width:760px){ .cp-plan{grid-template-columns:1fr} }
+
+/* ---- campaign record (slice 1) ---- */
+.cp-demo{display:flex;gap:10px;align-items:flex-start;padding:6px 10px;margin-bottom:8px;background:var(--amber-soft);border:1px solid #E6D9B8;border-radius:10px;font-size:12.6px;color:var(--ink2)}
+.cp-demo b{color:var(--ink)}
+.cp-asof{font-size:12px;color:var(--ink3);margin:0 0 6px}
+.cp-page .page-head{margin-bottom:4px}
+.cp-page .stat-row{gap:8px;margin-bottom:8px}
+.cp-page .stat{padding:8px 12px}
+.cp-page .cp-stat .n{font-size:20px}
+.cp-page .cp-stat .cp-l{margin-bottom:2px}
+.cp-page .cp-stat .sub{margin-top:2px}
+.cp-phases{display:flex;flex-wrap:wrap;gap:0;align-items:center;margin:2px 0 6px}
+.cp-phs{display:flex;align-items:center;gap:8px;padding:4px 12px 4px 0;font-size:12.5px;color:var(--ink2)}
+.cp-phs+.cp-phs{border-left:1px solid var(--line);padding-left:12px}
+.cp-phs b{font-weight:700;color:var(--ink)}
+.cp-phs .when{color:var(--ink3);font-variant-numeric:tabular-nums}
+.cp-phs.now b{color:var(--cp-navy)}
+.cp-shell{display:grid;grid-template-columns:196px minmax(0,1fr);gap:8px 14px;align-items:start}
+.cp-shell.has-bar>.cp-toolbar{grid-column:1 / -1;grid-row:1}
+.cp-shell.has-bar>.cp-rail{grid-column:1;grid-row:2}
+.cp-shell.has-bar>.cp-main{grid-column:2;grid-row:2}
+.cp-rail{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:8px;position:sticky;top:8px}
+.cp-rail h3{margin:0 0 2px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
+.cp-rail label{font-size:11px;color:var(--ink3);font-weight:700;margin:0}
+.cp-rail select{padding:6px 8px;font-size:12.5px}
+/* Timeline bars already own .cp-bar (absolute, 26px, white). This row is separate. */
+.cp-toolbar{position:static;display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;margin:0;height:auto;overflow:visible;padding:0;color:inherit;background:transparent;box-shadow:none;white-space:normal;font-weight:inherit;cursor:default;z-index:auto}
+.cp-strip{display:flex;gap:8px;flex-wrap:nowrap;align-items:center;padding:4px 10px;margin:0;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;font-size:12.6px;color:var(--ink2);flex:0 1 auto;min-height:28px;white-space:nowrap}
+.cp-strip b{color:var(--ink);font-variant-numeric:tabular-nums}
+.cp-strip .hot{color:var(--amber);font-weight:700}
+.cp-tools{display:flex;gap:6px;flex-wrap:nowrap;align-items:center;margin:0;flex:0 0 auto}
+.cp-tools label{display:inline;width:auto;margin:0;font-size:12px;font-weight:600;color:var(--ink3);white-space:nowrap}
+.cp-toolbar .cp-tools select{width:max-content;max-width:220px;flex:0 0 auto;height:28px;padding:2px 8px;font-size:12.5px}
+/* Plain selects are upgraded to .sel-pick buttons (width 100%, min 180px). Size those to the label. */
+.cp-toolbar .sel-pick,.cp-vlist .sel-pick,#cp-imp-map .sel-pick{width:auto;min-width:0;max-width:220px;height:28px;flex:0 0 auto;padding:0 8px;font-size:12.5px;font-weight:600}
+.cp-toolbar .sel-pick .pick-cur,.cp-vlist .sel-pick .pick-cur,#cp-imp-map .sel-pick .pick-cur{overflow:hidden;text-overflow:ellipsis;max-width:190px}
+.cp-bulk{display:flex;gap:6px;align-items:center;margin-left:auto;flex:0 0 auto}
+.cp-tgt{border-collapse:separate;border-spacing:0;font-size:12px;min-width:1280px}
+.cp-tgt th{position:sticky;top:0;background:var(--panel-2);z-index:2;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}
+.cp-tgt th.tx{text-align:left}
+.cp-tgt th:first-child,.cp-tgt td:first-child{position:sticky;left:0;z-index:3;background:var(--panel);text-align:left;min-width:210px;border-right:1px solid var(--line)}
+.cp-tgt th:first-child{z-index:4;background:var(--panel-2)}
+.cp-tgt td{height:32px;padding:2px 8px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+.cp-tgt td.tx{text-align:left}
+.cp-tgt tr:hover td{background:var(--hover)}
+.cp-tgt tr:hover td:first-child{background:var(--hover)}
+.cp-tgt tr.sub td{background:var(--panel-2);font-weight:700}
+.cp-tgt tr.sub td:first-child{background:var(--panel-2)}
+.cp-tgt tr.total td{position:sticky;bottom:0;background:var(--panel);font-weight:800;border-top:2px solid var(--line);z-index:3}
+.cp-tgt tr.total td:first-child{z-index:5}
+.cp-tgt input.cp-in{width:108px;text-align:right;font-variant-numeric:tabular-nums;background:var(--field);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-size:12px;font-family:inherit}
+.cp-tgt input.cp-in:focus{outline:2px solid var(--cp-navy);border-color:transparent}
+.cp-tgt td.calc{color:var(--ink)}
+.cp-tgt td.hot{background:var(--amber-soft);color:var(--amber);font-weight:700}
+.cp-tgt td.miss{color:var(--ink3);font-weight:600;font-variant-numeric:normal}
+.cp-fold{border:0;background:transparent;font:inherit;font-weight:700;color:inherit;cursor:pointer;padding:0}
+.cp-ph{padding:22px 18px}
+.cp-ph h2{margin:0 0 6px;font-size:16px}
+.cp-ph p{margin:0 0 12px;color:var(--ink2);font-size:13px;max-width:560px;line-height:1.5}
+.cp-steps{display:flex;gap:14px;margin-bottom:14px;font-size:12.5px;color:var(--ink3)}
+.cp-steps b{display:inline-flex;align-items:center;gap:6px;font-weight:700}
+.cp-steps b.on{color:var(--ink)}
+.cp-steps b.done{color:var(--green)}
+.cp-vlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow:auto}
+.cp-vlist li{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;font-size:13px;padding:8px 10px;border-radius:8px}
+.cp-vlist li.bad{background:var(--red-soft);color:var(--red)}
+.cp-vlist li.warn{background:var(--amber-soft);color:var(--amber)}
+.cp-vlist li.ok{background:var(--green-soft);color:var(--green)}
+.cp-vmsg{flex:1 1 auto;min-width:12em}
+.cp-vlist select,#cp-imp-map .imp-to select{width:max-content;max-width:240px;flex:0 0 auto;min-width:max-content;padding:4px 8px;font-size:12.5px;height:28px}
+#cp-imp-map .imp-row{flex-wrap:nowrap}
+#cp-imp-map .imp-to{flex:0 0 auto;width:auto}
+.cp-prevtbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.cp-prevtbl th,.cp-prevtbl td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left;font-variant-numeric:tabular-nums}
+.cp-prevtbl td.num,.cp-prevtbl th.num{text-align:right}
+.cp-gw{overflow:auto;max-height:min(70vh, 820px)}
+@media(max-width:760px){ .cp-shell{grid-template-columns:1fr} .cp-rail{position:static} }
 </style>
 <script>
 /* ================= CAMPAIGN PLANNING =================
@@ -199,14 +276,16 @@ table.cp-g{border-collapse:separate;border-spacing:0;font-size:12px;min-width:10
    Brand.com, the brief expanded into tickets on the division boards, the GMV/budget line,
    and the creative deliverables waiting for sign-off.
 
-   SEED DATA ONLY. Nothing here reads or writes Supabase yet — S.campaigns is filled from
-   CP_SEED the first time the view opens and lives for the session. When the tables land,
-   cpLoad() is the only function that has to change. */
+   cpLoad() reads campaigns, phases, brand lines and daily targets from Supabase.
+   CP_SEED is only the demo fallback, used when those tables are not in the database yet
+   (the migration is migrations/2026-10-06_campaign_targets.sql, applied by hand).
+   Playbooks, cpDueBack and the role gate are unchanged. */
 
 const CP_CHANNELS = {
   shopee:{label:'Shopee', cls:'shopee'},
   lazada:{label:'Lazada', cls:'lazada'},
   tiktok:{label:'TikTok Shop', cls:'tiktok'},
+  shopify:{label:'Shopify', cls:'brand'},
   brand: {label:'Brand.com', cls:'brand'}
 };
 const CP_STATUSES = [
@@ -474,15 +553,17 @@ const cpPct = (a,b) => b? Math.round(a/b*100) : 0;
 const cpMeter = p => p>=95?'green' : p>=70?'' : p>=40?'amber':'red';
 
 /* ---------- state ---------- */
-/* One place to swap for real tables later: fill S.campaigns from db instead of CP_SEED. */
+/* Fills S.campaigns from Supabase. Until the migration is applied, cpLoadRemote falls
+   back to CP_SEED plus one demo 10.10 record so the Targets tab can be reviewed.
+   The first paint stays synchronous: an empty list, then the async load redraws. */
 function cpLoad(){
-  if(S.campaigns) return S.campaigns;
-  S.campaigns = CP_SEED.map(c=>{
-    const row = JSON.parse(JSON.stringify(c));
-    row.tasks  = row.status==='draft' ? [] : cpBuildTasks(row, row.prog);
-    row.assets = row.tasks.length ? cpBuildAssets(row, row.prog) : [];
-    return row;
-  });
+  if(S.cpLoaded) return S.campaigns || [];
+  if(!S.campaigns) S.campaigns = [];
+  if(!S.cpLoading){
+    S.cpLoading = true;
+    S.cpSource = 'loading';
+    cpLoadRemote();
+  }
   return S.campaigns;
 }
 const cpById = id => (S.campaigns||[]).find(c=>c.id===id);
@@ -536,7 +617,10 @@ function cpChanChip(k){
   const c = CP_CHANNELS[k]; if(!c) return '';
   return `<span class="chip" style="background:var(--cp-${c.cls}-soft);color:var(--cp-${c.cls})">${c.label}</span>`;
 }
-function cpBarClass(c){ return c.channels.length>1 ? 'multi' : CP_CHANNELS[c.channels[0]].cls; }
+function cpBarClass(c){
+  if(!c.channels || c.channels.length!==1) return c.channels && c.channels.length>1 ? 'multi' : 'brand';
+  return (CP_CHANNELS[c.channels[0]]||{cls:'brand'}).cls;
+}
 /* SLA state for one ticket, in the module's own working-day count. */
 function cpSla(t){
   if(t.status==='done') return {bg:'var(--green-soft)', ink:'var(--green)', txt:'Met'};
@@ -644,7 +728,13 @@ function cpWho(name){
    #/campaigns/<id>/<tab>          overview | tickets | assets | mechanics          */
 function renderCampaigns(id, tab){
   cpLoad(); cpLoadCalendar();
+  tab = cpTabClean(tab);
+  if(id && String(id).indexOf('?')>=0) id = String(id).split('?')[0];
   if(id && cpById(id)) return cpRenderOne(cpById(id), tab||'overview');
+  if(id && S.cpSource==='loading'){
+    $('#content').innerHTML = `<div class="page-head"><h1>Campaigns</h1></div><div class="card empty">Loading this campaign…</div>`;
+    return;
+  }
   /* Strategy (management/admin) lands on the month; everyone else on their own brand lines. */
   if(!cpTab) cpTab = cpIsSuper()? 'months' : 'brands';
   setTopbar('Campaigns', canEdit()? `<button class="btn btn-primary btn-sm" onclick="cpPlanMonth()">＋ Plan a month</button>`:'');
@@ -665,9 +755,11 @@ function renderCampaigns(id, tab){
       </div>
       <div class="actions">
         <button class="btn btn-ghost" onclick="cpExportCSV()">Export Excel</button>
+        ${canEdit()? `<button class="btn btn-ghost" onclick="cpNewCampaign()">New campaign</button>`:''}
         ${canEdit()? `<button class="btn btn-primary" onclick="cpPlanMonth()">＋ Plan a month</button>`:''}
       </div>
     </div>
+    ${cpDemoBanner()}
     ${body}`;
 }
 
@@ -928,50 +1020,29 @@ function cpSetAsset(aid, state){
 <script>
 /* ---------- one campaign ---------- */
 function cpRenderOne(c, tab){
-  setTopbar(`<a href="#/campaigns" onclick="cpTab='timeline'">Campaigns</a> <span style="color:var(--ink3)">/</span> ${esc(c.name)}`,
-    canEdit()? `<button class="btn btn-ghost btn-sm" onclick="cpBriefModal('${c.id}')">${c.tasks.length?'Re-run brief':'Generate tickets'}</button>`:'');
-  const tot=c.tasks.length, done=cpDone(c), od=cpOverdue(c), p=cpPct(done,tot);
-  const today=cpToday();
-  const phase = cpD(c.start) > today ? 'D-'+cpDays(today,c.start)+' to go-live'
-              : cpD(c.end) >= today ? 'Day '+(cpDays(c.start,today)+1)+' of '+(cpDays(c.start,c.end)+1)
-              : 'Ended '+Math.abs(cpDays(c.end,today))+'d ago';
-  const att = c.gmvActual? cpPct(c.gmvActual,c.gmvTarget) : null;
-  const body = tab==='tickets' ? cpDetTickets(c)
-             : tab==='assets'  ? cpDetAssets(c)
-             : tab==='mechanics'? cpDetMech(c)
-             :                   cpDetOverview(c);
-  $('#content').innerHTML = `
-    <div class="page-head" style="margin-bottom:12px">
-      <h1>${esc(c.name)}</h1>
-      <div class="actions">
-        ${canEdit()? `<button class="btn btn-primary" onclick="cpBriefModal('${c.id}')">${tot?'Re-run brief':'Generate tickets from brief'}</button>`:''}
-      </div>
+  tab = cpTabClean(tab) || 'overview';
+  if(!['overview','targets','readiness','live','compare','data','tickets','assets','mechanics'].includes(tab)) tab = 'overview';
+  cpEnsureShape(c);
+  setTopbar(`<a href="#/campaigns">Campaigns</a> <span style="color:var(--ink3)">/</span> ${esc(c.name)}`,
+    canEdit()? `<button class="btn btn-ghost btn-sm" onclick="cpEditCampaign('${c.id}')">Edit</button>`:'');
+  const body = tab==='targets' ? cpViewLineTargets(c)
+             : tab==='readiness' ? cpPlaceholder(c, 'readiness')
+             : tab==='live' ? cpPlaceholder(c, 'live')
+             : tab==='compare' ? cpPlaceholder(c, 'compare')
+             : tab==='data' ? cpViewData(c)
+             : tab==='tickets' ? cpDetTickets(c)
+             : tab==='assets' ? cpDetAssets(c)
+             : tab==='mechanics' ? cpDetMech(c)
+             : cpDetOverview(c);
+  const showRail = ['overview','targets','readiness','live','compare','data'].includes(tab);
+  const tabs = [['overview','Overview'],['targets','Targets'],['readiness','Readiness'],['live','Live'],['compare','Compare'],['data','Data']];
+  $('#content').innerHTML = `<div class="cp-page">
+    ${cpCampaignHead(c)}
+    <div class="tabs" style="margin-bottom:8px;width:max-content;max-width:100%;overflow-x:auto">
+      ${tabs.map(([k,l])=>`<button class="tab ${tab===k?'active':''}" onclick="cpGo('${c.id}','${k}')">${l}</button>`).join('')}
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:18px">
-      <span style="color:var(--ink3);font-size:12.5px;font-weight:700">${c.id}</span>
-      ${cpStatusChip(c.status)}${c.channels.map(cpChanChip).join('')}
-      <span style="color:var(--ink2);font-size:12.5px">${esc(c.brands.join(', '))}</span>
-    </div>
-    <div class="stat-row">
-      <div class="stat cp-stat"><div class="cp-l">Window</div>
-        <div class="n" style="font-size:17px;line-height:1.35">${fmtDate(c.start)} → ${fmtDate(c.end)}</div>
-        <div class="sub">${phase} · owner ${esc(c.owner)}</div></div>
-      <div class="stat cp-stat"><div class="cp-l">Tickets</div>
-        <div class="n">${done}<span style="font-size:15px;color:var(--ink3);font-weight:600"> / ${tot}</span></div>
-        <div class="cp-meter" style="margin-top:7px"><i class="${cpMeter(p)}" style="width:${p}%"></i></div>
-        <div class="sub">${tot? p+'% complete':'brief not expanded'}${od? ' · <b style="color:var(--red)">'+od+' overdue</b>':''}</div></div>
-      <div class="stat cp-stat"><div class="cp-l">GMV target</div><div class="n navy">${cpTHB(c.gmvTarget)}</div>
-        ${att!==null? `<div class="cp-meter" style="margin-top:7px"><i class="${cpMeter(att)}" style="width:${Math.min(100,att)}%"></i></div>`:''}
-        <div class="sub">${att!==null? 'actual '+cpTHB(c.gmvActual)+' · '+att+'%' : 'not started'}</div></div>
-      <div class="stat cp-stat"><div class="cp-l">Budget</div><div class="n">${cpTHB(c.budget)}</div>
-        <div class="cp-meter" style="margin-top:7px"><i class="${c.spent>c.budget?'red':''}" style="width:${Math.min(100,cpPct(c.spent,c.budget))}%"></i></div>
-        <div class="sub">spent ${cpTHB(c.spent)} · ${cpPct(c.spent,c.budget)}% burn</div></div>
-    </div>
-    <div class="tabs" style="margin-bottom:14px;width:max-content;max-width:100%;overflow-x:auto">
-      ${[['overview','Overview'],['tickets','Tickets · '+tot],['assets','Assets · '+c.assets.length],['mechanics','Mechanics']]
-        .map(([k,l])=>`<button class="tab ${tab===k?'active':''}" onclick="location.hash='#/campaigns/${c.id}/${k}'">${l}</button>`).join('')}
-    </div>
-    ${body}`;
+    ${cpAsOfBanner(c)}
+    ${showRail ? `<div class="cp-shell${tab==='targets'?' has-bar':''}">${tab==='targets' ? cpTargetBar(c) : ''}<aside class="cp-rail">${cpFilterRail(c)}</aside><div class="cp-main">${body}</div></div>` : body}</div>`;
 }
 function cpDetOverview(c){
   const byDiv = {};
@@ -983,7 +1054,7 @@ function cpDetOverview(c){
       <div class="cp-meter"><i class="${cpMeter(p)}" style="width:${p}%"></i></div></div>`;
   }).join('') || '<div style="color:var(--ink3);font-size:12.8px">No tickets yet.</div>';
   const next = c.tasks.slice().sort((a,b)=>cpD(a.due)-cpD(b.due)).filter(t=>t.status!=='done').slice(0,6);
-  return `<div class="cp-grid2">
+  return `${typeof cpDataHealth==='function' ? cpDataHealth(c) : ''}<div class="cp-grid2">
     <div style="display:flex;flex-direction:column;gap:14px">
       <div class="card" style="padding:15px 16px">
         <div class="section-title" style="margin-top:0">Readiness by division ${helpIcon('How many of the tickets this brief created on each division board are Done.')}</div>
@@ -999,9 +1070,10 @@ function cpDetOverview(c){
         <div class="section-title" style="margin-top:0">Brief</div>
         <div class="cp-kv"><span>Playbook</span><span>${CP_PLAYBOOKS[c.pb].name}</span></div>
         <div class="cp-kv"><span>Campaign owner</span><span>${esc(c.owner)}</span></div>
-        <div class="cp-kv"><span>Channels</span><span>${c.channels.map(k=>CP_CHANNELS[k].label).join(', ')}</span></div>
-        <div class="cp-kv"><span>Brands</span><span>${esc(c.brands.join(', '))}</span></div>
+        <div class="cp-kv"><span>Channels</span><span>${c.channels.map(k=>(CP_CHANNELS[k]||{label:k}).label).join(', ')||'—'}</span></div>
+        <div class="cp-kv"><span>Brands</span><span>${esc((c.brands||[]).join(', ')||'—')}</span></div>
         <div class="cp-kv"><span>Completion evidence</span><span>Screenshot + live URL</span></div>
+        <div style="margin-top:8px;font-size:12.5px"><a href="#/campaigns/${c.id}/tickets">Playbook tickets</a> · <a href="#/campaigns/${c.id}/assets">Assets</a> · <a href="#/campaigns/${c.id}/mechanics">Mechanics</a></div>
       </div>
       <div class="card" style="padding:15px 16px">
         <div class="section-title" style="margin-top:0">Assets</div>
@@ -1105,6 +1177,9 @@ function cpRunBrief(id){
   c.tasks = kept.concat(fresh);
   if(!c.assets.length) c.assets = cpBuildAssets(c, 0);
   if(c.status==='draft') c.status = 'briefed';
+  if(S.cpSource==='db' && typeof cpIsUuid==='function' && cpIsUuid(c.id)){
+    db.from('campaigns').update({playbook:c.pb, status:c.status}).eq('id', c.id);
+  }
   closeModals();
   cpTFil = 'all';
   location.hash = '#/campaigns/'+c.id+'/tickets';
@@ -1120,48 +1195,70 @@ function cpRunBrief(id){
 /* ---------- new campaign ---------- */
 function cpNewCampaign(){
   const today = cpISO(cpToday());
+  const chans = Object.entries(CP_CHANNELS).map(([k,v])=>
+    `<label style="display:flex;align-items:center;gap:6px;font-weight:500;font-size:13px"><input type="checkbox" name="cp-ch" value="${k}" ${k==='shopee'?'checked':''}> ${v.label}</label>`).join('');
   modal(`<div class="modal-head"><h2>New campaign</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
-      <label>Campaign name <span class="req">*</span></label><input id="cp-n" placeholder="BRAND x PLATFORM — CAMPAIGN — PERIOD">
-      <label style="margin-top:12px">Brand or portfolio</label><input id="cp-b" placeholder="CMG portfolio — 18 brands">
-      <label style="margin-top:12px">Channel</label>
-      <select id="cp-c">${Object.entries(CP_CHANNELS).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select>
+      <label>Campaign name <span class="req">*</span></label><input id="cp-n" placeholder="10.10 Mega 2026">
+      <label style="margin-top:12px">Countries</label><input id="cp-co" value="TH" placeholder="TH, MY, SG">
+      <label style="margin-top:12px">Channels</label>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px">${chans}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-        <div><label>Go-live</label><input id="cp-s" type="date" value="${today}"></div>
-        <div><label>Ends</label><input id="cp-e" type="date" value="${today}"></div>
+        <div><label>Teasing starts</label><input id="cp-s" type="date" value="${today}"></div>
+        <div><label>D-day</label><input id="cp-e" type="date" value="${today}"></div>
       </div>
-      <label style="margin-top:12px">Playbook ${helpIcon('Decides which tickets the brief will create. It can be changed when the brief is run.')}</label>
+      <label style="margin-top:12px">Playbook ${helpIcon('Decides which tickets the brief will create. Due dates are working days back from D-day.')}</label>
       <select id="cp-p">${Object.entries(CP_PLAYBOOKS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('')}</select>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
         <div><label>GMV target (฿)</label><input id="cp-g" type="number" min="0" placeholder="0"></div>
         <div><label>Budget (฿)</label><input id="cp-u" type="number" min="0" placeholder="0"></div>
       </div>
+      <p style="margin:12px 0 0;font-size:12.5px;color:var(--ink3)">Brand lines arrive with the daily-target import. Vertical, lead and KAM come from the brand master.</p>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
       <button class="btn btn-primary" onclick="cpCreate()">Create campaign</button>
     </div>`, true);
 }
-function cpCreate(){
+async function cpCreate(){
+  const _nav = S.nav;
   const v = s => (document.querySelector(s)?.value||'').trim();
   const name = v('#cp-n');
   if(!name) return toast('Give the campaign a name', true);
   const start = v('#cp-s'), end = v('#cp-e') || v('#cp-s');
   if(!start) return toast('Pick a go-live date', true);
-  if(cpD(end) < cpD(start)) return toast('The end date is before go-live', true);
-  const n = (S.campaigns||[]).length;
-  const c = {
-    id:'C-26'+String(15+n).padStart(2,'0'), name, brands:[v('#cp-b')||'—'], channels:[v('#cp-c')||'shopee'],
-    start, end, status:'draft', owner:(S.me&&S.me.full_name)||'—', pb:v('#cp-p')||'mega', prog:0,
+  if(cpD(end) < cpD(start)) return toast('The end date is before D-day', true);
+  const channels = [...document.querySelectorAll('input[name=cp-ch]:checked')].map(el=>el.value);
+  if(!channels.length) return toast('Pick at least one channel', true);
+  if(S.cpSource==='loading') return toast('Campaigns are still loading — try again in a moment', true);
+  const countries = v('#cp-co').split(/[, ]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);
+  const draft = {
+    name, brands:[], channels, countries: countries.length? countries : ['TH'],
+    start, end, status:'draft', owner:(S.me&&S.me.full_name)||'—', ownerId:S.me&&S.me.id,
+    pb:v('#cp-p')||'mega', prog:0,
     gmvTarget:Number(v('#cp-g'))||0, gmvActual:0, budget:Number(v('#cp-u'))||0, spent:0,
     mech:[{t:'Mechanics not set', d:'Add the discount, voucher and GWP mechanics before the pricing review.'}],
-    tasks:[], assets:[]
+    tasks:[], assets:[], lines:[], imports:[],
+    phases: cpDefaultPhases(start, end),
+    baselineId:null, baselineMode:'target', persisted:false
   };
-  S.campaigns.push(c);
+  if(S.cpSource==='db'){
+    const saved = await cpInsertCampaign(draft);
+    if(!saved) return;
+    if(navStale(_nav)) return;
+    closeModals();
+    location.hash = '#/campaigns/'+saved.id+'/targets';
+    toast('Campaign created');
+    return;
+  }
+  const n = (S.campaigns||[]).length;
+  draft.id = 'C-26'+String(15+n).padStart(2,'0');
+  cpEnsureShape(draft);
+  S.campaigns.push(draft);
   closeModals();
-  location.hash = '#/campaigns/'+c.id;
-  renderCampaigns(c.id, 'overview');
-  toast('Campaign '+c.id+' created');
+  location.hash = '#/campaigns/'+draft.id+'/targets';
+  renderCampaigns(draft.id, 'targets');
+  toast(S.cpDemo ? 'Campaign created in this demo session — it is not saved to the database' : 'Campaign created');
 }
 
 /* ---------- export ---------- */
@@ -1184,7 +1281,8 @@ function cpExportCSV(){
    payday, mid-month, brand days), each with its own playbook and D-day, and the cycle is the same
    every month: open for planning on the 1st of the month before → calendar + targets by the 10th →
    playbooks + team leads by the 15th → LOCK on the 20th (every brief generates) → execute → close.
-   Seed data below; the tables are in migrations/2026-09-18_campaign_planning.sql (not yet applied). */
+   The month, lane, brand-line and tracker screens below stay on seed data.
+   Slice 2 replaces them with real tasks. The campaign record itself is migrations/2026-10-06_campaign_targets.sql. */
 const cpIsSuper = ()=> !!(S.me && ['admin','management'].includes(S.me.role));
 
 const CP_MONTHS = [
@@ -1421,5 +1519,1534 @@ function cpPlanMonth(){
     <div class="modal-foot"><span style="margin-right:auto;color:var(--ink3);font-size:12px">≈ 4,900 steps across 8 teams · planning window 1–20 Oct</span>
       <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
       <button class="btn btn-primary" onclick="closeModals();toast('November plan saved — briefs generate on lock, 20 Oct')">Save plan</button></div>`, true);
+}
+</script>
+<script>
+/* ================= CAMPAIGN RECORD =================
+   Slice 1: a campaign is a Supabase row, a brand line is brand × platform × country,
+   and daily targets are named fields (target_gmv, target_fb_spend, …) with an approval
+   state. CP_SEED remains the explicit demo when the migration is not applied yet. */
+
+const CP_VERTICALS = ['Beauty','Fashion – Mass','Fashion – Premium','FMCG','Electronics','PVH SG','PVH MY'];
+const CP_PHASES = [
+  {kind:'teasing', label:'Teasing'},
+  {kind:'d1', label:'D-1'},
+  {kind:'dday', label:'D-day'},
+  {kind:'rerun', label:'Rerun/Cont.'},
+  {kind:'after', label:'After party'}
+];
+const CP_TSTATE = {
+  draft:         ['Draft', 'var(--gray-soft)', 'var(--ink2)'],
+  proposed:      ['Proposed', 'var(--blue-soft)', 'var(--blue)'],
+  cat_approved:  ['Cat-lead approved', 'var(--amber-soft)', 'var(--amber)'],
+  brand_aligned: ['Brand aligned', 'var(--cp-navy-soft)', 'var(--cp-navy)'],
+  locked:        ['Locked', 'var(--green-soft)', 'var(--green)']
+};
+const CP_STATE_RANK = {draft:0, proposed:1, cat_approved:2, brand_aligned:3, locked:4};
+/* Header names from the CUSP daily-target export. Matching is by name, never by column letter. */
+const CP_DAILY_FIELDS = [
+  ['date','Date', true, ['date','target date','day']],
+  ['country','Country', false, ['country','country code']],
+  ['brand','Shop name', true, ['shop name','brand','shop','store']],
+  ['platform','Channel', true, ['channel name','channel','platform']],
+  ['campaign_name','Campaign tag', false, ['campaign_name','campaign name','campaign tag','campaign']],
+  ['target_gmv','Target GMV', true, ['target gmv','gmv target']],
+  ['target_visitors','Target visitors', false, ['target visitors','visitors']],
+  ['target_buyers','Target buyers', false, ['target buyers','buyers']],
+  ['target_orders','Target orders', false, ['target orders','orders']],
+  ['target_aov','Target AOV', false, ['target aov','aov']],
+  ['target_cr','Target CR', false, ['target cr','cr','conversion rate']],
+  ['target_ads_spend','Target ads spend', false, ['target ads spend','ads spend']],
+  ['target_fb_spend','Target FB spending', false, ['target fb spending','target fb spend','fb spending']],
+  ['target_search_spend','Target search spending', false, ['target search spending','target search spend','search spending']],
+  ['target_ams_spend','Target AMS spending', false, ['target ams spending','target ams spend','ams spending']],
+  ['budget_gmv','Budget GMV', false, ['budget gmv']],
+  ['actual_gmv','Actual GMV', false, ['actual gmv','gmv actual']]
+];
+const CP_DEMO_BRANDS = [
+  {id:'b-clarins', name:'Clarins', vertical:'Beauty', country:'TH', active:true},
+  {id:'b-innis', name:'Innisfree', vertical:'Beauty', country:'TH', active:true},
+  {id:'b-sul', name:'Sulwhasoo', vertical:'Beauty', country:'TH', active:true},
+  {id:'b-aes', name:'Aestura', vertical:'Beauty', country:'TH', active:true},
+  {id:'b-lan', name:'Laneige', vertical:'Beauty', country:'TH', active:true},
+  {id:'b-org', name:'Organic Ground', vertical:'Beauty', country:'TH', active:true},
+  {id:'b-crocs', name:'Crocs', vertical:'Fashion – Mass', country:'TH', active:true},
+  {id:'b-mlb', name:'MLB', vertical:'Fashion – Premium', country:'TH', active:true},
+  {id:'b-mars', name:'Mars', vertical:'FMCG', country:'TH', active:true},
+  {id:'b-casio', name:'Casio', vertical:'Electronics', country:'TH', active:true},
+  {id:'b-ck', name:'Calvin Klein', vertical:'PVH SG', country:'SG', active:true},
+  {id:'b-guess', name:'Guess', vertical:'PVH MY', country:'MY', active:true},
+  {id:'b-nestle', name:'Nestle Food & Beverages', vertical:'FMCG', country:'TH', active:true}
+];
+
+const cpIsUuid = s => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s||''));
+const cpTabClean = tab => String(tab||'').split('?')[0];
+function cpHashQuery(){
+  const h = (typeof location!=='undefined' && location.hash) || '';
+  const i = h.indexOf('?');
+  return new URLSearchParams(i>=0 ? h.slice(i+1) : '');
+}
+function cpRouteId(){ return String((S.route&&S.route.id)||'').split('?')[0]; }
+function cpGo(id, tab){
+  const qs = cpHashQuery().toString();
+  location.hash = '#/campaigns/'+id+'/'+tab+(qs ? '?'+qs : '');
+}
+function cpSetFilter(key, value){
+  const p = cpHashQuery();
+  if(value) p.set(key, value); else p.delete(key);
+  const qs = p.toString();
+  const tab = cpTabClean(S.route&&S.route.tab) || 'targets';
+  location.hash = '#/campaigns/'+cpRouteId()+'/'+tab+(qs ? '?'+qs : '');
+}
+function cpFilters(){
+  const p = cpHashQuery();
+  return {
+    vertical:p.get('vertical')||'', platform:p.get('platform')||'', country:p.get('country')||'',
+    lead:p.get('lead')||'', kam:p.get('kam')||'', status:p.get('status')||'', group:p.get('group')||'vertical'
+  };
+}
+function cpJump(status){
+  const p = cpHashQuery();
+  if(status) p.set('status', status); else p.delete('status');
+  const qs = p.toString();
+  location.hash = '#/campaigns/'+cpRouteId()+'/targets'+(qs ? '?'+qs : '');
+}
+
+function cpDefaultPhases(start, end){
+  const dday = end || start;
+  const d1 = cpISO(cpAdd(dday, -1));
+  let teaseEnd = cpISO(cpAdd(d1, -1));
+  if(teaseEnd < start) teaseEnd = start;
+  const teaseStart = start && start <= teaseEnd ? start : teaseEnd;
+  return [
+    {kind:'teasing', label:'Teasing', start:teaseStart, end:teaseEnd},
+    {kind:'d1', label:'D-1', start:d1, end:d1},
+    {kind:'dday', label:'D-day', start:dday, end:dday},
+    {kind:'rerun', label:'Rerun/Cont.', start:cpISO(cpAdd(dday, 1)), end:cpISO(cpAdd(dday, 2))},
+    {kind:'after', label:'After party', start:cpISO(cpAdd(dday, 3)), end:cpISO(cpAdd(dday, 5))}
+  ];
+}
+function cpEnsureShape(c){
+  if(!c) return c;
+  if(!c.pb || !CP_PLAYBOOKS[c.pb]) c.pb = 'mega';
+  if(!c.phases || !c.phases.length) c.phases = cpDefaultPhases(c.start, c.end);
+  if(!c.lines) c.lines = [];
+  if(!c.tasks) c.tasks = [];
+  if(!c.assets) c.assets = [];
+  if(!c.mech) c.mech = [];
+  if(!c.channels) c.channels = [];
+  if(!c.brands) c.brands = [];
+  if(!c.countries || !c.countries.length) c.countries = ['TH'];
+  if(!c.imports) c.imports = [];
+  if(!c.baselineMode) c.baselineMode = 'target';
+  return c;
+}
+function cpTableMissing(error){
+  if(!error) return false;
+  const m = String(error.message||'')+' '+String(error.code||'');
+  return /PGRST205|42P01|does not exist|schema cache|could not find the table/i.test(m);
+}
+function cpOwnerName(id){
+  if(!id) return '—';
+  const p = (S.profiles||[]).find(x=>x.id===id);
+  return (p && p.full_name) || '—';
+}
+function cpPeopleFor(brandId, platform){
+  const rows = (S.cpAssign||[]).filter(a=>a.brand_id===brandId && a.platform===platform);
+  const g = role => rows.find(a=>a.role===role) || {};
+  const lead = g('lead'), kam = g('kam'), asso = g('associate');
+  return {
+    lead:lead.person_name||'', leadId:lead.user_id||null,
+    kam:kam.person_name||'', kamId:kam.user_id||null,
+    associate:asso.person_name||'', associateId:asso.user_id||null
+  };
+}
+function cpTargetFromRow(t){
+  return {
+    id:t.id, date:t.target_date, phase:t.phase_kind||null,
+    gmv:t.target_gmv==null?null:Number(t.target_gmv),
+    visitors:t.target_visitors==null?null:Number(t.target_visitors),
+    buyers:t.target_buyers==null?null:Number(t.target_buyers),
+    orders:t.target_orders==null?null:Number(t.target_orders),
+    aov:t.target_aov==null?null:Number(t.target_aov),
+    cr:t.target_cr==null?null:Number(t.target_cr),
+    ads:t.target_ads_spend==null?null:Number(t.target_ads_spend),
+    fb:t.target_fb_spend==null?null:Number(t.target_fb_spend),
+    search:t.target_search_spend==null?null:Number(t.target_search_spend),
+    ams:t.target_ams_spend==null?null:Number(t.target_ams_spend),
+    budgetGmv:t.budget_gmv==null?null:Number(t.budget_gmv),
+    actual:t.actual_gmv==null?null:Number(t.actual_gmv),
+    state:t.approval_state||'draft'
+  };
+}
+function cpAssemble(camps, phases, lines, targets, imps){
+  const by = {};
+  (camps||[]).forEach(raw=>{
+    by[raw.id] = cpEnsureShape({
+      id:raw.id, name:raw.name, status:raw.status||'draft', pb:raw.playbook||'mega',
+      ownerId:raw.owner_id||null, owner:cpOwnerName(raw.owner_id),
+      start:raw.start_date, end:raw.end_date,
+      gmvTarget:Number(raw.gmv_target)||0, gmvActual:Number(raw.gmv_actual)||0,
+      budget:Number(raw.budget)||0, spent:Number(raw.spent)||0,
+      mech:Array.isArray(raw.mechanics)?raw.mechanics:[],
+      countries:(raw.countries&&raw.countries.length)?raw.countries:['TH'],
+      channels:raw.channels||[],
+      baselineId:raw.baseline_campaign_id||null, baselineMode:raw.baseline_mode||'target',
+      lockedAt:raw.locked_at||null, persisted:true,
+      phases:[], lines:[], imports:[], tasks:[], assets:[], brands:[]
+    });
+  });
+  (phases||[]).forEach(p=>{
+    const c = by[p.campaign_id]; if(!c) return;
+    c.phases.push({id:p.id, kind:p.kind, label:p.label, start:p.start_date, end:p.end_date, position:p.position||0});
+  });
+  Object.values(by).forEach(c=>{
+    c.phases.sort((a,b)=>(a.position||0)-(b.position||0));
+    if(!c.phases.length) c.phases = cpDefaultPhases(c.start, c.end);
+  });
+  const lineById = {};
+  (lines||[]).forEach(l=>{
+    const c = by[l.campaign_id]; if(!c) return;
+    const b = l.brands || {};
+    const people = cpPeopleFor(l.brand_id, l.platform);
+    const row = {
+      id:l.id, brandId:l.brand_id, brand:b.name||'—', vertical:b.vertical||'',
+      platform:l.platform, country:l.country||'TH',
+      lead:people.lead, leadId:people.leadId, kam:people.kam, kamId:people.kamId,
+      associate:people.associate, associateId:people.associateId,
+      targets:[], reason:''
+    };
+    c.lines.push(row); lineById[l.id] = row;
+    if(b.name && !c.brands.includes(b.name)) c.brands.push(b.name);
+    if(l.platform && !c.channels.includes(l.platform)) c.channels.push(l.platform);
+  });
+  (targets||[]).forEach(t=>{
+    const line = lineById[t.brand_line_id]; if(!line) return;
+    line.targets.push(cpTargetFromRow(t));
+    if(t.outlier_reason && !line.reason) line.reason = t.outlier_reason;
+  });
+  (imps||[]).forEach(i=>{
+    const c = by[i.campaign_id]; if(!c) return;
+    c.imports.push({id:i.id, kind:i.kind, file:i.source_file, at:i.created_at, asOf:i.data_as_of, rows:i.row_count, replaced:i.rows_replaced});
+  });
+  Object.values(by).forEach(c=> c.imports.sort((a,b)=> String(b.at||'').localeCompare(String(a.at||''))));
+  return Object.values(by).sort((a,b)=> String(a.start||'').localeCompare(String(b.start||'')));
+}
+
+function cpHydrateSeed(c){
+  const row = JSON.parse(JSON.stringify(c));
+  row.tasks = row.status==='draft' ? [] : cpBuildTasks(row, row.prog);
+  row.assets = row.tasks.length ? cpBuildAssets(row, row.prog) : [];
+  return cpEnsureShape(row);
+}
+function cpDemoLine(spec){
+  const [id, brandId, brand, vertical, platform, country, lead, kam, gmv, visitors, buyers, orders, fb, state, reason] = spec;
+  const targets = gmv==null ? [] : [{
+    date:'2026-10-10', gmv, visitors, buyers, orders, aov: orders? gmv/orders : null,
+    cr: visitors? buyers/visitors : null, ads: fb? fb+20000 : null, fb: fb==null?null:fb,
+    search: fb? Math.round(fb*0.4) : null, ams: fb? Math.round(fb*0.2) : null,
+    budgetGmv:null, actual:null, state: state||'draft', phase:'dday'
+  }];
+  return {id, brandId, brand, vertical, platform, country, lead, kam, associate:'', leadId:null, kamId:null, targets, reason:reason||''};
+}
+function cpDemoBaseLine(brandId, brand, vertical, platform, country, gmv, actual){
+  return {id:'b8-'+brandId+platform+country, brandId, brand, vertical, platform, country, lead:'', kam:'', associate:'',
+    targets:[{date:'2026-08-08', gmv, visitors:null, buyers:null, orders:null, aov:null, cr:null, ads:null, fb:null, search:null, ams:null, budgetGmv:null, actual, state:'locked', phase:'dday'}],
+    reason:''};
+}
+function cpUseDemo(){
+  S.cpForceDemo = true;
+  S.cpDemo = true;
+  S.cpSource = 'demo';
+  S.cpLoaded = true;
+  S.cpLoading = false;
+  S.cpAliases = S.cpAliases||[];
+  S.cpAssign = [
+    {brand_id:'b-clarins', platform:'lazada', role:'lead', person_name:'Jann'},
+    {brand_id:'b-clarins', platform:'lazada', role:'kam', person_name:'Yves'},
+    {brand_id:'b-innis', platform:'shopee', role:'kam', person_name:'Bam'},
+    {brand_id:'b-sul', platform:'shopee', role:'kam', person_name:'Gam'},
+    {brand_id:'b-aes', platform:'shopee', role:'kam', person_name:'Mo'},
+    {brand_id:'b-lan', platform:'lazada', role:'kam', person_name:'Mo'},
+    {brand_id:'b-org', platform:'shopee', role:'kam', person_name:'Jann'},
+    {brand_id:'b-crocs', platform:'shopee', role:'kam', person_name:'Palm'},
+    {brand_id:'b-mlb', platform:'shopee', role:'kam', person_name:'Praew'},
+    {brand_id:'b-mars', platform:'shopee', role:'kam', person_name:'Pair'},
+    {brand_id:'b-casio', platform:'lazada', role:'kam', person_name:'Lyn'},
+    {brand_id:'b-ck', platform:'shopee', role:'kam', person_name:'Olive'},
+    {brand_id:'b-guess', platform:'shopee', role:'kam', person_name:'Prem'}
+  ];
+  S.cpPhaseAliases = [
+    {campaign_id:'demo-1010', alias:'10.10', phase_kind:'dday', alias_norm:'10.10'},
+    {campaign_id:'demo-1010', alias:'10.1', phase_kind:'dday', alias_norm:'10.1'},
+    {campaign_id:'demo-1010', alias:'10.10 Cont', phase_kind:'rerun', alias_norm:'10.10 cont'},
+    {campaign_id:'demo-1010', alias:'Teasing 10.10', phase_kind:'teasing', alias_norm:'teasing 10.10'}
+  ];
+  const lines = [
+    ['dl-clarins','b-clarins','Clarins','Beauty','lazada','TH','Jann','Yves',2100000,20000,800,900,50000,'brand_aligned',''],
+    ['dl-innis','b-innis','Innisfree','Beauty','shopee','TH','Dao','Bam',4500000,40000,1600,1800,80000,'cat_approved',''],
+    ['dl-lan','b-lan','Laneige','Beauty','lazada','TH','Jann','Mo',3200000,28000,1100,1200,40000,'proposed',''],
+    ['dl-sul','b-sul','Sulwhasoo','Beauty','shopee','TH','Gam','Gam',1000000,9000,200,220,10000,'draft',''],
+    ['dl-aes','b-aes','Aestura','Beauty','shopee','TH','Mo','Mo',2030000,12000,700,760,15000,'draft',''],
+    ['dl-org','b-org','Organic Ground','Beauty','shopee','TH','Jann','Jann',240000,4000,80,90,0,'draft',''],
+    ['dl-crocs','b-crocs','Crocs','Fashion – Mass','shopee','TH','Palm','Palm',3400000,30000,1400,1500,60000,'locked',''],
+    ['dl-mlb','b-mlb','MLB','Fashion – Premium','shopee','TH','Praew','Praew',1800000,14000,500,540,20000,'proposed',''],
+    ['dl-mars','b-mars','Mars','FMCG','shopee','TH','Pair','Pair',7000000,99000,5940,6593,0,'draft',''],
+    ['dl-casio','b-casio','Casio','Electronics','lazada','TH','Lyn','Lyn',null,null,null,null,null,'draft',''],
+    ['dl-ck','b-ck','Calvin Klein','PVH SG','shopee','SG','Olive','Olive',900000,8000,300,320,12000,'brand_aligned',''],
+    ['dl-guess','b-guess','Guess','PVH MY','shopee','MY','Prem','Prem',600000,5000,200,220,8000,'draft','']
+  ].map(cpDemoLine);
+  lines.forEach(l=>{ const p = cpPeopleFor(l.brandId, l.platform); l.lead = p.lead||l.lead; l.kam = p.kam||l.kam; });
+  const baseSpecs = [
+    ['b-clarins','Clarins','Beauty','lazada','TH',1800000,1900000],
+    ['b-innis','Innisfree','Beauty','shopee','TH',4000000,4200000],
+    ['b-lan','Laneige','Beauty','lazada','TH',2800000,2600000],
+    ['b-sul','Sulwhasoo','Beauty','shopee','TH',5000000,4800000],
+    ['b-aes','Aestura','Beauty','shopee','TH',1000000,1100000],
+    ['b-org','Organic Ground','Beauty','shopee','TH',1000000,900000],
+    ['b-crocs','Crocs','Fashion – Mass','shopee','TH',3000000,3100000],
+    ['b-mlb','MLB','Fashion – Premium','shopee','TH',1500000,1400000],
+    ['b-casio','Casio','Electronics','lazada','TH',2000000,1800000],
+    ['b-ck','Calvin Klein','PVH SG','shopee','SG',800000,750000],
+    ['b-guess','Guess','PVH MY','shopee','MY',500000,480000]
+  ];
+  const mega = cpEnsureShape({
+    id:'demo-1010', name:'10.10 Mega 2026', brands:[...new Set(lines.map(l=>l.brand))],
+    channels:['shopee','lazada','tiktok'], countries:['TH'],
+    start:'2026-10-01', end:'2026-10-10', status:'planning', owner:'April', pb:'mega', prog:0.24,
+    gmvTarget:0, gmvActual:0, budget:2400000, spent:0,
+    mech:[{t:'Store-wide cap still in draft', d:'MSP re-run is with the category leads.'}],
+    baselineId:'demo-88', baselineMode:'target', persisted:false, lockedAt:null,
+    phases:[
+      {kind:'teasing', label:'Teasing', start:'2026-10-01', end:'2026-10-08'},
+      {kind:'d1', label:'D-1', start:'2026-10-09', end:'2026-10-09'},
+      {kind:'dday', label:'D-day', start:'2026-10-10', end:'2026-10-10'},
+      {kind:'rerun', label:'Rerun/Cont.', start:'2026-10-11', end:'2026-10-12'},
+      {kind:'after', label:'After party', start:'2026-10-13', end:'2026-10-15'}
+    ],
+    lines, imports:[{kind:'daily_targets', file:'raw (daily TH).xlsx', at:'2026-10-06T03:02:00Z', asOf:'2026-10-06T03:02:00Z', rows:lines.length, replaced:0}]
+  });
+  mega.tasks = cpBuildTasks(mega, 0.24);
+  mega.assets = cpBuildAssets(mega, 0.24);
+  const base = cpEnsureShape({
+    id:'demo-88', name:'8.8 2026', brands:baseSpecs.map(s=>s[1]), channels:['shopee','lazada'],
+    countries:['TH','SG','MY'], start:'2026-08-01', end:'2026-08-08', status:'closed', owner:'April', pb:'mega', prog:1,
+    gmvTarget:0, gmvActual:0, budget:0, spent:0, mech:[], baselineId:null, baselineMode:'target', persisted:false,
+    lines: baseSpecs.map(s=>cpDemoBaseLine.apply(null, s)), tasks:[], assets:[]
+  });
+  S.campaigns = CP_SEED.map(cpHydrateSeed).concat([mega, base]);
+  return S.campaigns;
+}
+
+async function cpLoadRemote(){
+  const _nav = S.nav;
+  try{
+    if(S.cpForceDemo || typeof db==='undefined' || !S.me){
+      cpUseDemo();
+      if(S.route && S.route.view==='campaigns' && !navStale(_nav)) renderCampaigns(cpRouteId(), S.route.tab);
+      return;
+    }
+    const camps = await allRows(()=>db.from('campaigns').select('*').order('start_date'));
+    if(navStale(_nav)) return;
+    if(!camps || camps.error){
+      if(cpTableMissing(camps && camps.error)){
+        cpUseDemo();
+      } else {
+        S.cpLoaded = true; S.cpSource = 'error';
+        toast('Could not load campaigns', true);
+      }
+      if(S.route && S.route.view==='campaigns' && !navStale(_nav)) renderCampaigns(cpRouteId(), S.route.tab);
+      return;
+    }
+    const [phases, lines, targets, imps, aliases, assign, palias] = await Promise.all([
+      allRows(()=>db.from('campaign_phases').select('*').order('position')),
+      allRows(()=>db.from('brand_lines').select('*, brands(id,name,vertical,country,service_model)').order('id')),
+      allRows(()=>db.from('line_targets').select('*').order('target_date')),
+      allRows(()=>db.from('imports').select('*').order('created_at', {ascending:false})),
+      allRows(()=>db.from('brand_aliases').select('*').order('alias')),
+      allRows(()=>db.from('brand_assignments').select('*').order('platform')),
+      allRows(()=>db.from('campaign_phase_aliases').select('*'))
+    ]);
+    if(navStale(_nav)) return;
+    const failed = [phases, lines, targets, imps, aliases, assign, palias].find(r=>r && r.error);
+    if(failed){
+      if(cpTableMissing(failed.error)) cpUseDemo();
+      else {
+        S.cpLoaded = true; S.cpSource = 'error';
+        toast('Could not load campaigns', true);
+      }
+      if(S.route && S.route.view==='campaigns' && !navStale(_nav)) renderCampaigns(cpRouteId(), S.route.tab);
+      return;
+    }
+    S.cpAliases = (aliases && aliases.data) || [];
+    S.cpAssign = (assign && assign.data) || [];
+    S.cpPhaseAliases = (palias && palias.data) || [];
+    S.campaigns = cpAssemble(camps.data||[], (phases&&phases.data)||[], (lines&&lines.data)||[], (targets&&targets.data)||[], (imps&&imps.data)||[]);
+    S.cpDemo = false;
+    S.cpSource = 'db';
+    S.cpLoaded = true;
+    if(S.route && S.route.view==='campaigns' && !navStale(_nav)) renderCampaigns(cpRouteId(), S.route.tab);
+  }catch(e){
+    S.cpLoaded = true;
+    S.cpSource = S.cpSource==='demo' ? 'demo' : 'error';
+    if(S.cpSource==='error') toast('Could not load campaigns', true);
+    if(S.route && S.route.view==='campaigns' && !navStale(_nav)) renderCampaigns(cpRouteId(), S.route.tab);
+  }finally{
+    S.cpLoading = false;
+  }
+}
+
+async function cpInsertCampaign(draft){
+  const {data, error} = await db.from('campaigns').insert({
+    name:draft.name, status:'draft', playbook:draft.pb, owner_id:draft.ownerId||null,
+    start_date:draft.start, end_date:draft.end,
+    gmv_target:draft.gmvTarget||0, budget:draft.budget||0,
+    countries:draft.countries, channels:draft.channels, mechanics:draft.mech||[]
+  }).select().single();
+  if(error){ toast(error.message, true); return null; }
+  const phases = (draft.phases||cpDefaultPhases(draft.start, draft.end)).map((p,i)=>({
+    campaign_id:data.id, kind:p.kind, label:p.label, start_date:p.start, end_date:p.end, position:i
+  }));
+  const ph = await db.from('campaign_phases').insert(phases);
+  if(ph.error) toast(ph.error.message, true);
+  S.cpLoaded = false; S.cpLoading = false;
+  await cpLoadRemote();
+  return cpById(data.id);
+}
+
+/* ---------- numbers ---------- */
+function cpRollup(targets, mode){
+  const rows = targets||[];
+  const gKey = mode==='actual' ? 'actual' : 'gmv';
+  const acc = {gmv:null, visitors:null, buyers:null, orders:null, ads:null, fb:null, search:null, ams:null};
+  const add = (k, v)=>{ if(v==null || !isFinite(Number(v))) return; acc[k] = (acc[k]||0) + Number(v); };
+  rows.forEach(t=>{
+    add('gmv', t[gKey]);
+    add('visitors', t.visitors); add('buyers', t.buyers); add('orders', t.orders);
+    add('ads', t.ads); add('fb', t.fb); add('search', t.search); add('ams', t.ams);
+  });
+  acc.aov = (acc.gmv!=null && acc.orders) ? acc.gmv/acc.orders : null;
+  acc.cr = (acc.buyers!=null && acc.visitors) ? acc.buyers/acc.visitors : null;
+  return acc;
+}
+function cpSumLines(lines, mode){
+  const acc = cpRollup([], mode);
+  (lines||[]).forEach(l=>{
+    const r = cpRollup(l.targets, mode);
+    ['gmv','visitors','buyers','orders','ads','fb','search','ams'].forEach(k=>{
+      if(r[k]!=null) acc[k] = (acc[k]||0)+r[k];
+    });
+  });
+  acc.aov = (acc.gmv!=null && acc.orders) ? acc.gmv/acc.orders : null;
+  acc.cr = (acc.buyers!=null && acc.visitors) ? acc.buyers/acc.visitors : null;
+  return acc;
+}
+function cpBaht(n){
+  if(n==null || !isFinite(Number(n))) return '—';
+  return '฿'+Math.round(Number(n)).toLocaleString('en-US');
+}
+function cpInt(n){
+  if(n==null || !isFinite(Number(n))) return '—';
+  return Math.round(Number(n)).toLocaleString('en-US');
+}
+function cpPct1(ratio){
+  if(ratio==null || !isFinite(Number(ratio))) return '—';
+  return (Number(ratio)*100).toFixed(1)+'%';
+}
+/* Growth beyond ±30% is an outlier. A missing or zero baseline is an explicit state, never a divide-by-zero. */
+function cpGrowth(proposed, baseline){
+  if(proposed==null || !isFinite(Number(proposed))) return {kind:'notarget', text:'—', hot:false};
+  if(baseline==null || !isFinite(Number(baseline))) return {kind:'nobase', text:'No baseline', hot:false};
+  if(Number(baseline)===0) return {kind:'zero', text:'—', hot:false};
+  const g = (Number(proposed)-Number(baseline))/Number(baseline);
+  const hot = Math.abs(g) > 0.30;
+  const arrow = g>0 ? '▲' : g<0 ? '▼' : '';
+  const text = (g>0?'+':'')+(g*100).toFixed(1)+'%'+(arrow ? ' '+arrow : '');
+  return {kind:'ok', g, hot, text};
+}
+function cpBaselineGmv(c, line){
+  if(!c || !c.baselineId) return {kind:'none'};
+  const ref = cpById(c.baselineId);
+  if(!ref) return {kind:'none'};
+  const same = (l)=> (line.brandId && l.brandId===line.brandId || cpNormName(l.brand)===cpNormName(line.brand))
+    && l.platform===line.platform && l.country===line.country;
+  const other = (ref.lines||[]).find(same);
+  if(!other) return {kind:'none'};
+  const mode = c.baselineMode==='actual' ? 'actual' : 'target';
+  const gmv = cpRollup(other.targets, mode).gmv;
+  if(gmv==null) return {kind:'none'};
+  return {kind:'ok', gmv, mode, name:ref.name};
+}
+function cpLineState(line){
+  const rows = (line && line.targets) || [];
+  if(!rows.length) return 'draft';
+  let best = rows[0].state || 'draft';
+  rows.forEach(t=>{
+    const s = t.state || 'draft';
+    if((CP_STATE_RANK[s]??0) < (CP_STATE_RANK[best]??0)) best = s;
+  });
+  return best;
+}
+function cpNeedsReason(c, line){
+  const g = cpGrowth(cpRollup(line.targets,'target').gmv, (cpBaselineGmv(c, line).kind==='ok' ? cpBaselineGmv(c, line).gmv : null));
+  return !!(g.hot && !String(line.reason||'').trim());
+}
+function cpCampaignTarget(c){
+  if(c.lines && c.lines.length){
+    const s = cpSumLines(c.lines, 'target');
+    if(s.gmv!=null) return s.gmv;
+  }
+  return c.gmvTarget||0;
+}
+function cpCampaignActual(c){
+  if(c.lines && c.lines.length){
+    const s = cpSumLines(c.lines, 'actual');
+    if(s.gmv!=null) return s.gmv;
+  }
+  return c.gmvActual ? c.gmvActual : null;
+}
+function cpReadyPct(c){
+  if(!c.tasks || !c.tasks.length) return null;
+  return cpPct(cpDone(c), c.tasks.length);
+}
+function cpPaceRatio(c){
+  const actual = cpCampaignActual(c);
+  const target = cpCampaignTarget(c);
+  if(actual==null || !target) return null;
+  const today = cpToday();
+  if(today < cpD(c.start)) return null;
+  const span = Math.max(1, cpDays(c.start, c.end)+1);
+  const elapsed = Math.min(span, Math.max(1, cpDays(c.start, today)+1));
+  const expected = target * (elapsed/span);
+  if(!expected) return null;
+  return actual/expected;
+}
+
+/* ---------- roles ---------- */
+function cpCanEditLine(line){
+  if(!canEdit()) return false;
+  if(cpLineState(line)!=='draft') return false;
+  if(cpIsSuper()) return true;
+  if(!line.kamId && !line.leadId) return true;
+  return line.kamId===S.me.id || line.leadId===S.me.id;
+}
+function cpCanApprove(line){
+  if(cpLineState(line)!=='proposed') return false;
+  if(cpIsSuper()) return true;
+  return !!(line.leadId && S.me && line.leadId===S.me.id);
+}
+function cpCanAlign(line){
+  if(cpLineState(line)!=='cat_approved') return false;
+  if(cpIsSuper() || canEdit()) return true;
+  if(isExternal()) return (S.brandsList||[]).some(b=>b.id===line.brandId);
+  return false;
+}
+function cpCanLock(){ return cpIsSuper(); }
+function cpCanImport(){ return canEdit(); }
+
+/* ---------- header, filters, placeholders ---------- */
+function cpDemoBanner(){
+  if(!S.cpDemo) return '';
+  return `<div class="cp-demo"><div><b>Demo data.</b> The campaign tables are not in this database yet, so this screen is the sample 10.10 record. Nothing you change here is saved. Apply <b>migrations/2026-10-06_campaign_targets.sql</b> and reload to use real campaigns.</div></div>`;
+}
+function cpBkk(iso){
+  if(!iso) return '';
+  try{
+    return new Date(iso).toLocaleString('en-GB', {timeZone:'Asia/Bangkok', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:false});
+  }catch(e){ return fmtDateTime(iso); }
+}
+function cpAsOfBanner(c){
+  const t = (c.imports||[]).find(i=>i.kind==='daily_targets');
+  if(!t) return `<div class="cp-asof">No daily targets imported yet.</div>`;
+  return `<div class="cp-asof">Targets as of ${esc(cpBkk(t.asOf||t.at))} (GMT+7)${t.file ? ' · '+esc(t.file) : ''}</div>`;
+}
+function cpPhaseWhen(p){
+  if(!p.start) return '—';
+  const a = cpD(p.start), b = cpD(p.end||p.start);
+  const mon = d => d.toLocaleDateString('en-GB', {month:'short'});
+  if(cpISO(a)===cpISO(b)) return a.getDate()+' '+mon(a);
+  if(a.getMonth()===b.getMonth() && a.getFullYear()===b.getFullYear()) return a.getDate()+'–'+b.getDate()+' '+mon(b);
+  return a.getDate()+' '+mon(a)+' – '+b.getDate()+' '+mon(b);
+}
+function cpCampaignHead(c){
+  cpEnsureShape(c);
+  const today = cpISO(cpToday());
+  const phases = c.phases.map(p=>{
+    const now = p.start && p.end && today>=p.start && today<=p.end;
+    return `<span class="cp-phs${now?' now':''}"><b>${esc(p.label)}</b> <span class="when">${esc(cpPhaseWhen(p))}</span></span>`;
+  }).join('');
+  const target = cpCampaignTarget(c);
+  const actual = cpCampaignActual(c);
+  const ready = cpReadyPct(c);
+  const pace = cpPaceRatio(c);
+  let paceN = '—', paceSub = 'No actuals yet', paceCls = '';
+  if(pace!=null){
+    const pct = Math.round(pace*100);
+    paceCls = pct>=100 ? 'green' : pct>=85 ? 'amber' : 'red';
+    paceN = pct+'% '+(pace>=1 ? '▲' : '▼');
+    paceSub = 'Flat run-rate · hourly curve is not in yet';
+  }
+  const locked = !!c.lockedAt;
+  return `
+    ${cpDemoBanner()}
+    <div class="page-head" style="margin-bottom:6px">
+      <h1>${esc(c.name)}</h1>
+      <div class="actions">
+        ${locked ? `<span class="chip" style="background:var(--green-soft);color:var(--green)">Locked</span>` : `<span class="chip" style="background:var(--gray-soft);color:var(--ink2)">Unlocked</span>`}
+        ${cpCanLock() && !locked ? `<button class="btn btn-ghost btn-sm" onclick="cpLockCampaign('${c.id}')">Lock campaign</button>` : ''}
+        ${cpCanLock() && locked ? `<button class="btn btn-ghost btn-sm" onclick="cpUnlockCampaign('${c.id}')">Unlock</button>` : ''}
+        ${canEdit()? `<button class="btn btn-ghost btn-sm" onclick="cpEditCampaign('${c.id}')">Edit</button>` : ''}
+        ${canEdit()? `<button class="btn btn-primary btn-sm" onclick="cpBriefModal('${c.id}')">${c.tasks.length?'Re-run brief':'Generate tickets'}</button>` : ''}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
+      ${cpStatusChip(c.status)}
+      ${(c.channels||[]).map(cpChanChip).join('')}
+      <span style="color:var(--ink3);font-size:12.5px">${esc((c.countries||[]).join(' · '))}</span>
+    </div>
+    <div class="cp-phases">${phases}</div>
+    <div class="stat-row">
+      <div class="stat cp-stat"><div class="cp-l">Target</div><div class="n navy">${cpTHB(target)}</div><div class="sub">${(c.lines||[]).length} brand lines</div></div>
+      <div class="stat cp-stat"><div class="cp-l">Actual to date</div><div class="n">${actual==null?'—':cpTHB(actual)}</div><div class="sub">${actual==null?'No actuals yet':'from imported actuals'}</div></div>
+      <div class="stat cp-stat"><div class="cp-l">Pace vs expected</div><div class="n ${paceCls}">${paceN}</div><div class="sub">${paceSub}</div></div>
+      <div class="stat cp-stat"><div class="cp-l">Readiness</div><div class="n">${ready==null?'—':ready+'%'}</div><div class="sub">${ready==null?'No playbook tickets yet':cpDone(c)+' / '+c.tasks.length+' tickets done'}</div></div>
+    </div>`;
+}
+function cpFilterRail(c){
+  const f = cpFilters();
+  const lines = c.lines||[];
+  const opts = (vals, cur, label)=> `<option value="">${label}</option>`+vals.map(v=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(v)}</option>`).join('');
+  const verticals = [...new Set(lines.map(l=>l.vertical||'Uncategorised'))];
+  const platforms = [...new Set(lines.map(l=>l.platform).filter(Boolean))];
+  const countries = [...new Set(lines.map(l=>l.country).filter(Boolean))];
+  const leads = [...new Set(lines.map(l=>l.lead).filter(Boolean))];
+  const kams = [...new Set(lines.map(l=>l.kam).filter(Boolean))];
+  return `<h3>Filters</h3>
+    <label>Vertical</label><select onchange="cpSetFilter('vertical', this.value)">${opts(verticals, f.vertical, 'All verticals')}</select>
+    <label>Platform</label><select onchange="cpSetFilter('platform', this.value)">${opts(platforms, f.platform, 'All platforms')}</select>
+    <label>Country</label><select onchange="cpSetFilter('country', this.value)">${opts(countries, f.country, 'All countries')}</select>
+    <label>Lead</label><select onchange="cpSetFilter('lead', this.value)">${opts(leads, f.lead, 'All leads')}</select>
+    <label>KAM</label><select onchange="cpSetFilter('kam', this.value)">${opts(kams, f.kam, 'All KAMs')}</select>
+    <label>Status</label><select onchange="cpSetFilter('status', this.value)">
+      ${[['','All statuses'],['draft','Draft'],['proposed','Proposed'],['cat_approved','Cat-lead approved'],['brand_aligned','Brand aligned'],['locked','Locked'],['outlier','Outliers needing a reason'],['no_target','No target']].map(([k,l])=>`<option value="${k}" ${f.status===k?'selected':''}>${l}</option>`).join('')}
+    </select>`;
+}
+function cpVisibleLines(c){
+  const f = cpFilters();
+  return (c.lines||[]).filter(l=>{
+    if(f.vertical && (l.vertical||'Uncategorised')!==f.vertical) return false;
+    if(f.platform && l.platform!==f.platform) return false;
+    if(f.country && l.country!==f.country) return false;
+    if(f.lead && l.lead!==f.lead) return false;
+    if(f.kam && l.kam!==f.kam) return false;
+    if(f.status==='outlier') return cpNeedsReason(c, l);
+    if(f.status==='no_target') return cpRollup(l.targets,'target').gmv==null;
+    if(f.status && cpLineState(l)!==f.status) return false;
+    return true;
+  });
+}
+function cpDataHealth(c){
+  const lines = c.lines||[];
+  if(!lines.length) return `<div class="card" style="padding:14px 16px;margin-bottom:14px"><div class="section-title" style="margin:0">Data health</div><div style="color:var(--ink3);font-size:12.8px;margin-top:6px">No brand lines yet. Import daily targets on the Data tab.</div></div>`;
+  const noT = lines.filter(l=>cpRollup(l.targets,'target').gmv==null).length;
+  const noB = lines.filter(l=>cpRollup(l.targets,'target').gmv!=null && cpBaselineGmv(c,l).kind!=='ok').length;
+  const out = lines.filter(l=>cpNeedsReason(c,l)).length;
+  const row = (n, label, status)=> `<button type="button" class="cp-kv" style="width:100%;background:transparent;border:0;border-bottom:1px dashed var(--line);cursor:pointer;font:inherit" onclick="cpJump('${status}')"><span>${label}</span><span>${n}</span></button>`;
+  return `<div class="card" style="padding:14px 16px;margin-bottom:14px"><div class="section-title" style="margin:0 0 6px">Data health</div>
+    ${row(noT, 'No target', 'no_target')}
+    ${row(noB, 'No baseline', '')}
+    ${row(out, 'Outliers needing a reason', 'outlier')}
+    <div style="font-size:11.5px;color:var(--ink3);margin-top:8px">A red outlier count blocks Lock. Counts open the Targets tab.</div>
+  </div>`;
+}
+function cpPlaceholder(c, key){
+  const copy = {
+    readiness:{
+      h:'Readiness',
+      p:'Brand-line tasks with working-day due dates are the next slice. The seeded tracker grid and team lanes are still the place to look.',
+      a:`<button class="btn btn-ghost btn-sm" onclick="cpTab='grid';location.hash='#/campaigns'">Open the tracker grid</button>
+         <button class="btn btn-ghost btn-sm" onclick="cpTab='lanes';location.hash='#/campaigns'">Open team lanes</button>
+         <a class="btn btn-ghost btn-sm" href="#/campaigns/${c.id}/tickets">Playbook tickets</a>`
+    },
+    live:{
+      h:'Live',
+      p:'D-day checkpoints, pace and the hourly curve are not on this record yet. There is no figure here, so there is nothing that can show up as a broken calculation.',
+      a:`<button class="btn btn-ghost btn-sm" onclick="cpTab='lanes';location.hash='#/campaigns'">Open team lanes</button>`
+    },
+    compare:{
+      h:'Compare',
+      p:'A phase-aligned comparison of two campaigns is a later slice. On Targets, choose a reference campaign and whether the baseline is its target or its actual.',
+      a:`<button class="btn btn-primary btn-sm" onclick="cpGo('${c.id}','targets')">Open Targets</button>`
+    }
+  }[key];
+  return `<div class="card cp-ph"><h2>${copy.h}</h2><p>${copy.p}</p><div style="display:flex;gap:8px;flex-wrap:wrap">${copy.a}</div></div>`;
+}
+
+/* ---------- targets grid ---------- */
+function cpBaselineLabel(c){
+  if(!c.baselineId) return 'Baseline';
+  const ref = cpById(c.baselineId);
+  if(!ref) return 'Baseline';
+  return 'Baseline · '+ref.name+' '+(c.baselineMode==='actual'?'actual':'target');
+}
+function cpMetricCells(roll){
+  return [cpInt(roll.visitors), cpInt(roll.buyers), cpInt(roll.orders), cpBaht(roll.aov), cpPct1(roll.cr), cpBaht(roll.ads), cpBaht(roll.fb), cpBaht(roll.search), cpBaht(roll.ams)]
+    .map(v=>`<td class="${v==='—'?'miss':'calc'}">${v}</td>`).join('');
+}
+function cpGrowthTd(c, line){
+  const proposed = cpRollup(line.targets,'target').gmv;
+  const base = cpBaselineGmv(c, line);
+  const g = cpGrowth(proposed, base.kind==='ok'? base.gmv : null);
+  if(g.kind==='nobase') return '<td class="miss">No baseline</td>';
+  if(g.kind!=='ok') return '<td class="miss">—</td>';
+  return `<td class="${g.hot?'hot':''}">${esc(g.text)}</td>`;
+}
+function cpTargetTd(line){
+  const g = cpRollup(line.targets,'target').gmv;
+  if(cpCanEditLine(line)){
+    const v = g==null ? '' : String(Math.round(g));
+    return `<td><input class="cp-in" inputmode="numeric" aria-label="Proposed target for ${esc(line.brand)}" value="${v}" placeholder="No target" onchange="cpEditGmv('${line.id}', this.value)"></td>`;
+  }
+  if(g==null) return '<td class="miss">No target</td>';
+  return `<td class="calc">${cpBaht(g)}</td>`;
+}
+function cpStateTd(c, line){
+  const st = cpLineState(line);
+  const hot = cpNeedsReason(c, line);
+  const btn = hot ? `<button type="button" class="btn btn-ghost btn-sm" style="margin-left:6px" onclick="cpReasonModal('${line.id}')">Add reason</button>`
+    : (line.reason && cpGrowth(cpRollup(line.targets,'target').gmv, (cpBaselineGmv(c,line).kind==='ok'?cpBaselineGmv(c,line).gmv:null)).hot
+      ? `<button type="button" class="btn btn-ghost btn-sm" style="margin-left:6px" onclick="cpReasonModal('${line.id}')" title="${esc(line.reason)}">Reason</button>` : '');
+  return `<td class="tx">${cpStateChip(st)}${btn}</td>`;
+}
+function cpStateChip(state){
+  const m = CP_TSTATE[state]||CP_TSTATE.draft;
+  return `<span class="chip" style="background:${m[1]};color:${m[2]}">${m[0]}</span>`;
+}
+function cpGroupOf(line){
+  const by = cpFilters().group || 'vertical';
+  if(by==='platform') return (CP_CHANNELS[line.platform]||{}).label || line.platform || '—';
+  if(by==='lead') return line.lead || 'No lead';
+  if(by==='kam') return line.kam || 'No KAM';
+  return line.vertical || 'Uncategorised';
+}
+function cpRerenderKeep(){
+  const sc = document.querySelector('.cp-gw');
+  const top = sc ? sc.scrollTop : 0;
+  const y = typeof scrollY==='number' ? scrollY : 0;
+  renderCampaigns(cpRouteId(), cpTabClean(S.route&&S.route.tab));
+  try{ scrollTo(0, y); }catch(e){}
+  const sc2 = document.querySelector('.cp-gw');
+  if(sc2) sc2.scrollTop = top;
+}
+function cpTargetBar(c){
+  const camps = (S.campaigns||[]).filter(x=>x.id!==c.id);
+  const n = (c.lines||[]).length;
+  const proposed = (c.lines||[]).filter(l=> (CP_STATE_RANK[cpLineState(l)]||0)>=1 && cpRollup(l.targets,'target').gmv!=null).length;
+  const approved = (c.lines||[]).filter(l=> (CP_STATE_RANK[cpLineState(l)]||0)>=2 && cpRollup(l.targets,'target').gmv!=null).length;
+  const outliers = (c.lines||[]).filter(l=>cpNeedsReason(c,l)).length;
+  const f = cpFilters();
+  const sel = [...(S.cpSel||[])].filter(id=>(c.lines||[]).some(l=>l.id===id));
+  const bulk = [
+    sel.length && canEdit() ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','propose')">Propose ${sel.length}</button>` : '',
+    sel.length && cpIsSuper() ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','approve')">Approve</button>` : '',
+    sel.length && (cpIsSuper()||canEdit()) ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','align')">Brand aligned</button>` : '',
+    sel.length && cpCanLock() ? `<button class="btn btn-primary btn-sm" onclick="cpBulk('${c.id}','lock')">Lock</button>` : '',
+    sel.length && canEdit() ? `<button class="btn btn-ghost btn-sm" onclick="cpBulk('${c.id}','draft')">Back to draft</button>` : ''
+  ].join('');
+  return `<div class="cp-toolbar">
+    <div class="cp-strip"><span><b>${proposed}</b> / ${n} lines proposed</span><span>·</span><span><b>${approved}</b> approved</span><span>·</span><span class="${outliers?'hot':''}"><b>${outliers}</b> outlier${outliers===1?'':'s'} need a reason</span></div>
+    <div class="cp-tools">
+      <label>Baseline</label>
+      <select aria-label="Reference campaign" onchange="cpSetBaseline('${c.id}','id', this.value)">
+        <option value="">Choose a reference…</option>
+        ${camps.map(x=>`<option value="${x.id}" ${c.baselineId===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}
+      </select>
+      <select aria-label="Baseline is target or actual" onchange="cpSetBaseline('${c.id}','mode', this.value)">
+        <option value="target" ${c.baselineMode!=='actual'?'selected':''}>Target</option>
+        <option value="actual" ${c.baselineMode==='actual'?'selected':''}>Actual</option>
+      </select>
+      <label>Group by</label>
+      <select aria-label="Group by" onchange="cpSetFilter('group', this.value)">
+        ${[['vertical','Vertical'],['platform','Platform'],['lead','Lead'],['kam','KAM']].map(([k,l])=>`<option value="${k}" ${f.group===k?'selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>
+    ${bulk ? `<div class="cp-bulk">${bulk}</div>` : ''}
+  </div>`;
+}
+function cpViewLineTargets(c){
+  const lines = cpVisibleLines(c);
+  const f = cpFilters();
+  const groups = [];
+  lines.forEach(l=>{
+    const k = cpGroupOf(l);
+    let g = groups.find(x=>x.k===k);
+    if(!g){ g = {k, rows:[]}; groups.push(g); }
+    g.rows.push(l);
+  });
+  const order = f.group==='vertical' ? CP_VERTICALS.concat(['Uncategorised']) : [];
+  groups.sort((a,b)=>{
+    const ia = order.indexOf(a.k), ib = order.indexOf(b.k);
+    if(ia>=0 || ib>=0) return (ia<0?99:ia)-(ib<0?99:ib);
+    return a.k.localeCompare(b.k);
+  });
+  S.cpFold = S.cpFold||{};
+  S.cpSel = S.cpSel||new Set();
+  const head = `<tr>
+    <th class="tx"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" aria-label="Select all shown lines" onchange="cpToggleAll('${c.id}', this.checked)"> Brand</label></th>
+    <th class="tx">Platform</th><th class="tx">Country</th><th class="tx">Lead</th><th class="tx">KAM</th>
+    <th>${esc(cpBaselineLabel(c))}</th><th>Proposed target</th><th>Growth</th>
+    <th>Visitors</th><th>Buyers</th><th>Orders</th><th>AOV</th><th>CR</th>
+    <th>Ads</th><th>FB</th><th>Search</th><th>AMS</th><th class="tx">State</th>
+  </tr>`;
+  let body = '';
+  groups.forEach(g=>{
+    const folded = !!S.cpFold[c.id+'|'+g.k];
+    const sum = cpSumLines(g.rows, 'target');
+    const baseSum = g.rows.reduce((s,l)=>{ const b=cpBaselineGmv(c,l); return b.kind==='ok' ? (s==null?0:s)+b.gmv : s; }, null);
+    const gg = cpGrowth(sum.gmv, baseSum);
+    body += `<tr class="sub"><td class="tx"><button type="button" class="cp-fold" onclick="cpToggleFold('${c.id}', '${esc(g.k).replace(/'/g,'&#39;')}')">${folded?'▸':'▾'} ${esc(g.k)}</button> <span style="font-weight:500;color:var(--ink3)">${g.rows.length}</span></td>
+      <td></td><td></td><td></td><td></td>
+      <td>${baseSum==null?'<span class="miss">—</span>':cpBaht(baseSum)}</td>
+      <td>${sum.gmv==null?'<span class="miss">—</span>':cpBaht(sum.gmv)}</td>
+      <td class="${gg.hot?'hot':''}">${esc(gg.text)}</td>
+      ${cpMetricCells(sum)}<td></td></tr>`;
+    if(folded) return;
+    g.rows.forEach(l=>{
+      const on = S.cpSel.has(l.id);
+      const base = cpBaselineGmv(c, l);
+      body += `<tr>
+        <td class="tx"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" ${on?'checked':''} aria-label="Select ${esc(l.brand)}" onchange="cpToggleSel('${l.id}', this.checked)"><span><span class="bn">${esc(l.brand)}</span></span></label></td>
+        <td class="tx">${cpChanChip(l.platform)}</td>
+        <td class="tx">${esc(l.country||'—')}</td>
+        <td class="tx">${esc(l.lead||'—')}</td>
+        <td class="tx">${esc(l.kam||'—')}</td>
+        <td class="${base.kind==='ok'?'':'miss'}">${base.kind==='ok'?cpBaht(base.gmv):'No baseline'}</td>
+        ${cpTargetTd(l)}
+        ${cpGrowthTd(c, l)}
+        ${cpMetricCells(cpRollup(l.targets,'target'))}
+        ${cpStateTd(c, l)}
+      </tr>`;
+    });
+  });
+  const tot = cpSumLines(lines, 'target');
+  const baseAll = lines.reduce((s,l)=>{ const b=cpBaselineGmv(c,l); return b.kind==='ok' ? (s==null?0:s)+b.gmv : s; }, null);
+  const tg = cpGrowth(tot.gmv, baseAll);
+  const filtered = !!(f.vertical||f.platform||f.country||f.lead||f.kam||f.status);
+  const totalLabel = filtered ? 'Total shown' : 'Campaign total';
+  body += `<tr class="total"><td class="tx">${totalLabel}</td><td></td><td></td><td></td><td></td>
+    <td>${baseAll==null?'—':cpBaht(baseAll)}</td><td>${tot.gmv==null?'—':cpBaht(tot.gmv)}</td>
+    <td class="${tg.hot?'hot':''}">${esc(tg.text)}</td>${cpMetricCells(tot)}<td></td></tr>`;
+  return `
+    ${lines.length? `<div class="card"><div class="cp-gw"><table class="cp-tgt"><thead>${head}</thead><tbody>${body}</tbody></table></div>
+      <div class="cp-legend"><span>Amber growth is beyond ±30% and needs a reason before Propose.</span><span>Typed cells are inputs. Plain numbers are calculated.</span><span style="margin-left:auto">฿ full amounts · % to 1 decimal</span></div></div>`
+      : `<div class="card empty"><div style="font-weight:600">No brand lines${(c.lines||[]).length?' match these filters':' yet'}</div><p style="color:var(--ink3)">Import a CUSP daily-target file on the Data tab. Shop name, channel and date become a brand line.</p></div>`}`;
+}
+function cpToggleFold(cid, key){
+  S.cpFold = S.cpFold||{};
+  const k = cid+'|'+key;
+  S.cpFold[k] = !S.cpFold[k];
+  cpRerenderKeep();
+}
+function cpToggleSel(id, on){
+  S.cpSel = S.cpSel||new Set();
+  if(on) S.cpSel.add(id); else S.cpSel.delete(id);
+  cpRerenderKeep();
+}
+function cpToggleAll(cid, on){
+  const c = cpById(cid); if(!c) return;
+  S.cpSel = S.cpSel||new Set();
+  cpVisibleLines(c).forEach(l=>{ if(on) S.cpSel.add(l.id); else S.cpSel.delete(l.id); });
+  cpRerenderKeep();
+}
+function cpSetBaseline(id, which, value){
+  const c = cpById(id); if(!c) return;
+  if(which==='id') c.baselineId = value || null;
+  else c.baselineMode = value==='actual' ? 'actual' : 'target';
+  if(S.cpSource==='db' && cpIsUuid(c.id)){
+    db.from('campaigns').update({baseline_campaign_id:c.baselineId, baseline_mode:c.baselineMode}).eq('id', c.id)
+      .then(({error})=>{ if(error) toast(error.message, true); });
+  }
+  cpRerenderKeep();
+}
+function cpSetLineState(line, state){
+  if(!line.targets.length) return false;
+  line.targets.forEach(t=>{ t.state = state; });
+  return true;
+}
+function cpEditGmv(id, raw){
+  const c = cpById(cpRouteId()); if(!c) return;
+  const line = (c.lines||[]).find(l=>l.id===id); if(!line) return;
+  const s = String(raw??'').replace(/,/g,'').trim();
+  if(s==='') return cpRerenderKeep();
+  if(!/^\d+(\.\d+)?$/.test(s)) return toast('Enter a target of 0 or more', true);
+  const total = Number(s);
+  const rows = line.targets.length ? line.targets : null;
+  if(!rows){
+    line.targets.push({date:c.end, gmv:total, visitors:null, buyers:null, orders:null, aov:null, cr:null, ads:null, fb:null, search:null, ams:null, budgetGmv:null, actual:null, state:'draft', phase:'dday'});
+  } else {
+    const prev = rows.reduce((sum,t)=> sum + (t.gmv==null?0:Number(t.gmv)), 0);
+    if(prev<=0){
+      const each = total/rows.length;
+      rows.forEach(t=>{ t.gmv = each; });
+    } else {
+      const f = total/prev;
+      rows.forEach(t=>{ if(t.gmv!=null) t.gmv = Number(t.gmv)*f; });
+      if(!rows.some(t=>t.gmv!=null)) rows[0].gmv = total;
+    }
+  }
+  cpPersistLine(c, line);
+  cpRerenderKeep();
+}
+function cpReasonModal(id){
+  const c = cpById(cpRouteId()); if(!c) return;
+  const line = (c.lines||[]).find(l=>l.id===id); if(!line) return;
+  modal(`<div class="modal-head"><h2>Why this target</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <p style="margin:0 0 10px;color:var(--ink2);font-size:13px">${esc(line.brand)} · growth beyond ±30% needs a reason before Propose.</p>
+      <textarea id="cp-reason" rows="4" placeholder="What changed versus the baseline">${esc(line.reason||'')}</textarea>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="cpSaveReason('${id}')">Save reason</button></div>`);
+}
+function cpSaveReason(id){
+  const c = cpById(cpRouteId()); if(!c) return;
+  const line = (c.lines||[]).find(l=>l.id===id); if(!line) return;
+  const text = (document.querySelector('#cp-reason')?.value||'').trim();
+  if(!text) return toast('Write the reason first', true);
+  line.reason = text;
+  if(S.cpSource==='db' && cpIsUuid(line.id)){
+    db.from('line_targets').update({outlier_reason:text}).eq('brand_line_id', line.id);
+    db.from('comments').insert({entity_type:'brand_line', entity_id:line.id, author_id:S.me.id, body:text});
+    logActivity('brand_line', line.id, 'updated', {changes:[{field:'outlier_reason', to:text}]});
+  }
+  closeModals();
+  toast('Reason saved');
+  cpRerenderKeep();
+}
+async function cpBulk(cid, action){
+  const c = cpById(cid); if(!c) return;
+  const ids = [...(S.cpSel||[])];
+  const lines = (c.lines||[]).filter(l=>ids.includes(l.id));
+  if(!lines.length) return;
+  if(action==='propose'){
+    const need = lines.filter(l=>cpNeedsReason(c, l));
+    if(need.length) return toast(need.length+' outlier'+(need.length===1?'':'s')+' need a reason before Propose', true);
+  }
+  const next = {propose:'proposed', approve:'cat_approved', align:'brand_aligned', lock:'locked', draft:'draft'}[action];
+  const fromOk = {propose:'draft', approve:'proposed', align:'cat_approved', lock:'brand_aligned', draft:null};
+  let moved = 0, skipped = 0;
+  for(const line of lines){
+    const st = cpLineState(line);
+    if(action==='draft'){
+      if(st==='locked' && !cpCanLock()){ skipped++; continue; }
+      if(st==='draft'){ skipped++; continue; }
+      if(!canEdit() && !cpCanLock()){ skipped++; continue; }
+    } else if(st!==fromOk[action]){ skipped++; continue; }
+    if(action==='propose' && !cpCanEditLine(line)){ skipped++; continue; }
+    if(action==='approve' && !cpCanApprove(line)){ skipped++; continue; }
+    if(action==='align' && !cpCanAlign(line)){ skipped++; continue; }
+    if(action==='lock' && !cpCanLock()){ skipped++; continue; }
+    if(!line.targets.length){ skipped++; continue; }
+    cpSetLineState(line, next);
+    moved++;
+  }
+  if(!moved) return toast(skipped ? 'None of the selected lines can take that step' : 'Nothing to update', true);
+  await cpPersistStates(c, lines.filter(l=>cpLineState(l)===next));
+  toast(moved+' line'+(moved===1?'':'s')+' updated'+(skipped? ' · '+skipped+' skipped':''));
+  cpRerenderKeep();
+}
+async function cpPersistStates(c, lines){
+  if(S.cpSource!=='db') return;
+  for(const line of lines){
+    if(!cpIsUuid(line.id)) continue;
+    const state = cpLineState(line);
+    const {error} = await db.from('line_targets').update({approval_state:state, outlier_reason:line.reason||''}).eq('brand_line_id', line.id);
+    if(error){ toast(error.message, true); return; }
+    if(state==='proposed' && line.leadId && line.leadId!==S.me.id){
+      await db.from('approvals').insert({
+        brand_line_id:line.id,
+        title:line.brand+' target',
+        approver_id:line.leadId,
+        requested_by:S.me.id,
+        status:'pending'
+      });
+    }
+    if(state==='cat_approved'){
+      await db.from('approvals').update({status:'approved', decided_at:new Date().toISOString()}).eq('brand_line_id', line.id).eq('status','pending');
+    }
+    if(cpIsUuid(line.id)) logActivity('brand_line', line.id, 'updated', {changes:[{field:'approval_state', to:state}]});
+  }
+}
+async function cpPersistLine(c, line){
+  if(S.cpSource!=='db' || !cpIsUuid(line.id)) return;
+  for(const t of line.targets){
+    const payload = {
+      target_gmv:t.gmv, target_visitors:t.visitors, target_buyers:t.buyers, target_orders:t.orders,
+      target_aov:t.aov, target_cr:t.cr, target_ads_spend:t.ads, target_fb_spend:t.fb,
+      target_search_spend:t.search, target_ams_spend:t.ams, budget_gmv:t.budgetGmv, actual_gmv:t.actual,
+      outlier_reason:line.reason||''
+    };
+    if(t.id && cpIsUuid(t.id)){
+      const {error} = await db.from('line_targets').update(payload).eq('id', t.id);
+      if(error) return toast(error.message, true);
+    } else {
+      const {data, error} = await db.from('line_targets').insert({brand_line_id:line.id, target_date:t.date, approval_state:'draft', ...payload}).select().single();
+      if(error) return toast(error.message, true);
+      if(data) t.id = data.id;
+    }
+  }
+}
+async function cpLockCampaign(id){
+  const c = cpById(id); if(!c || !cpCanLock()) return;
+  const outliers = (c.lines||[]).filter(l=>cpNeedsReason(c, l));
+  if(outliers.length) return toast(outliers.length+' outliers still need a reason', true);
+  const waiting = (c.lines||[]).filter(l=> cpRollup(l.targets,'target').gmv!=null && !['brand_aligned','locked'].includes(cpLineState(l)));
+  if(waiting.length) return toast(waiting.length+' lines are not brand-aligned yet', true);
+  (c.lines||[]).forEach(l=>{ if(cpLineState(l)==='brand_aligned') cpSetLineState(l, 'locked'); });
+  c.lockedAt = new Date().toISOString();
+  if(S.cpSource==='db' && cpIsUuid(c.id)){
+    await cpPersistStates(c, (c.lines||[]).filter(l=>cpLineState(l)==='locked'));
+    const {error} = await db.from('campaigns').update({locked_at:c.lockedAt}).eq('id', c.id);
+    if(error) return toast(error.message, true);
+  }
+  toast('Campaign locked');
+  cpRerenderKeep();
+}
+async function cpUnlockCampaign(id){
+  const c = cpById(id); if(!c || !cpCanLock()) return;
+  (c.lines||[]).forEach(l=>{ if(cpLineState(l)==='locked') cpSetLineState(l, 'brand_aligned'); });
+  c.lockedAt = null;
+  if(S.cpSource==='db' && cpIsUuid(c.id)){
+    await cpPersistStates(c, c.lines||[]);
+    const {error} = await db.from('campaigns').update({locked_at:null}).eq('id', c.id);
+    if(error) return toast(error.message, true);
+  }
+  toast('Campaign unlocked');
+  cpRerenderKeep();
+}
+
+function cpEditCampaign(id){
+  const c = cpById(id); if(!c) return;
+  cpEnsureShape(c);
+  const camps = (S.campaigns||[]).filter(x=>x.id!==c.id);
+  const phaseRows = c.phases.map(p=>`<div style="display:grid;grid-template-columns:120px 1fr 1fr;gap:8px;align-items:center;margin-top:8px">
+      <b style="font-size:12.5px">${esc(p.label)}</b>
+      <input type="date" data-ph="${p.kind}:start" value="${p.start||''}">
+      <input type="date" data-ph="${p.kind}:end" value="${p.end||''}">
+    </div>`).join('');
+  const chans = Object.entries(CP_CHANNELS).map(([k,v])=>
+    `<label style="display:flex;gap:6px;align-items:center;font-weight:500;font-size:13px"><input type="checkbox" name="cp-ed-ch" value="${k}" ${(c.channels||[]).includes(k)?'checked':''}> ${v.label}</label>`).join('');
+  modal(`<div class="modal-head"><h2>Edit campaign</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <label>Name</label><input id="cp-ed-name" value="${esc(c.name)}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+        <div><label>Status</label><select id="cp-ed-st">${CP_STATUSES.map(s=>`<option value="${s.k}" ${s.k===c.status?'selected':''}>${s.label}</option>`).join('')}</select></div>
+        <div><label>Playbook</label><select id="cp-ed-pb">${Object.entries(CP_PLAYBOOKS).map(([k,v])=>`<option value="${k}" ${k===c.pb?'selected':''}>${v.name}</option>`).join('')}</select></div>
+      </div>
+      <label style="margin-top:12px">Countries</label><input id="cp-ed-co" value="${esc((c.countries||[]).join(', '))}">
+      <label style="margin-top:12px">Channels</label><div style="display:flex;gap:12px;flex-wrap:wrap">${chans}</div>
+      <div class="section-title" style="margin-top:14px">Phases</div>
+      ${phaseRows}
+      <label style="margin-top:12px">Baseline</label>
+      <div style="display:grid;grid-template-columns:1fr 140px;gap:8px">
+        <select id="cp-ed-base"><option value="">None</option>${camps.map(x=>`<option value="${x.id}" ${c.baselineId===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
+        <select id="cp-ed-mode"><option value="target" ${c.baselineMode!=='actual'?'selected':''}>Target</option><option value="actual" ${c.baselineMode==='actual'?'selected':''}>Actual</option></select>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
+      <button class="btn btn-primary" onclick="cpSaveEdit('${c.id}')">Save</button></div>`, true);
+}
+async function cpSaveEdit(id){
+  const c = cpById(id); if(!c) return;
+  const v = s => (document.querySelector(s)?.value||'').trim();
+  const name = v('#cp-ed-name');
+  if(!name) return toast('Give the campaign a name', true);
+  c.name = name;
+  c.status = v('#cp-ed-st') || c.status;
+  c.pb = v('#cp-ed-pb') || c.pb;
+  c.countries = v('#cp-ed-co').split(/[, ]+/).map(s=>s.trim().toUpperCase()).filter(Boolean);
+  if(!c.countries.length) c.countries = ['TH'];
+  c.channels = [...document.querySelectorAll('input[name=cp-ed-ch]:checked')].map(el=>el.value);
+  c.baselineId = v('#cp-ed-base') || null;
+  c.baselineMode = v('#cp-ed-mode')==='actual' ? 'actual' : 'target';
+  c.phases.forEach(p=>{
+    const s = document.querySelector(`[data-ph="${p.kind}:start"]`);
+    const e = document.querySelector(`[data-ph="${p.kind}:end"]`);
+    if(s && s.value) p.start = s.value;
+    if(e && e.value) p.end = e.value;
+  });
+  const dday = (c.phases.find(p=>p.kind==='dday')||{}).start;
+  const tease = (c.phases.find(p=>p.kind==='teasing')||{}).start;
+  if(tease) c.start = tease;
+  if(dday) c.end = dday;
+  if(S.cpSource==='db' && cpIsUuid(c.id)){
+    const {error} = await db.from('campaigns').update({
+      name:c.name, status:c.status, playbook:c.pb, countries:c.countries, channels:c.channels,
+      start_date:c.start, end_date:c.end, baseline_campaign_id:c.baselineId, baseline_mode:c.baselineMode
+    }).eq('id', c.id);
+    if(error) return toast(error.message, true);
+    for(const p of c.phases){
+      if(!p.id) continue;
+      await db.from('campaign_phases').update({start_date:p.start, end_date:p.end, label:p.label}).eq('id', p.id);
+    }
+  }
+  closeModals();
+  toast(S.cpSource==='db' ? 'Campaign saved' : 'Campaign updated in this session');
+  cpRerenderKeep();
+}
+
+/* ---------- daily target import ---------- */
+function cpNormName(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,''); }
+function cpNormTagText(s){ return String(s||'').replace(/\s+/g,' ').trim().replace(/\.+$/,'').trim(); }
+/* Excel turns the text "10.10" into the number 10.1. A one-decimal number is also offered zero-padded. */
+function cpCampaignTags(v){
+  if(v==null || v==='') return [];
+  if(v instanceof Date) return [];
+  if(typeof v==='number' && isFinite(v)){
+    const s = String(v);
+    const out = [];
+    if(/^\d+\.\d$/.test(s)) out.push(Number(v).toFixed(2));
+    out.push(s);
+    return [...new Set(out.map(cpNormTagText).filter(Boolean))];
+  }
+  const s = cpNormTagText(v);
+  return s ? [s] : [];
+}
+function cpNormPlatform(v){
+  const x = String(v??'').trim().toLowerCase();
+  if(!x) return '';
+  if(x.includes('shopee')) return 'shopee';
+  if(x.includes('lazada')) return 'lazada';
+  if(x.includes('tiktok') || x==='tt' || x==='tts') return 'tiktok';
+  if(x.includes('shopify')) return 'shopify';
+  if(x.includes('line')) return 'line';
+  if(x==='brand' || x.includes('brand.com') || x.includes('brand com')) return 'brand';
+  return '';
+}
+function cpDateCell(v){
+  if(v instanceof Date && !isNaN(v)) return cpISO(v);
+  if(typeof v==='number' && v>20000 && v<80000){
+    const d = new Date(Math.round((v-25569)*86400000));
+    return isNaN(d) ? null : d.toISOString().slice(0,10);
+  }
+  const s = String(v??'').trim();
+  if(!s) return null;
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  const m = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/.exec(s);
+  if(m) return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  const d = new Date(s);
+  return isNaN(d) ? null : cpISO(d);
+}
+function cpNumCell(v){
+  if(v==null || v==='') return null;
+  if(typeof v==='number') return isFinite(v) ? v : null;
+  const s = String(v).trim().replace(/,/g,'').replace(/%$/,'');
+  if(!s) return null;
+  const n = Number(s);
+  return isFinite(n) ? n : null;
+}
+function cpBrandCatalog(){
+  const live = (S.brandsList||[]).filter(b=>b && b.name && b.active!==false);
+  if(live.length) return live;
+  if(S.cpDemo || S.cpSource==='demo') return CP_DEMO_BRANDS;
+  return [];
+}
+function cpMatchBrand(shop, pending){
+  if(!shop) return null;
+  if(pending && pending[shop]){
+    const hit = cpBrandCatalog().find(b=>b.id===pending[shop]);
+    if(hit) return hit;
+  }
+  const norm = cpNormName(shop);
+  const low = shop.trim().toLowerCase();
+  const aliases = S.cpAliases||[];
+  const alias = aliases.find(a=> cpNormName(a.alias)===norm || String(a.alias||'').trim().toLowerCase()===low || a.alias_norm===low);
+  if(alias){
+    const b = cpBrandCatalog().find(x=>x.id===alias.brand_id) || {id:alias.brand_id, name:shop, vertical:''};
+    return b;
+  }
+  return cpBrandCatalog().find(b=> cpNormName(b.name)===norm || String(b.name).trim().toLowerCase()===low) || null;
+}
+function cpPhaseForTags(tags, aliases, campaignId){
+  const lows = (tags||[]).map(t=>t.toLowerCase());
+  const list = aliases||[];
+  const normOf = a => (a.alias_norm || cpNormTagText(a.alias).toLowerCase());
+  const specific = list.find(a=> a.campaign_id && a.campaign_id===campaignId && lows.includes(normOf(a)));
+  if(specific) return specific.phase_kind;
+  const general = list.find(a=> !a.campaign_id && lows.includes(normOf(a)));
+  return general ? general.phase_kind : null;
+}
+function cpSavedMap(){
+  try{ return JSON.parse(localStorage.getItem('done.cp.map.daily_targets')||'{}')||{}; }catch(e){ return {}; }
+}
+function cpRememberMap(mapping){
+  const o = cpSavedMap();
+  mapping.forEach(m=>{ if(m.target && m.target!=='skip') o[m.label.trim().toLowerCase()] = m.target; });
+  try{ localStorage.setItem('done.cp.map.daily_targets', JSON.stringify(o)); }catch(e){}
+}
+function cpGuessDailyMapping(headers){
+  const saved = cpSavedMap();
+  const used = new Set();
+  return (headers||[]).map(h=>{
+    const low = String(h.label||'').trim().toLowerCase();
+    if(saved[low] && !used.has(saved[low])){ used.add(saved[low]); return {ci:h.i, label:h.label, target:saved[low]}; }
+    for(const [key,,,aliases] of CP_DAILY_FIELDS){
+      if(aliases.includes(low) && !used.has(key)){ used.add(key); return {ci:h.i, label:h.label, target:key}; }
+    }
+    return {ci:h.i, label:h.label, target:'skip'};
+  });
+}
+function cpSheetRows(aoa){
+  const sheet = (typeof importReadSheet==='function') ? importReadSheet(aoa) : null;
+  if(!sheet) return null;
+  const filled = r => (r||[]).filter(c=> String(c??'').trim()!=='').length;
+  const rows = [];
+  let blanks = 0;
+  for(let r = sheet.hi+1; r<aoa.length; r++){
+    if(filled(aoa[r])===0) blanks++;
+    else rows.push({n:r+1, cells:aoa[r]});
+  }
+  return {headers:sheet.headers, rows, blanks, hi:sheet.hi};
+}
+function cpValidateDaily(sheet, mapping, ctx){
+  ctx = ctx || {};
+  const errors = [], warnings = [];
+  const taken = {};
+  (mapping||[]).forEach(m=>{ if(m.target && m.target!=='skip') taken[m.target]=(taken[m.target]||0)+1; });
+  let colsOk = true;
+  CP_DAILY_FIELDS.forEach(([key, label, req])=>{
+    if(req && !taken[key]){ errors.push({code:'column', message:'Missing required column: '+label}); colsOk = false; }
+    if(taken[key]>1){ errors.push({code:'column', message:label+' is mapped from two columns'}); colsOk = false; }
+  });
+  if(sheet && sheet.blanks) warnings.push({code:'blank', message:Number(sheet.blanks).toLocaleString('en-US')+' blank row'+(sheet.blanks===1?'':'s')+' dropped'});
+  const parsed = [];
+  if(!sheet || !colsOk) return {errors, warnings, parsed, blocked:errors.length>0, blanks:sheet&&sheet.blanks||0};
+  const at = t => mapping.find(m=>m.target===t);
+  const seen = {}, unknown = {}, outside = {}, unmapped = {};
+  let blankTag = 0, badDate = 0, badPlat = 0, badShop = 0, negative = 0;
+  const countries = ctx.countries || [];
+  for(const row of sheet.rows){
+    const cell = key => { const m = at(key); return m ? row.cells[m.ci] : undefined; };
+    const shopRaw = cell('brand');
+    const shop = String(shopRaw??'').trim();
+    const platform = cpNormPlatform(cell('platform'));
+    const country = String(cell('country')??'').trim().toUpperCase() || 'TH';
+    const date = cpDateCell(cell('date'));
+    const tags = cpCampaignTags(cell('campaign_name'));
+    const rec = {
+      n:row.n, shop, platform, country, date, tags, tag:tags[0]||'',
+      gmv:cpNumCell(cell('target_gmv')), visitors:cpNumCell(cell('target_visitors')),
+      buyers:cpNumCell(cell('target_buyers')), orders:cpNumCell(cell('target_orders')),
+      aov:cpNumCell(cell('target_aov')), cr:cpNumCell(cell('target_cr')),
+      ads:cpNumCell(cell('target_ads_spend')), fb:cpNumCell(cell('target_fb_spend')),
+      search:cpNumCell(cell('target_search_spend')), ams:cpNumCell(cell('target_ams_spend')),
+      budgetGmv:cpNumCell(cell('budget_gmv')), actual:cpNumCell(cell('actual_gmv'))
+    };
+    ['gmv','visitors','buyers','orders','aov','cr','ads','fb','search','ams','budgetGmv','actual'].forEach(k=>{
+      if(rec[k]!=null && rec[k]<0) negative++;
+    });
+    if(!shop) badShop++;
+    else {
+      const match = cpMatchBrand(shop, ctx.aliases);
+      if(match){ rec.brandId = match.id; rec.brand = match.name; rec.vertical = match.vertical||''; }
+      else { (unknown[shop] = unknown[shop]||{shop, rows:[]}).rows.push(row.n); }
+    }
+    if(!platform) badPlat++;
+    if(!date) badDate++;
+    if(shop && date && platform){
+      const key = [cpNormName(shop), platform, country, date].join('|');
+      if(seen[key]) errors.push({code:'dup', message:'Duplicate '+shop+' · '+platform+' · '+country+' on '+date+' (rows '+seen[key]+' and '+row.n+')'});
+      else seen[key] = row.n;
+    }
+    if(countries.length && country && !countries.includes(country)) outside[country] = (outside[country]||0)+1;
+    if(!tags.length) blankTag++;
+    else {
+      rec.phase = cpPhaseForTags(tags, ctx.phaseAliases, ctx.campaignId);
+      if(!rec.phase){
+        const u = unmapped[rec.tag] = unmapped[rec.tag]||{tag:rec.tag, rows:0, numeric:typeof cell('campaign_name')==='number'};
+        u.rows++;
+      }
+    }
+    parsed.push(rec);
+  }
+  if(badShop) errors.push({code:'shop', message:badShop+' row'+(badShop===1?'':'s')+' with no shop name'});
+  if(badPlat) errors.push({code:'platform', message:badPlat+' row'+(badPlat===1?'':'s')+' with a channel that is not Shopee, Lazada, TikTok, Shopify or Brand.com'});
+  if(badDate) errors.push({code:'date', message:badDate+' row'+(badDate===1?'':'s')+' with no usable date'});
+  if(negative) errors.push({code:'neg', message:negative+' negative number'+(negative===1?'':'s')+' — a target cannot be below zero'});
+  Object.values(unknown).forEach(u=>{
+    errors.push({code:'unknown', shop:u.shop, rows:u.rows, message:'Unknown brand “'+u.shop+'” · '+u.rows.length+' row'+(u.rows.length===1?'':'s')});
+  });
+  const outN = Object.values(outside).reduce((s,n)=>s+n,0);
+  if(outN) warnings.push({code:'country', message:outN+' row'+(outN===1?'':'s')+' outside this campaign ('+Object.entries(outside).map(([k,n])=>k+' '+n).join(', ')+')'});
+  if(blankTag) warnings.push({code:'tagblank', message:blankTag+' row'+(blankTag===1?'':'s')+' with a blank campaign tag'});
+  Object.values(unmapped).forEach(u=>{
+    const note = u.numeric ? ' (read as a number — “10.10” becomes 10.1)' : '';
+    warnings.push({code:'tag', tag:u.tag, message:'Campaign tag “'+u.tag+'” is not mapped to a phase'+note+' · '+u.rows+' row'+(u.rows===1?'':'s')});
+  });
+  return {errors, warnings, parsed, blocked:errors.length>0, blanks:sheet.blanks||0};
+}
+function cpImportCtx(c, im){
+  const phaseAliases = (S.cpPhaseAliases||[]).slice();
+  Object.entries(im.phaseMap||{}).forEach(([alias, phase_kind])=>{
+    phaseAliases.push({campaign_id:c.id, alias, phase_kind, alias_norm:cpNormTagText(alias).toLowerCase()});
+  });
+  return {campaignId:c.id, countries:c.countries||['TH'], aliases:im.aliases||{}, phaseAliases};
+}
+function cpApplyImport(lines, incoming){
+  const rows = (incoming||[]).filter(r=>r && r.brandId && r.platform && r.date);
+  if(!rows.length) return (lines||[]).map(l=>({...l, targets:(l.targets||[]).slice()}));
+  const dates = rows.map(r=>r.date).sort();
+  const lo = dates[0], hi = dates[dates.length-1];
+  const next = (lines||[]).map(l=>({...l, targets:(l.targets||[]).filter(t=> t.date < lo || t.date > hi)}));
+  rows.forEach(row=>{
+    let line = next.find(l=> l.brandId===row.brandId && l.platform===row.platform && l.country===row.country);
+    if(!line){
+      const people = cpPeopleFor(row.brandId, row.platform);
+      line = {
+        id: row.lineId || ('ln-'+Math.random().toString(36).slice(2,10)),
+        brandId:row.brandId, brand:row.brand||row.shop, vertical:row.vertical||'',
+        platform:row.platform, country:row.country, lead:row.lead||people.lead||'', kam:row.kam||people.kam||'',
+        leadId:row.leadId||people.leadId||null, kamId:row.kamId||people.kamId||null,
+        associate:people.associate||'', targets:[], reason:''
+      };
+      next.push(line);
+    }
+    line.targets.push({
+      date:row.date, phase:row.phase||null, state:'draft',
+      gmv:row.gmv, visitors:row.visitors, buyers:row.buyers, orders:row.orders, aov:row.aov, cr:row.cr,
+      ads:row.ads, fb:row.fb, search:row.search, ams:row.ams, budgetGmv:row.budgetGmv, actual:row.actual
+    });
+  });
+  next.forEach(l=> l.targets.sort((a,b)=> a.date<b.date ? -1 : 1));
+  return next;
+}
+function cpParsedIncoming(r){
+  const people = cpPeopleFor(r.brandId, r.platform);
+  return Object.assign({}, r, {lead:people.lead, kam:people.kam, leadId:people.leadId, kamId:people.kamId});
+}
+
+function cpViewData(c){
+  const last = (c.imports||[])[0];
+  const aliases = (S.cpPhaseAliases||[]).filter(a=> !a.campaign_id || a.campaign_id===c.id);
+  return `
+    <div class="card" style="padding:16px;margin-bottom:14px">
+      <div class="section-title" style="margin:0 0 6px">Daily targets</div>
+      <p style="margin:0 0 12px;color:var(--ink2);font-size:13px;max-width:640px">Upload the CUSP daily-target export (.xlsx or .csv). Columns are matched by header name. Importing the same dates again replaces those rows.</p>
+      ${cpCanImport()? `<button class="btn btn-primary" onclick="cpOpenDailyImport('${c.id}')">Upload daily targets</button>` : '<div style="color:var(--ink3);font-size:12.8px">You can view targets. Imports are for staff.</div>'}
+      ${last ? `<div class="cp-asof" style="margin-top:10px">Last import ${esc(last.file||'')} · ${esc(cpBkk(last.asOf||last.at))} (GMT+7) · ${last.rows||0} rows${last.replaced? ' · '+last.replaced+' replaced':''}</div>` : ''}
+    </div>
+    <div class="card" style="padding:16px;margin-bottom:14px">
+      <div class="section-title" style="margin:0 0 8px">Later imports</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${['Daily actuals','Hourly GMV','Hourly visitors'].map(n=>`<button class="btn btn-ghost btn-sm" disabled title="Arrives with the Live slice">${n}</button>`).join('')}
+      </div>
+    </div>
+    <div class="card" style="padding:16px">
+      <div class="section-title" style="margin:0 0 8px">Campaign tags → phases</div>
+      ${aliases.length ? `<table class="tbl"><thead><tr><th>Tag</th><th>Phase</th></tr></thead><tbody>
+        ${aliases.map(a=>`<tr><td>${esc(a.alias)}</td><td>${esc((CP_PHASES.find(p=>p.kind===a.phase_kind)||{}).label||a.phase_kind)}</td></tr>`).join('')}
+      </tbody></table>` : '<div style="color:var(--ink3);font-size:12.8px">No tags mapped yet. Unmapped tags are a warning on import, and you can map them there.</div>'}
+    </div>`;
+}
+function cpOpenDailyImport(id){
+  if(typeof XLSX==='undefined') return toast('The Excel engine is still loading — try again in a second', true);
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.xlsx,.xls,.csv';
+  inp.onchange = async ()=>{
+    const f = inp.files && inp.files[0]; if(!f) return;
+    try{
+      const wb = XLSX.read(await f.arrayBuffer(), {cellDates:true});
+      cpBeginImport(id, f.name, wb);
+    }catch(e){ toast('Could not read that file', true); }
+  };
+  inp.click();
+}
+function cpBeginImport(id, fileName, wb){
+  const ranked = cpRankSheets(wb);
+  const good = ranked.filter(s=>s.score>=4);
+  if(!ranked.length || !ranked[0].read) return toast('That file has no header row', true);
+  if(good.length===1 || (good.length && /daily|\braw\b/i.test(good[0].name) && good[0].score===4)){
+    cpStartMap(id, fileName, good[0]);
+    return;
+  }
+  S._cpImport = {campaignId:id, fileName, ranked, step:'sheet'};
+  cpShowImportModal();
+}
+function cpRankSheets(wb){
+  const names = wb.SheetNames||[];
+  const prefer = names.filter(n=>/daily|\braw\b/i.test(n));
+  const order = prefer.concat(names.filter(n=>prefer.indexOf(n)<0));
+  const out = [];
+  for(const name of order){
+    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[name], {header:1, raw:true, defval:''});
+    const read = cpSheetRows(aoa);
+    let score = 0;
+    if(read){
+      const map = cpGuessDailyMapping(read.headers);
+      score = ['date','brand','platform','target_gmv'].filter(k=>map.some(m=>m.target===k)).length;
+    }
+    out.push({name, score, read});
+    if(score===4 && prefer.indexOf(name)>=0) break;
+  }
+  out.sort((a,b)=> b.score-a.score);
+  return out;
+}
+function cpStartMap(id, fileName, sheet){
+  const c = cpById(id);
+  S._cpImport = {
+    campaignId:id, fileName, sheet:sheet.read, sheetName:sheet.name,
+    mapping: cpGuessDailyMapping(sheet.read.headers),
+    aliases:{}, phaseMap:{}, step:'map'
+  };
+  S._cpImport.report = cpValidateDaily(sheet.read, S._cpImport.mapping, cpImportCtx(c, S._cpImport));
+  cpShowImportModal();
+}
+function cpShowImportModal(){
+  const im = S._cpImport; if(!im) return;
+  modal(`<div class="modal-head"><h2>Import daily targets</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body" id="cp-imp-body"></div>
+    <div class="modal-foot" id="cp-imp-foot"></div>`, true);
+  cpRenderImport();
+}
+function cpRenderImport(){
+  const im = S._cpImport; if(!im) return;
+  const body = document.getElementById('cp-imp-body');
+  const foot = document.getElementById('cp-imp-foot');
+  if(!body || !foot) return;
+  const step = im.step || 'map';
+  const steps = `<div class="cp-steps"><b class="${step==='sheet'?'on':'done'}">1 · Upload</b><b class="${step==='map'?'on':step==='check'?'done':''}">2 · Map</b><b class="${step==='check'?'on':''}">3 · Check</b></div>`;
+  if(step==='sheet'){
+    body.innerHTML = steps+`<p class="imp-note">Which sheet is the daily-target export?</p>`+
+      im.ranked.map((s,i)=>`<button type="button" class="btn btn-ghost" style="margin:0 8px 8px 0" onclick="cpPickSheet(${i})">${esc(s.name)} · ${s.score}/4</button>`).join('');
+    foot.innerHTML = `<button class="btn btn-ghost" onclick="closeModals()">Cancel</button>`;
+    return;
+  }
+  if(step==='map'){
+    const shim = {headers:im.sheet.headers, rows:im.sheet.rows.map(r=>r.cells)};
+    body.innerHTML = steps+`<p class="imp-note"><b>${im.sheet.rows.length.toLocaleString('en-US')}</b> data rows in ${esc(im.sheetName||im.fileName)}${im.sheet.blanks? ' · '+im.sheet.blanks.toLocaleString('en-US')+' blank rows will be dropped':''}. Match each header to a target field.</p>
+      <div id="cp-imp-map">${im.mapping.map((m,idx)=>{
+        const sample = (typeof importColValues==='function' ? importColValues(shim, m.ci) : []).slice(0,3)
+          .map(v=> v instanceof Date ? cpISO(v) : String(v)).join(' · ');
+        const opts = `<option value="skip" ${m.target==='skip'?'selected':''}>Skip</option>`+
+          CP_DAILY_FIELDS.map(([k,l])=>`<option value="${k}" ${m.target===k?'selected':''}>${l}${['date','brand','platform','target_gmv'].includes(k)?' *':''}</option>`).join('');
+        return `<div class="imp-row"><div class="imp-col"><div class="imp-head">${esc(m.label)}</div><div class="imp-sample">${esc(sample||'—')}</div></div>
+          <span class="imp-arrow">→</span><div class="imp-to"><select aria-label="Map ${esc(m.label)}" onchange="cpImpTarget(${idx}, this.value)">${opts}</select></div></div>`;
+      }).join('')}</div>`;
+    foot.innerHTML = `<button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" onclick="cpImpCheck()">Check rows</button>`;
+    return;
+  }
+  const rep = im.report || {errors:[], warnings:[], parsed:[], blocked:true};
+  const brands = cpBrandCatalog();
+  /* Unknown brands and missing columns are shown in full — each one has to be
+     fixed before commit, and a cap would hide a shop the file actually contains.
+     Duplicate-row messages are the ones that can run into the hundreds. */
+  const primary = rep.errors.filter(e=>e.code==='unknown'||e.code==='column');
+  const other = rep.errors.filter(e=>e.code!=='unknown'&&e.code!=='column');
+  const errHtml = primary.concat(other.slice(0,30)).map(e=>{
+    if(e.code==='unknown'){
+      return `<li class="bad"><span class="cp-vmsg">✗ ${esc(e.message)}</span><select aria-label="Alias for ${esc(e.shop)}" onchange="cpAliasPick(${jsArg(e.shop)}, this.value)"><option value="">Choose the brand…</option>${brands.map(b=>`<option value="${b.id}" ${(im.aliases||{})[e.shop]===b.id?'selected':''}>${esc(b.name)}</option>`).join('')}</select></li>`;
+    }
+    return `<li class="bad">✗ ${esc(e.message)}</li>`;
+  }).join('');
+  const moreE = other.length>30 ? `<li class="bad">✗ And ${other.length-30} more</li>` : '';
+  const warnHtml = rep.warnings.map(w=>{
+    if(w.code==='tag'){
+      return `<li class="warn"><span class="cp-vmsg">⚠ ${esc(w.message)}</span><select aria-label="Phase for ${esc(w.tag)}" onchange="cpPhasePick(${jsArg(w.tag)}, this.value)"><option value="">Leave unmapped</option>${CP_PHASES.map(p=>`<option value="${p.kind}" ${(im.phaseMap||{})[w.tag]===p.kind?'selected':''}>${p.label}</option>`).join('')}</select></li>`;
+    }
+    return `<li class="warn">⚠ ${esc(w.message)}</li>`;
+  }).join('');
+  const preview = rep.parsed.slice(0,8).map(r=>`<tr><td>${r.n}</td><td>${esc(r.date||'—')}</td><td>${esc(r.country)}</td><td>${esc(r.shop)}</td><td>${esc(r.platform||'—')}</td><td>${esc(r.tag||'—')}</td><td class="num">${r.gmv==null?'—':cpBaht(r.gmv)}</td></tr>`).join('');
+  body.innerHTML = steps+`<ul class="cp-vlist">${errHtml}${moreE}${warnHtml}${!rep.errors.length && !rep.warnings.length ? '<li class="ok">✓ Nothing to fix. '+rep.parsed.length.toLocaleString('en-US')+' rows are ready.</li>' : ''}</ul>
+    ${rep.parsed.length? `<table class="cp-prevtbl"><thead><tr><th>Row</th><th>Date</th><th>Country</th><th>Shop</th><th>Channel</th><th>Tag</th><th class="num">Target GMV</th></tr></thead><tbody>${preview}</tbody></table>`:''}`;
+  foot.innerHTML = `<button class="btn btn-ghost" onclick="cpImpBack()">Back</button>
+    <button class="btn btn-primary" id="cp-imp-go" ${rep.blocked?'disabled':''} onclick="cpCommitDaily()">${rep.blocked?'Fix the errors to import':'Import '+rep.parsed.length.toLocaleString('en-US')+' rows'}</button>`;
+}
+function jsArg(s){ return "'"+String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+"'"; }
+function cpPickSheet(i){
+  const im = S._cpImport; if(!im) return;
+  const s = im.ranked[i]; if(!s || !s.read) return toast('That sheet has no header row', true);
+  cpStartMap(im.campaignId, im.fileName, s);
+}
+function cpImpTarget(idx, value){
+  const im = S._cpImport; if(!im) return;
+  im.mapping[idx].target = value;
+  cpRenderImport();
+}
+function cpImpCheck(){
+  const im = S._cpImport; if(!im) return;
+  const c = cpById(im.campaignId); if(!c) return;
+  cpRememberMap(im.mapping);
+  im.report = cpValidateDaily(im.sheet, im.mapping, cpImportCtx(c, im));
+  im.step = 'check';
+  cpRenderImport();
+}
+function cpImpBack(){ const im = S._cpImport; if(!im) return; im.step = 'map'; cpRenderImport(); }
+function cpAliasPick(shop, brandId){
+  const im = S._cpImport; if(!im) return;
+  if(brandId) im.aliases[shop] = brandId; else delete im.aliases[shop];
+  const c = cpById(im.campaignId);
+  im.report = cpValidateDaily(im.sheet, im.mapping, cpImportCtx(c, im));
+  cpRenderImport();
+}
+function cpPhasePick(tag, kind){
+  const im = S._cpImport; if(!im) return;
+  if(kind) im.phaseMap[tag] = kind; else delete im.phaseMap[tag];
+  const c = cpById(im.campaignId);
+  im.report = cpValidateDaily(im.sheet, im.mapping, cpImportCtx(c, im));
+  cpRenderImport();
+}
+async function cpCommitDaily(){
+  const im = S._cpImport; if(!im || !im.report || im.report.blocked) return;
+  const c = cpById(im.campaignId); if(!c) return;
+  const btn = document.getElementById('cp-imp-go');
+  if(btn){ btn.disabled = true; btn.textContent = 'Importing…'; }
+  Object.entries(im.aliases||{}).forEach(([shop, brandId])=>{
+    if(!(S.cpAliases||[]).some(a=>a.brand_id===brandId && cpNormName(a.alias)===cpNormName(shop))){
+      S.cpAliases = S.cpAliases||[];
+      S.cpAliases.push({brand_id:brandId, alias:shop, alias_norm:shop.trim().toLowerCase()});
+    }
+  });
+  Object.entries(im.phaseMap||{}).forEach(([alias, phase_kind])=>{
+    S.cpPhaseAliases = S.cpPhaseAliases||[];
+    if(!S.cpPhaseAliases.some(a=>a.campaign_id===c.id && cpNormTagText(a.alias).toLowerCase()===cpNormTagText(alias).toLowerCase()))
+      S.cpPhaseAliases.push({campaign_id:c.id, alias, phase_kind, alias_norm:cpNormTagText(alias).toLowerCase()});
+  });
+  im.report = cpValidateDaily(im.sheet, im.mapping, cpImportCtx(c, im));
+  if(im.report.blocked){ cpRenderImport(); return; }
+  const incoming = im.report.parsed.filter(r=>r.brandId && r.date && r.platform).map(cpParsedIncoming);
+  if(S.cpSource==='db' && cpIsUuid(c.id)){
+    for(const [shop, brandId] of Object.entries(im.aliases||{})){
+      const ins = await db.from('brand_aliases').insert({brand_id:brandId, alias:shop, source:'import'});
+      if(ins.error && !/duplicate|unique/i.test(ins.error.message||'')) { toast(ins.error.message, true); if(btn) btn.disabled=false; return; }
+    }
+    for(const [alias, phase_kind] of Object.entries(im.phaseMap||{})){
+      await db.from('campaign_phase_aliases').insert({campaign_id:c.id, alias, phase_kind});
+    }
+    const payload = incoming.map(r=>({
+      brand_id:r.brandId, platform:r.platform, country:r.country, target_date:r.date, phase_kind:r.phase||'',
+      target_gmv:r.gmv, target_visitors:r.visitors, target_buyers:r.buyers, target_orders:r.orders,
+      target_aov:r.aov, target_cr:r.cr, target_ads_spend:r.ads, target_fb_spend:r.fb,
+      target_search_spend:r.search, target_ams_spend:r.ams, budget_gmv:r.budgetGmv, actual_gmv:r.actual
+    }));
+    const {data, error} = await db.rpc('replace_line_targets', {
+      p_campaign:c.id, p_rows:payload,
+      p_meta:{kind:'daily_targets', source_file:im.fileName, data_as_of:new Date().toISOString(), rows_skipped:im.report.blanks||0}
+    });
+    if(error){ toast(error.message, true); if(btn) btn.disabled=false; return; }
+    toast('Imported '+(data&&data.inserted!=null ? data.inserted : payload.length)+' target rows');
+    closeModals();
+    S.cpLoaded = false; S.cpLoading = false;
+    await cpLoadRemote();
+    return;
+  }
+  c.lines = cpApplyImport(c.lines, incoming);
+  const names = [...new Set(c.lines.map(l=>l.brand).filter(Boolean))];
+  c.brands = names;
+  incoming.forEach(r=>{ if(r.platform && c.channels.indexOf(r.platform)<0) c.channels.push(r.platform); });
+  c.imports = c.imports||[];
+  c.imports.unshift({kind:'daily_targets', file:im.fileName, at:new Date().toISOString(), asOf:new Date().toISOString(), rows:incoming.length, replaced:0});
+  closeModals();
+  toast(incoming.length+' daily targets imported into this session');
+  cpGo(c.id, 'targets');
 }
 </script>
