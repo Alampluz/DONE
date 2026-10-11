@@ -48,6 +48,10 @@ Run `npm install` once in the `done-mcp` folder first.
 2. When asked, paste the bot key into `DONE_BOT_KEY`. Render generates `MCP_AUTH_TOKEN` for you.
 3. After deploy, open `https://<service>.onrender.com/health`; it should say `{"ok":true,"bot":"cuspyy"}`.
 
+*Two profiles on one server.* `render.yaml` defines a second pair, `DONE_BOT_KEY_CLAUDE` / `MCP_AUTH_TOKEN_CLAUDE`, so Claude uses its own DONE key (activity log says "Claude", comments are prefixed `[Claude]`) on the same hosted server. Any `DONE_BOT_KEY_<NAME>` + `MCP_AUTH_TOKEN_<NAME>` pair adds another profile.
+
+*Connect Claude (claude.ai):* Settings → Connectors → Add custom connector → URL `https://<service>.onrender.com/mcp/<MCP_AUTH_TOKEN_CLAUDE>` (the token is part of the address because Claude's connector form has no header field), no OAuth.
+
 *Connect Grok Bot:* in Grok, add a custom MCP server:
 - **Type:** Remote HTTPS
 - **Server URL:** `https://<service>.onrender.com/mcp`
