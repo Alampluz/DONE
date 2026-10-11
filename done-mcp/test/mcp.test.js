@@ -173,7 +173,7 @@ test("HTTP mode requires the bearer token and serves tools", async () => {
   const client = new DoneClient({ key: KEY, base, minIntervalMs: 0 });
   const me = await client.whoami();
   const token = "t".repeat(40);
-  const srv = createHttpServer(client, me, token);
+  const srv = createHttpServer(client, me, token, { publicUrl: "https://example.test" });
   await new Promise((r) => srv.listen(0, r));
   const url = `http://127.0.0.1:${srv.address().port}/mcp`;
   const bad = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
@@ -182,6 +182,12 @@ test("HTTP mode requires the bearer token and serves tools", async () => {
   await mcp.connect(new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { Authorization: `Bearer ${token}` } } }));
   const { tools } = await mcp.listTools();
   assert.ok(tools.some((t) => t.name === "done_get_task"));
+  const info = mcp.getServerVersion();
+  assert.equal(info.title, "DONE");
+  assert.equal(info.icons[0].src, "https://example.test/icon.png");
+  const icon = await fetch(url.replace(/\/mcp$/, "/icon.png"));
+  assert.equal(icon.status, 200);
+  assert.equal(icon.headers.get("content-type"), "image/png");
   const r = await mcp.callTool({ name: "done_get_task", arguments: { task_id: T1 } });
   assert.equal(JSON.parse(r.content[0].text).task.id, T1);
   await mcp.close();
