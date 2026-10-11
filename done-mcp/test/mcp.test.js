@@ -6,7 +6,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { DoneClient } from "../src/client.js";
 import { buildServer } from "../src/server.js";
-import { createHttpServer } from "../src/index.js";
+import { createHttpServer, profilesFromEnv } from "../src/index.js";
 
 const KEY = "done_cuspyy_" + "a".repeat(12) + "_" + "b".repeat(48);
 const W = "6f6b7ee3-77d6-41e8-a3e2-9644b8eb469f", R = "c50f6c4e-5c06-42fb-b648-e35069e92fd4";
@@ -220,4 +220,28 @@ test("all_boards key: create tool appears, any board is writable, done is allowe
     assert.equal(c.isError, false);
     assert.ok(c.data.comment.body.startsWith("[CUSPyy]")); // mock prefix; real server uses GrokBot
   } finally { delete script.whoami; }
+});
+
+test("profiles from env; path token selects the profile; wrong path token is refused", async () => {
+  const KEY2 = "done_claude_" + "c".repeat(12) + "_" + "d".repeat(48);
+  const defs = profilesFromEnv({ DONE_BOT_KEY: KEY, MCP_AUTH_TOKEN: "g".repeat(40), DONE_BOT_KEY_CLAUDE: KEY2, MCP_AUTH_TOKEN_CLAUDE: "k".repeat(40), DONE_BOT_KEY_X: "" });
+  assert.deepEqual(defs.map((d) => d.name), ["default", "claude"]);
+  script.whoami = undefined;
+  const c1 = new DoneClient({ key: KEY, base, minIntervalMs: 0 }); const me1 = await c1.whoami();
+  script.whoami = { bot: "claude", display_name: "Claude", user_linked: true, scopes: ["tasks:read"], deny_statuses: [], all_boards: true, write_boards: [], read_boards: [], expires_at: "2027-01-09T11:34:45.952Z" };
+  const c2 = new DoneClient({ key: KEY2, base, minIntervalMs: 0 }); const me2 = await c2.whoami();
+  delete script.whoami;
+  const srv = createHttpServer([{ name: "default", token: "g".repeat(40), client: c1, me: me1 }, { name: "claude", token: "k".repeat(40), client: c2, me: me2 }]);
+  await new Promise((r) => srv.listen(0, r));
+  const root = `http://127.0.0.1:${srv.address().port}`;
+  const h = await fetch(`${root}/health`).then((r) => r.json());
+  assert.deepEqual(h.profiles, ["default", "claude"]);
+  const bad = await fetch(`${root}/mcp/${"z".repeat(40)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  assert.equal(bad.status, 401);
+  const mcp = new Client({ name: "t", version: "1" });
+  await mcp.connect(new StreamableHTTPClientTransport(new URL(`${root}/mcp/${"k".repeat(40)}`)));
+  const { tools } = await mcp.listTools();
+  assert.ok(tools.some((t) => t.name === "done_get_task") && !tools.some((t) => t.name === "done_update_task")); // claude profile: read-only key
+  await mcp.close();
+  srv.close();
 });
