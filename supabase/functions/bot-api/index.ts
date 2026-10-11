@@ -5,6 +5,8 @@
 // Auth: Authorization: Bearer done_<bot>_<prefix12hex>_<secret48hex>
 // v4 (11 Oct 2026): GET /people — find active staff by name/email, or resolve ids.
 // v5 (11 Oct 2026): bot_keys.all_boards (whole-account bots) + GET /boards.
+// v6 (11 Oct 2026): user mode. A Supabase user JWT as the bearer runs everything as THAT user
+//   (their RLS, their name in the activity log, no [bot] prefix); used by the Claude per-user sign-in.
 import postgres from "https://deno.land/x/postgresjs@v3.4.5/mod.js";
 
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 4, prepare: false, idle_timeout: 20, connect_timeout: 10 });
@@ -14,6 +16,9 @@ const PRIORITIES = ["urgent", "high", "normal", "low"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const KEY_RE = /^Bearer\s+(done_[a-z0-9-]{2,32}_[0-9a-f]{12})_([0-9a-f]{48})$/;
+const JWT_RE = /^Bearer\s+([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/;
+const SB_URL = Deno.env.get("SUPABASE_URL")!;
+const SB_ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
 const TASK_COLS = "t.id, t.ticket_no, t.title, t.status, t.priority, t.assignee_id, t.due_date, t.group_id, t.project_id, t.custom, t.updated_at, t.created_at";
 
 class ApiError extends Error {
@@ -37,10 +42,32 @@ type Key = {
   key_hash: string; scopes: string[]; project_ids: string[]; read_project_ids: string[];
   all_boards: boolean; suppress_email: boolean; deny_statuses: string[]; rate_per_min: number; write_per_min: number;
   enabled: boolean; revoked_at: string | null; expires_at: string;
+  user?: { id: string; email: string; role: string; full_name: string };  // set in user mode
 };
 
+// User mode: validate the JWT with GoTrue (no JWT secret needed in the function), then
+// build a Key-shaped object so every route below works unchanged.
+async function authenticateUser(jwt: string): Promise<Key> {
+  const r = await fetch(`${SB_URL}/auth/v1/user`, { headers: { apikey: SB_ANON, Authorization: `Bearer ${jwt}` } });
+  if (!r.ok) throw new ApiError(401, "invalid_token", "Sign-in expired or invalid");
+  const u = await r.json();
+  const [p] = await sql`select id, email, role, active, coalesce(full_name, '') as full_name from public.profiles where id = ${u.id}`;
+  if (!p || !p.active) throw new ApiError(403, "forbidden_by_rls", "No active DONE profile for this user");
+  let exp = new Date(Date.now() + 3600_000).toISOString();
+  try { exp = new Date(JSON.parse(atob(jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).exp * 1000).toISOString(); } catch { /* */ }
+  return {
+    id: p.id, bot_name: "", display_name: p.full_name || p.email, bot_user_id: p.id, pending_email: null, key_hash: "",
+    scopes: ["tasks:read", "tasks:write", "tasks:create", "comments:write"], project_ids: [], read_project_ids: [], all_boards: true,
+    suppress_email: false, deny_statuses: [], rate_per_min: 120, write_per_min: 40, enabled: true, revoked_at: null, expires_at: exp,
+    user: { id: p.id, email: p.email, role: p.role, full_name: p.full_name },
+  };
+}
+
 async function authenticate(req: Request): Promise<Key> {
-  const m = (req.headers.get("authorization") || "").match(KEY_RE);
+  const auth = req.headers.get("authorization") || "";
+  const j = auth.match(JWT_RE);
+  if (j) return await authenticateUser(j[1]);
+  const m = auth.match(KEY_RE);
   if (!m) throw new ApiError(401, "invalid_key", "Missing or malformed bot key");
   const [k] = await sql<Key[]>`select * from public.bot_keys where key_prefix = ${m[1]}`;
   const hash = await sha256hex(`${m[1]}_${m[2]}`);
@@ -69,7 +96,16 @@ function requireUser(k: Key) {
     `Bot user ${k.pending_email || "(unset)"} is not linked to key '${k.bot_name}' yet`);
 }
 
+const userHits = new Map<string, { minute: number; n: number }>();
 async function rateLimit(k: Key, write: boolean) {
+  if (k.user) { // per-user, in-memory (per isolate); generous: users are interactive
+    const minute = Math.floor(Date.now() / 60000);
+    const h = userHits.get(k.id);
+    const n = h && h.minute === minute ? h.n + 1 : 1;
+    userHits.set(k.id, { minute, n });
+    if (n > k.rate_per_min) throw new ApiError(429, "rate_limited", "Too many requests", { "Retry-After": String(60 - new Date().getSeconds()) });
+    return;
+  }
   const [u] = await sql`
     insert into public.bot_usage (key_id, minute, reads, writes)
     values (${k.id}, date_trunc('minute', now()), ${write ? 0 : 1}, ${write ? 1 : 0})
@@ -86,11 +122,11 @@ async function rateLimit(k: Key, write: boolean) {
 async function asBot<T>(k: Key, suppressEmail: boolean, fn: (tx: any) => Promise<T>): Promise<T> {
   // deno-lint-ignore no-explicit-any
   return await sql.begin(async (tx: any) => {
-    const claims = JSON.stringify({ sub: k.bot_user_id, role: "authenticated", via_bot: k.bot_name });
+    const claims = JSON.stringify(k.user ? { sub: k.bot_user_id, role: "authenticated", email: k.user.email } : { sub: k.bot_user_id, role: "authenticated", via_bot: k.bot_name });
     await tx`select set_config('request.jwt.claims', ${claims}, true),
                     set_config('request.jwt.claim.sub', ${k.bot_user_id}, true),
                     set_config('request.jwt.claim.role', 'authenticated', true),
-                    set_config('app.via_bot', ${k.bot_name}, true),
+                    set_config('app.via_bot', ${k.user ? "" : k.bot_name}, true),
                     set_config('app.suppress_email', ${suppressEmail ? "on" : "off"}, true)`;
     await tx`set local role authenticated`;
     const [w] = await tx`select auth.uid()::text as uid, current_user::text as cu`;
@@ -136,9 +172,10 @@ async function handle(req: Request): Promise<Response> {
 
   // GET /whoami
   if (req.method === "GET" && p[0] === "whoami" && p.length === 1) {
-    return json(200, { bot: k.bot_name, display_name: k.display_name, user_linked: !!k.bot_user_id,
+    return json(200, { bot: k.user ? "user" : k.bot_name, display_name: k.display_name, user_linked: !!k.bot_user_id,
       scopes: k.scopes, deny_statuses: k.deny_statuses, all_boards: !!k.all_boards,
-      write_boards: k.project_ids, read_boards: k.read_project_ids, expires_at: k.expires_at });
+      write_boards: k.project_ids, read_boards: k.read_project_ids, expires_at: k.expires_at,
+      ...(k.user ? { user: k.user } : {}) });
   }
 
   // GET /boards?q=  — boards this bot may use (all_boards keys: every live board RLS lets the bot see).
@@ -294,10 +331,10 @@ async function handle(req: Request): Promise<Response> {
     const mentions: string[] = Array.isArray(b.mentions) ? b.mentions : [];
     if (mentions.length > 20 || !mentions.every((m) => typeof m === "string" && UUID.test(m))) throw new ApiError(400, "bad_mentions");
     await rateLimit(k, true);
-    return json(201, await asBot(k, true /* bot comments never e-mail staff */, async (tx) => {
+    return json(201, await asBot(k, !k.user /* bot comments never e-mail staff; user comments behave like the app */, async (tx) => {
       const [c] = await tx`
         insert into public.comments (entity_type, entity_id, author_id, body, mentions)
-        values ('task', ${p[1]}, auth.uid(), ${`[${k.display_name}] ${b.body.trim()}`}, string_to_array(${mentions.join(",")}, ',')::uuid[])
+        values ('task', ${p[1]}, auth.uid(), ${k.user ? b.body.trim() : `[${k.display_name}] ${b.body.trim()}`}, string_to_array(${mentions.join(",")}, ',')::uuid[])
         returning id, entity_id as task_id, author_id, body, mentions, created_at`;
       return { comment: c };
     }));
@@ -362,7 +399,7 @@ Deno.serve(async (req: Request) => {
     console.error("bot-api internal error", pe?.code, pe?.message);
     return json(500, { error: "Internal error", code: "internal" });
   } finally {
-    try { bot = (req.headers.get("authorization") || "").match(/done_([a-z0-9-]+)_/)?.[1] || "-"; } catch { /* */ }
+    try { bot = (req.headers.get("authorization") || "").match(/done_([a-z0-9-]+)_/)?.[1] || (JWT_RE.test(req.headers.get("authorization") || "") ? "user" : "-"); } catch { /* */ }
     console.log(JSON.stringify({ fn: "bot-api", bot, method: req.method, path: new URL(req.url).pathname, status, ms: Date.now() - t0 }));
   }
 });
