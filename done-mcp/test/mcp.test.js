@@ -245,3 +245,93 @@ test("profiles from env; path token selects the profile; wrong path token is ref
   await mcp.close();
   srv.close();
 });
+
+test("OAuth: discovery → register → sign in → code → token → MCP as the signed-in user; refresh; bad password; bad PKCE", async () => {
+  const { makeOAuth } = await import("../src/oauth.js");
+  const { createHash } = await import("node:crypto");
+  // mock Supabase Auth
+  const JWT = "eyJhbGciOiJIUzI1NiJ9." + Buffer.from(JSON.stringify({ sub: "491e412f-06a7-4c2c-bf33-57a76039848e", exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url") + ".sig";
+  const sb = http.createServer(async (req, res) => {
+    let raw = ""; for await (const c of req) raw += c;
+    const b = JSON.parse(raw || "{}");
+    const u = new URL(req.url, "http://x");
+    const grant = u.searchParams.get("grant_type");
+    if (grant === "password" && b.email === "april@example.test" && b.password === "pw") return send(res, 200, { access_token: JWT, refresh_token: "rt1", expires_at: Math.floor(Date.now() / 1000) + 3600 });
+    if (grant === "refresh_token" && b.refresh_token === "rt1") return send(res, 200, { access_token: JWT, refresh_token: "rt2", expires_in: 3600 });
+    send(res, 400, { error_description: "Invalid login credentials" });
+  });
+  await new Promise((r) => sb.listen(0, r));
+  // mock bot-api answers /whoami for a user JWT
+  script.whoami = undefined;
+  const userWhoami = { bot: "user", display_name: "April Niramol", user_linked: true, scopes: ["tasks:read", "tasks:write", "tasks:create", "comments:write"], deny_statuses: [], all_boards: true, write_boards: [], read_boards: [], expires_at: new Date(Date.now() + 3600_000).toISOString(), user: { id: "491e412f-06a7-4c2c-bf33-57a76039848e", email: "april@example.test", role: "admin", full_name: "April Niramol" } };
+  const origHandler = api.listeners("request")[0];
+  api.removeAllListeners("request");
+  api.on("request", (req, res) => {
+    if (req.url.endsWith("/whoami") && (req.headers.authorization || "").startsWith("Bearer eyJ")) {
+      calls.push({ method: "GET", path: "/whoami", auth: req.headers.authorization });
+      return send(res, 200, userWhoami);
+    }
+    origHandler(req, res);
+  });
+
+  const c1 = new DoneClient({ key: KEY, base, minIntervalMs: 0 }); const me1 = await c1.whoami();
+  const publicUrl = "http://127.0.0.1:0"; // fixed below after listen
+  let srv;
+  const mk = (pub) => createHttpServer([{ name: "default", token: "g".repeat(40), client: c1, me: me1 }], {
+    publicUrl: pub, env: { DONE_API_BASE: base, DONE_MIN_INTERVAL_MS: "0" },
+    oauth: makeOAuth({ publicUrl: pub, secret: "s".repeat(40), supabaseUrl: `http://127.0.0.1:${sb.address().port}`, supabaseAnonKey: "anon" }),
+  });
+  srv = mk("http://placeholder"); await new Promise((r) => srv.listen(0, r));
+  const root = `http://127.0.0.1:${srv.address().port}`; srv.close(); srv = mk(root); await new Promise((r) => srv.listen(new URL(root).port, r));
+
+  // 1. unauthenticated /mcp points at the resource metadata
+  const un = await fetch(`${root}/mcp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  assert.equal(un.status, 401);
+  assert.match(un.headers.get("www-authenticate"), /oauth-protected-resource/);
+  // 2. discovery
+  const meta = await fetch(`${root}/.well-known/oauth-authorization-server`).then((r) => r.json());
+  assert.equal(meta.authorization_endpoint, `${root}/authorize`);
+  // 3. dynamic registration
+  const reg = await fetch(`${root}/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_name: "Claude", redirect_uris: ["https://claude.ai/api/mcp/auth_callback"] }) }).then((r) => r.json());
+  assert.ok(reg.client_id);
+  // 4. authorize GET shows the sign-in page
+  const verifier = "v".repeat(50); const challenge = createHash("sha256").update(verifier).digest("base64url");
+  const q = new URLSearchParams({ client_id: reg.client_id, redirect_uri: "https://claude.ai/api/mcp/auth_callback", response_type: "code", code_challenge: challenge, code_challenge_method: "S256", state: "xyz" });
+  const page = await fetch(`${root}/authorize?${q}`);
+  assert.equal(page.status, 200);
+  assert.match(await page.text(), /Sign in to DONE/);
+  // 5. wrong password stays on the page
+  const bad = await fetch(`${root}/authorize`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ ...Object.fromEntries(q), email: "april@example.test", password: "nope" }), redirect: "manual" });
+  assert.equal(bad.status, 200); assert.match(await bad.text(), /Sign-in failed/);
+  // 6. right password → redirect with code + state
+  const ok = await fetch(`${root}/authorize`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ ...Object.fromEntries(q), email: "april@example.test", password: "pw" }), redirect: "manual" });
+  assert.equal(ok.status, 302);
+  const loc = new URL(ok.headers.get("location"));
+  assert.equal(loc.origin + loc.pathname, "https://claude.ai/api/mcp/auth_callback");
+  assert.equal(loc.searchParams.get("state"), "xyz");
+  const code = loc.searchParams.get("code"); assert.ok(code);
+  // 7. wrong verifier refused
+  const badTok = await fetch(`${root}/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "authorization_code", code, code_verifier: "wrong".repeat(10), client_id: reg.client_id, redirect_uri: "https://claude.ai/api/mcp/auth_callback" }) });
+  assert.equal(badTok.status, 400);
+  // 8. token exchange
+  const tok = await fetch(`${root}/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "authorization_code", code, code_verifier: verifier, client_id: reg.client_id, redirect_uri: "https://claude.ai/api/mcp/auth_callback" }) }).then((r) => r.json());
+  assert.equal(tok.access_token, JWT); assert.ok(tok.refresh_token);
+  // 9. MCP as the user: instructions name her, tools include create, server called bot-api with her JWT
+  calls = [];
+  const mcp = new Client({ name: "t", version: "1" });
+  await mcp.connect(new StreamableHTTPClientTransport(new URL(`${root}/mcp`), { requestInit: { headers: { Authorization: `Bearer ${tok.access_token}` } } }));
+  assert.match(mcp.getInstructions(), /April Niramol/);
+  const { tools } = await mcp.listTools();
+  assert.ok(tools.some((t) => t.name === "done_create_task"));
+  assert.equal(calls.find((c) => c.path === "/whoami").auth, `Bearer ${JWT}`);
+  await mcp.close();
+  // 10. refresh
+  const ref = await fetch(`${root}/token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: tok.refresh_token }) }).then((r) => r.json());
+  assert.equal(ref.access_token, JWT); assert.ok(ref.refresh_token && ref.refresh_token !== tok.refresh_token);
+  // 11. a random JWT that bot-api rejects → 401
+  api.removeAllListeners("request"); api.on("request", origHandler);
+  script["GET /whoami"] = [[401, { error: "Sign-in expired or invalid", code: "invalid_token" }]];
+  const dead = await fetch(`${root}/mcp`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer a.b.c" }, body: "{}" });
+  assert.equal(dead.status, 401);
+  srv.close(); sb.close();
+});
