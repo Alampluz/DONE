@@ -48,9 +48,13 @@ Run `npm install` once in the `done-mcp` folder first.
 2. When asked, paste the bot key into `DONE_BOT_KEY`. Render generates `MCP_AUTH_TOKEN` for you.
 3. After deploy, open `https://<service>.onrender.com/health`; it should say `{"ok":true,"bot":"cuspyy"}`.
 
-*Two profiles on one server.* `render.yaml` defines a second pair, `DONE_BOT_KEY_CLAUDE` / `MCP_AUTH_TOKEN_CLAUDE`, so Claude uses its own DONE key (activity log says "Claude", comments are prefixed `[Claude]`) on the same hosted server. Any `DONE_BOT_KEY_<NAME>` + `MCP_AUTH_TOKEN_<NAME>` pair adds another profile.
+*More bot profiles.* Any `DONE_BOT_KEY_<NAME>` + `MCP_AUTH_TOKEN_<NAME>` env pair adds another key-based profile on the same server.
 
-*Connect Claude (claude.ai):* Settings → Connectors → Add custom connector → URL `https://<service>.onrender.com/mcp/<MCP_AUTH_TOKEN_CLAUDE>` (the token is part of the address because Claude's connector form has no header field), no OAuth.
+**Option C: Claude (claude.ai), with each person's own DONE sign-in.** Claude users do not share a bot key. The server is also an OAuth 2.1 authorization server backed by Supabase Auth: when someone adds the DONE connector in Claude, they get a DONE sign-in page (email + password, the same as the app), and every tool then runs as *that person* with their DONE role and RLS; the activity log and comments carry their name. Nothing is stored on the server (codes and refresh tokens are sealed with `MCP_OAUTH_SECRET`), and sessions are refreshed through Supabase.
+
+It switches on when these env vars are set (`render.yaml` already does this): `MCP_OAUTH_SECRET` (32+ random chars; Render generates it), `DONE_SUPABASE_URL`, `DONE_SUPABASE_ANON_KEY` (the public anon key, not the service key) and a public URL (`RENDER_EXTERNAL_URL` is picked up automatically; otherwise set `MCP_PUBLIC_URL`). `GET /health` then shows `"user_signin": true`.
+
+*Connect Claude:* an org owner adds it once for everyone: claude.ai → Admin settings → Connectors → Add custom connector → name `DONE`, URL `https://<service>.onrender.com/mcp`, authentication OAuth (discovery is automatic; no client id or secret). Each person then clicks Connect on the DONE connector, signs in with their DONE account and gets only what their DONE role allows. Removing the connector in Claude revokes it.
 
 *Connect Grok Bot:* in Grok, add a custom MCP server:
 - **Type:** Remote HTTPS
@@ -110,4 +114,4 @@ Each key runs as DONE user `Agent.ops@crea.asia`; the activity log records which
 7. **Hand back.** `done_set_status {task_id, status:"review"}`. The requester gets the in-app notification and a human closes the ticket.
 
 ## Tests
-`npm test` runs 12 tests against a mock bot-api, covering tool registration from scopes, label mapping, refusals, conflict handling, people lookup, date format, the no-retry rule for comments, throttling, and HTTP auth.
+`npm test` runs 14 tests against a mock bot-api (and a mock Supabase Auth), covering tool registration from scopes, label mapping, refusals, conflict handling, people lookup, date format, the no-retry rule for comments, throttling, HTTP auth, and the full OAuth sign-in flow (discovery, registration, login page, PKCE, token exchange, refresh).
