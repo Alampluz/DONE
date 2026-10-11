@@ -11,6 +11,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { DoneClient, DEFAULT_BASE } from "./client.js";
 import { buildServer } from "./server.js";
+import { makeOAuth, isJwt } from "./oauth.js";
 
 const log = (...a) => console.error("[done-mcp]", ...a); // stderr only: stdout is the MCP channel
 
@@ -45,31 +46,49 @@ const ICON = (() => { try { return readFileSync(path.join(path.dirname(fileURLTo
 
 // `profiles`: [{ name, token, client, me }]. A request is matched to a profile by its token,
 // given either as a header (Grok) or in the path /mcp/<token> (clients with no header field, e.g. claude.ai).
-export function createHttpServer(profiles, { publicUrl } = {}) {
+export function createHttpServer(profiles, { publicUrl, oauth, env = process.env } = {}) {
   if (!Array.isArray(profiles)) { // backwards compatible: (client, me, token, opts)
     const [client, me, token, opts] = arguments;
     return createHttpServer([{ name: "default", token, client, me }], opts);
   }
   const findProfile = (given) => profiles.find((p) => p.token.length >= 32 && sameToken(String(given || ""), p.token));
+  // Per-user sessions (OAuth): token → { client, me, until }. Re-checked with bot-api every 5 minutes.
+  const sessions = new Map();
+  const userSession = async (jwt) => {
+    const hit = sessions.get(jwt);
+    if (hit && hit.until > Date.now()) return hit;
+    const client = new DoneClient({ bearer: jwt, base: env.DONE_API_BASE || DEFAULT_BASE, region: env.DONE_REGION ?? "ap-southeast-1", minIntervalMs: Number(env.DONE_MIN_INTERVAL_MS || 2000) });
+    const me = await client.whoami(true);
+    const s = { name: "user", client, me, until: Math.min(Date.now() + 5 * 60_000, new Date(me.expires_at).getTime()) };
+    if (sessions.size > 2000) sessions.clear();
+    sessions.set(jwt, s);
+    return s;
+  };
+  const unauthorized = (res) => {
+    res.writeHead(401, { "Content-Type": "application/json", "WWW-Authenticate": `Bearer resource_metadata="${(publicUrl || "").replace(/\/+$/, "")}/.well-known/oauth-protected-resource"` });
+    res.end(JSON.stringify({ error: "unauthorized" }));
+  };
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://x");
+    if (oauth && await oauth(req, res, url)) return;
     if (url.pathname === "/icon.png" && ICON) {
       res.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" });
       return res.end(ICON);
     }
     if (url.pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ ok: true, bot: profiles[0]?.me?.bot, profiles: profiles.map((p) => p.name) }));
+      return res.end(JSON.stringify({ ok: true, bot: profiles[0]?.me?.bot, profiles: profiles.map((p) => p.name), user_signin: !!oauth }));
     }
     const pathTok = url.pathname.match(/^\/mcp\/([A-Za-z0-9_-]{32,})$/)?.[1];
     if (url.pathname !== "/mcp" && !pathTok) { res.writeHead(404); return res.end(); }
     // Token from the path, or from a header (Grok's "Add MCP Server" card lets you set custom headers).
     const given = pathTok || req.headers["x-done-mcp-token"] || (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-    const profile = findProfile(given);
-    if (!profile) {
-      res.writeHead(401, { "Content-Type": "application/json", "WWW-Authenticate": "Bearer" });
-      return res.end(JSON.stringify({ error: "unauthorized" }));
+    let profile = findProfile(given);
+    if (!profile && oauth && isJwt(given)) {
+      try { profile = await userSession(given); }
+      catch (e) { if (e?.status === 401 || e?.status === 403) return unauthorized(res); log("user session failed:", e?.code, e?.message); res.writeHead(503); return res.end(); }
     }
+    if (!profile) return unauthorized(res);
     if (req.method !== "POST") {
       res.writeHead(405, { Allow: "POST" });
       return res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed" }, id: null }));
@@ -119,7 +138,13 @@ async function main() {
     const port = Number(process.env.PORT || 8787);
     // Render sets RENDER_EXTERNAL_URL; it's used to tell MCP clients where the icon lives.
     const publicUrl = process.env.MCP_PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "";
-    createHttpServer(profiles, { publicUrl }).listen(port, () => log(`listening on :${port}/mcp (${profiles.map((p) => p.name).join(", ")})`));
+    // Per-user sign-in needs: MCP_OAUTH_SECRET, DONE_SUPABASE_URL, DONE_SUPABASE_ANON_KEY (anon key is public), and a public URL.
+    let oauth = null;
+    if (process.env.MCP_OAUTH_SECRET && process.env.DONE_SUPABASE_URL && process.env.DONE_SUPABASE_ANON_KEY && publicUrl) {
+      oauth = makeOAuth({ publicUrl, secret: process.env.MCP_OAUTH_SECRET, supabaseUrl: process.env.DONE_SUPABASE_URL, supabaseAnonKey: process.env.DONE_SUPABASE_ANON_KEY });
+      log("per-user sign-in (OAuth) enabled");
+    } else log("per-user sign-in disabled (set MCP_OAUTH_SECRET, DONE_SUPABASE_URL, DONE_SUPABASE_ANON_KEY)");
+    createHttpServer(profiles, { publicUrl, oauth }).listen(port, () => log(`listening on :${port}/mcp (${profiles.map((p) => p.name).join(", ")})`));
   } else {
     await buildServer(profiles[0].client, profiles[0].me).connect(new StdioServerTransport());
   }
