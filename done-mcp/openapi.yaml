@@ -1,0 +1,275 @@
+openapi: 3.1.0
+info:
+  title: DONE bot-api
+  version: "5"
+  description: |
+    CREA's DONE ticket tracker, for bots. Each bot has its own key and runs as a DONE user,
+    so DONE permissions, automations and the activity log apply.
+    Rules: read a ticket before changing it and send expected_updated_at; never retry
+    POST calls after a timeout or 500 (they are not idempotent); honour 429 Retry-After;
+    stay at or below 1 request every 2 seconds per bot.
+servers:
+  - url: https://sknspnorwpoayymvndaz.supabase.co/functions/v1/bot-api
+security:
+  - botKey: []
+components:
+  securitySchemes:
+    botKey:
+      type: http
+      scheme: bearer
+      description: "done_<bot>_<12hex>_<48hex>. Also send header x-region: ap-southeast-1."
+  parameters:
+    Region:
+      name: x-region
+      in: header
+      required: false
+      schema: { type: string, default: ap-southeast-1 }
+    TaskId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  schemas:
+    Status: { type: string, enum: [todo, in_progress, review, blocked, done] }
+    Priority: { type: string, enum: [urgent, high, normal, low] }
+    Custom:
+      type: object
+      description: Keyed by field id (uuid). Values are string, number, boolean or null.
+      additionalProperties: { type: [string, number, boolean, "null"] }
+    TaskLite:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ticket_no: { type: string, example: GWP-261002-014 }
+        title: { type: string }
+        status: { $ref: "#/components/schemas/Status" }
+        priority: { $ref: "#/components/schemas/Priority" }
+        assignee_id: { type: [string, "null"], format: uuid }
+        due_date: { type: [string, "null"], format: date }
+        group_id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        custom: { $ref: "#/components/schemas/Custom" }
+        updated_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+    Field:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        label: { type: string }
+        ftype: { type: string, enum: [text, number, date, select, checkbox, brand, formula, link, mirror] }
+        options: { type: array, items: { type: string } }
+        position: { type: integer }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        code: { type: string, description: "Machine code, e.g. conflict, board_not_allowed, status_not_allowed" }
+  responses:
+    Error:
+      description: Error
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+paths:
+  /whoami:
+    get:
+      operationId: whoami
+      summary: What this bot key may do
+      parameters: [{ $ref: "#/components/parameters/Region" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bot: { type: string }
+                  display_name: { type: string }
+                  user_linked: { type: boolean }
+                  scopes: { type: array, items: { type: string } }
+                  deny_statuses: { type: array, items: { $ref: "#/components/schemas/Status" } }
+                  all_boards: { type: boolean, description: "true = every board visible to the bot user; write_boards/read_boards are then empty" }
+                  write_boards: { type: array, items: { type: string, format: uuid } }
+                  read_boards: { type: array, items: { type: string, format: uuid } }
+                  expires_at: { type: string, format: date-time }
+        default: { $ref: "#/components/responses/Error" }
+  /boards:
+    get:
+      operationId: listBoards
+      summary: Boards this bot may use (needs tasks:read)
+      parameters:
+        - { $ref: "#/components/parameters/Region" }
+        - { name: q, in: query, schema: { type: string, maxLength: 100 }, description: Part of the board name or key }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  boards:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        key: { type: string, description: "Ticket prefix, e.g. GWP" }
+                        name: { type: string }
+                        description: { type: string }
+                        workspace: { type: string }
+                        writable: { type: boolean }
+                        open_tasks: { type: integer }
+        default: { $ref: "#/components/responses/Error" }
+  /people:
+    get:
+      operationId: findPeople
+      summary: Find active CREA staff by name/email, or resolve profile ids (needs tasks:read)
+      parameters:
+        - { $ref: "#/components/parameters/Region" }
+        - { name: q, in: query, schema: { type: string, minLength: 2, maxLength: 100 }, description: Part of a name or email }
+        - { name: ids, in: query, schema: { type: string }, description: Up to 50 comma-separated profile uuids }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  people:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        full_name: { type: string }
+                        email: { type: string }
+                        job_title: { type: string }
+        default: { $ref: "#/components/responses/Error" }
+  /tasks:
+    get:
+      operationId: listTasks
+      summary: List or search tickets (newest-updated first)
+      parameters:
+        - { $ref: "#/components/parameters/Region" }
+        - { name: project_id, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/Status" } }
+        - { name: assignee, in: query, schema: { type: string, enum: [me] } }
+        - { name: q, in: query, schema: { type: string }, description: Substring of title or ticket_no }
+        - { name: updated_since, in: query, schema: { type: string, format: date-time }, description: Strictly after }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+        - { name: cursor, in: query, schema: { type: string }, description: next_cursor from the previous page (a row offset) }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/TaskLite" } }
+                  next_cursor: { type: [string, "null"] }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createTask
+      summary: Create a ticket (needs scope tasks:create)
+      parameters: [{ $ref: "#/components/parameters/Region" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [project_id, title]
+              properties:
+                project_id: { type: string, format: uuid }
+                title: { type: string, minLength: 1, maxLength: 300 }
+                description: { type: string, maxLength: 20000 }
+                status: { $ref: "#/components/schemas/Status" }
+                priority: { $ref: "#/components/schemas/Priority" }
+                due_date: { type: string, format: date }
+                group_id: { type: string, format: uuid }
+                custom: { $ref: "#/components/schemas/Custom" }
+      responses:
+        "201":
+          description: Created
+          content: { application/json: { schema: { type: object, properties: { task: { $ref: "#/components/schemas/TaskLite" } } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /tasks/{id}:
+    get:
+      operationId: getTask
+      summary: One ticket with fields, groups and the oldest 100 comments
+      parameters: [{ $ref: "#/components/parameters/Region" }, { $ref: "#/components/parameters/TaskId" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    allOf:
+                      - { $ref: "#/components/schemas/TaskLite" }
+                      - type: object
+                        properties:
+                          description: { type: string }
+                          start_date: { type: [string, "null"], format: date }
+                          tags: { type: array, items: { type: string } }
+                  fields: { type: array, items: { $ref: "#/components/schemas/Field" } }
+                  groups:
+                    type: array
+                    items: { type: object, properties: { id: { type: string, format: uuid }, name: { type: string }, position: { type: integer } } }
+                  comments:
+                    type: array
+                    items: { type: object, properties: { id: { type: string }, author_id: { type: string }, body: { type: string }, created_at: { type: string, format: date-time } } }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateTask
+      summary: Update a ticket (needs scope tasks:write and a write board)
+      parameters: [{ $ref: "#/components/parameters/Region" }, { $ref: "#/components/parameters/TaskId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { $ref: "#/components/schemas/Status" }
+                priority: { $ref: "#/components/schemas/Priority" }
+                assignee_id: { type: [string, "null"], format: uuid }
+                due_date: { type: [string, "null"], format: date }
+                group_id: { type: string, format: uuid }
+                custom: { $ref: "#/components/schemas/Custom" }
+                expected_updated_at: { type: string, format: date-time, description: "updated_at from your last read; 409 if it changed" }
+      responses:
+        "200":
+          description: OK
+          content: { application/json: { schema: { type: object, properties: { task: { $ref: "#/components/schemas/TaskLite" } } } } }
+        default: { $ref: "#/components/responses/Error" }
+  /tasks/{id}/comments:
+    post:
+      operationId: addComment
+      summary: Comment on a ticket (DONE prefixes "[BotName] "; never emails)
+      parameters: [{ $ref: "#/components/parameters/Region" }, { $ref: "#/components/parameters/TaskId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 5000 }
+                mentions: { type: array, maxItems: 20, items: { type: string, format: uuid } }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comment: { type: object, properties: { id: { type: string }, task_id: { type: string }, author_id: { type: string }, body: { type: string }, created_at: { type: string, format: date-time } } }
+        default: { $ref: "#/components/responses/Error" }
