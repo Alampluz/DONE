@@ -1,14 +1,11 @@
-# Render blueprint: one always-on web service running done-mcp (the DONE MCP server for Grok Bots).
-# Lives in Alampluz/DONE under done-mcp/; Render builds only that folder.
+# Render blueprint: one always-on web service running done-mcp for one bot key.
 services:
   - type: web
     name: done-mcp
     runtime: docker
-    rootDir: done-mcp
     plan: starter
     region: singapore
     healthCheckPath: /health
-    autoDeploy: true
     envVars:
       - key: MCP_TRANSPORT
         value: http
@@ -16,3 +13,8 @@ services:
         sync: false          # paste the bot key in the Render dashboard
       - key: MCP_AUTH_TOKEN
         generateValue: true  # Render makes a random secret; copy it into Grok's header
+      # second profile: Claude (its own DONE key, so the activity log can tell Claude and Grok apart)
+      - key: DONE_BOT_KEY_CLAUDE
+        sync: false
+      - key: MCP_AUTH_TOKEN_CLAUDE
+        generateValue: true  # goes in the URL: https://<service>/mcp/<this value>
