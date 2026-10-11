@@ -3,6 +3,9 @@
 //   MCP_TRANSPORT=stdio (default)  → for desktop MCP clients that launch the server
 //   MCP_TRANSPORT=http             → Streamable HTTP at /mcp, for hosted bots (Grok)
 import http from "node:http";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { timingSafeEqual } from "node:crypto";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -25,9 +28,15 @@ function sameToken(given, want) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export function createHttpServer(client, me, token) {
+const ICON = (() => { try { return readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "assets", "icon.png")); } catch { return null; } })();
+
+export function createHttpServer(client, me, token, { publicUrl } = {}) {
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://x");
+    if (url.pathname === "/icon.png" && ICON) {
+      res.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" });
+      return res.end(ICON);
+    }
     if (url.pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ ok: true, bot: me.bot }));
@@ -51,7 +60,7 @@ export function createHttpServer(client, me, token) {
       return res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32700, message: "Parse error" }, id: null }));
     }
     // Stateless: a fresh MCP server per request, sharing one client (throttle, caches).
-    const server = buildServer(client, me);
+    const server = buildServer(client, me, { publicUrl });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on("close", () => { transport.close(); server.close(); });
     try {
@@ -82,7 +91,9 @@ async function main() {
     const token = process.env.MCP_AUTH_TOKEN || "";
     if (token.length < 32) { log("MCP_AUTH_TOKEN must be set (32+ random characters) for http mode"); process.exit(1); }
     const port = Number(process.env.PORT || 8787);
-    createHttpServer(client, me, token).listen(port, () => log(`listening on :${port}/mcp`));
+    // Render sets RENDER_EXTERNAL_URL; it's used to tell MCP clients where the icon lives.
+    const publicUrl = process.env.MCP_PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "";
+    createHttpServer(client, me, token, { publicUrl }).listen(port, () => log(`listening on :${port}/mcp`));
   } else {
     await buildServer(client, me).connect(new StdioServerTransport());
   }
