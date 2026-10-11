@@ -35,8 +35,10 @@ const wrap = (fn) => async (args) => { try { return ok(await fn(args)); } catch 
  * Build an MCP server for one bot. `me` is the /whoami result; tools are
  * registered from its scopes, and status choices exclude deny_statuses.
  */
-export function buildServer(client, me) {
-  const server = new McpServer({ name: "done", version: "1.0.0" }, {
+export function buildServer(client, me, { publicUrl } = {}) {
+  const info = { name: "done", title: "DONE", version: "1.1.0", websiteUrl: "https://alampluz.github.io/DONE/" };
+  if (publicUrl) info.icons = [{ src: `${publicUrl.replace(/\/+$/, "")}/icon.png`, mimeType: "image/png", sizes: ["512x512"] }];
+  const server = new McpServer(info, {
     instructions:
       `DONE is CREA's ticket tracker (boards → groups → tasks/tickets). You act as bot "${me.display_name}". ` +
       `Use done_list_boards to find a board, then done_list_tasks / done_get_task. Read a ticket before changing it. ` +
