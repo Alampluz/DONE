@@ -40,7 +40,9 @@ export function buildServer(client, me, { publicUrl } = {}) {
   if (publicUrl) info.icons = [{ src: `${publicUrl.replace(/\/+$/, "")}/icon.png`, mimeType: "image/png", sizes: ["512x512"] }];
   const server = new McpServer(info, {
     instructions:
-      `DONE is CREA's ticket tracker (boards → groups → tasks/tickets). You act as bot "${me.display_name}". ` +
+      `DONE is CREA's ticket tracker (boards → groups → tasks/tickets). ` +
+      (me.user ? `You act as ${me.display_name} (${me.user.email}, DONE role ${me.user.role}) using their own DONE account: you can only see and change what they can, and everything is logged under their name. `
+               : `You act as bot "${me.display_name}". `) +
       `Use done_list_boards to find a board, then done_list_tasks / done_get_task. Read a ticket before changing it. ` +
       (me.deny_statuses?.length ? `You may NOT set status ${me.deny_statuses.join("/")}: move finished work to 'review' and a human closes it. ` : "") +
       `Custom fields can be given by their label (e.g. "Platform"). To assign or mention someone, find their profile id with done_find_people first. ` +
