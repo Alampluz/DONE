@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY src ./src
+COPY assets ./assets
 ENV MCP_TRANSPORT=http PORT=8787
 EXPOSE 8787
 CMD ["node", "src/index.js"]
