@@ -33,6 +33,7 @@ export class DoneError extends Error {
 export class DoneClient {
   constructor({
     key,
+    bearer,          // a signed-in user's Supabase JWT (bot-api v6 user mode) instead of a bot key
     base = DEFAULT_BASE,
     region = "ap-southeast-1",
     minIntervalMs = 2000,
@@ -40,9 +41,11 @@ export class DoneClient {
     retryDelayMs = 1500,
     fetchImpl = globalThis.fetch,
   } = {}) {
-    if (!key || !KEY_RE.test(key)) throw new Error("DONE_BOT_KEY is missing or malformed (expected done_<bot>_<12hex>_<48hex>)");
-    // Key is kept in a closure-ish private field and never put in errors or logs.
-    this.#key = key;
+    if (bearer) { this.#key = bearer; this.userMode = true; }
+    else {
+      if (!key || !KEY_RE.test(key)) throw new Error("DONE_BOT_KEY is missing or malformed (expected done_<bot>_<12hex>_<48hex>)");
+      this.#key = key;
+    }
     this.base = base.replace(/\/+$/, "");
     this.region = region;
     this.minIntervalMs = minIntervalMs;
