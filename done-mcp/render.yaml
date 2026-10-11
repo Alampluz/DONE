@@ -13,8 +13,10 @@ services:
         sync: false          # paste the bot key in the Render dashboard
       - key: MCP_AUTH_TOKEN
         generateValue: true  # Render makes a random secret; copy it into Grok's header
-      # second profile: Claude (its own DONE key, so the activity log can tell Claude and Grok apart)
-      - key: DONE_BOT_KEY_CLAUDE
-        sync: false
-      - key: MCP_AUTH_TOKEN_CLAUDE
-        generateValue: true  # goes in the URL: https://<service>/mcp/<this value>
+      # per-user sign-in for Claude (OAuth backed by Supabase Auth); the anon key is public by design
+      - key: MCP_OAUTH_SECRET
+        generateValue: true
+      - key: DONE_SUPABASE_URL
+        value: https://sknspnorwpoayymvndaz.supabase.co
+      - key: DONE_SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNrbnNwbm9yd3BvYXl5bXZuZGF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1NjgwODcsImV4cCI6MjEwMzE0NDA4N30.73Q4zYazekw5U9r2od_h7zYcoJOVACAEFKep-qdnJ1I
