@@ -14,13 +14,26 @@ import { buildServer } from "./server.js";
 
 const log = (...a) => console.error("[done-mcp]", ...a); // stderr only: stdout is the MCP channel
 
-export function makeClient(env = process.env) {
+export function makeClient(env = process.env, key = env.DONE_BOT_KEY) {
   return new DoneClient({
-    key: env.DONE_BOT_KEY,
+    key,
     base: env.DONE_API_BASE || DEFAULT_BASE,
     region: env.DONE_REGION ?? "ap-southeast-1",
     minIntervalMs: Number(env.DONE_MIN_INTERVAL_MS || 2000),
   });
+}
+
+// Profiles: the default pair DONE_BOT_KEY / MCP_AUTH_TOKEN, plus any DONE_BOT_KEY_<NAME> /
+// MCP_AUTH_TOKEN_<NAME> pair (e.g. _CLAUDE). Each profile is its own DONE bot key, so the
+// activity log shows who acted; all share one hosted server.
+export function profilesFromEnv(env = process.env) {
+  const out = [];
+  if (env.DONE_BOT_KEY) out.push({ name: "default", key: env.DONE_BOT_KEY, token: env.MCP_AUTH_TOKEN || "" });
+  for (const [k, v] of Object.entries(env)) {
+    const m = k.match(/^DONE_BOT_KEY_([A-Z0-9]+)$/);
+    if (m && v) out.push({ name: m[1].toLowerCase(), key: v, token: env[`MCP_AUTH_TOKEN_${m[1]}`] || "" });
+  }
+  return out;
 }
 
 function sameToken(given, want) {
@@ -30,7 +43,14 @@ function sameToken(given, want) {
 
 const ICON = (() => { try { return readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "assets", "icon.png")); } catch { return null; } })();
 
-export function createHttpServer(client, me, token, { publicUrl } = {}) {
+// `profiles`: [{ name, token, client, me }]. A request is matched to a profile by its token,
+// given either as a header (Grok) or in the path /mcp/<token> (clients with no header field, e.g. claude.ai).
+export function createHttpServer(profiles, { publicUrl } = {}) {
+  if (!Array.isArray(profiles)) { // backwards compatible: (client, me, token, opts)
+    const [client, me, token, opts] = arguments;
+    return createHttpServer([{ name: "default", token, client, me }], opts);
+  }
+  const findProfile = (given) => profiles.find((p) => p.token.length >= 32 && sameToken(String(given || ""), p.token));
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://x");
     if (url.pathname === "/icon.png" && ICON) {
@@ -39,12 +59,14 @@ export function createHttpServer(client, me, token, { publicUrl } = {}) {
     }
     if (url.pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ ok: true, bot: me.bot }));
+      return res.end(JSON.stringify({ ok: true, bot: profiles[0]?.me?.bot, profiles: profiles.map((p) => p.name) }));
     }
-    if (url.pathname !== "/mcp") { res.writeHead(404); return res.end(); }
-    // Grok's "Add MCP Server" card lets you set custom headers: either works.
-    const given = req.headers["x-done-mcp-token"] || (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-    if (!sameToken(String(given), token)) {
+    const pathTok = url.pathname.match(/^\/mcp\/([A-Za-z0-9_-]{32,})$/)?.[1];
+    if (url.pathname !== "/mcp" && !pathTok) { res.writeHead(404); return res.end(); }
+    // Token from the path, or from a header (Grok's "Add MCP Server" card lets you set custom headers).
+    const given = pathTok || req.headers["x-done-mcp-token"] || (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    const profile = findProfile(given);
+    if (!profile) {
       res.writeHead(401, { "Content-Type": "application/json", "WWW-Authenticate": "Bearer" });
       return res.end(JSON.stringify({ error: "unauthorized" }));
     }
@@ -60,7 +82,7 @@ export function createHttpServer(client, me, token, { publicUrl } = {}) {
       return res.end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32700, message: "Parse error" }, id: null }));
     }
     // Stateless: a fresh MCP server per request, sharing one client (throttle, caches).
-    const server = buildServer(client, me, { publicUrl });
+    const server = buildServer(profile.client, profile.me, { publicUrl });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on("close", () => { transport.close(); server.close(); });
     try {
@@ -73,29 +95,33 @@ export function createHttpServer(client, me, token, { publicUrl } = {}) {
   });
 }
 
-async function main() {
-  let client;
-  try { client = makeClient(); } catch (e) { log(e.message); process.exit(1); }
-  let me;
-  try {
-    me = await client.whoami(true);
-  } catch (e) {
-    log(`cannot start: /whoami failed (${e.code || "error"}: ${e.message})`);
-    process.exit(1);
-  }
+async function startProfile(p) {
+  const client = makeClient(process.env, p.key);
+  const me = await client.whoami(true);
   const days = client.daysToExpiry();
-  log(`bot ${me.bot} ready · scopes ${me.scopes.join(",")} · write ${me.write_boards.length} board(s) · read ${me.read_boards.length} · key expires in ${days} days`);
-  if (days < 14) log(`WARNING: bot key expires in ${days} days — ask a DONE admin for a new one`);
+  log(`[${p.name}] bot ${me.bot} ready · scopes ${me.scopes.join(",")} · ${me.all_boards ? "all boards" : `write ${me.write_boards.length} / read ${me.read_boards.length} board(s)`} · key expires in ${days} days`);
+  if (days < 14) log(`WARNING: [${p.name}] bot key expires in ${days} days — ask a DONE admin for a new one`);
+  return { ...p, client, me };
+}
 
-  if ((process.env.MCP_TRANSPORT || "stdio") === "http") {
-    const token = process.env.MCP_AUTH_TOKEN || "";
-    if (token.length < 32) { log("MCP_AUTH_TOKEN must be set (32+ random characters) for http mode"); process.exit(1); }
+async function main() {
+  const defs = profilesFromEnv();
+  if (!defs.length) { log("DONE_BOT_KEY is missing"); process.exit(1); }
+  const http_ = (process.env.MCP_TRANSPORT || "stdio") === "http";
+  const profiles = [];
+  for (const d of defs) {
+    try { profiles.push(await startProfile(d)); }
+    catch (e) { log(`[${d.name}] cannot start: ${e.code || "error"}: ${e.message}`); if (d.name === "default" || !http_) process.exit(1); }
+  }
+  if (http_) {
+    const bad = profiles.filter((p) => p.token.length < 32).map((p) => p.name);
+    if (bad.length) { log(`MCP_AUTH_TOKEN${bad.map((n) => n === "default" ? "" : "_" + n.toUpperCase()).join(" / ")} must be set (32+ random characters)`); process.exit(1); }
     const port = Number(process.env.PORT || 8787);
     // Render sets RENDER_EXTERNAL_URL; it's used to tell MCP clients where the icon lives.
     const publicUrl = process.env.MCP_PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "";
-    createHttpServer(client, me, token, { publicUrl }).listen(port, () => log(`listening on :${port}/mcp`));
+    createHttpServer(profiles, { publicUrl }).listen(port, () => log(`listening on :${port}/mcp (${profiles.map((p) => p.name).join(", ")})`));
   } else {
-    await buildServer(client, me).connect(new StdioServerTransport());
+    await buildServer(profiles[0].client, profiles[0].me).connect(new StdioServerTransport());
   }
 }
 
