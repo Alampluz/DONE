@@ -909,7 +909,7 @@ body.modal-open{overflow:hidden}
 .ihelp-pop b{color:var(--ink);font-weight:600}
 /* Ticket number tag - CS-260908-001 - in front of a task title. Monospace and quiet:
    it is a reference you read out, not the thing you scan the row for. */
-.tkt[role=button]{cursor:pointer}.tkt[role=button]:hover{background:var(--line,#e3e5ec);color:var(--ink)}.tkt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:-.2px;color:var(--ink3);background:var(--gray-soft);border-radius:5px;padding:1px 5px;margin-right:7px;white-space:nowrap;vertical-align:1px}
+.tkt[role=button]{cursor:pointer}.tkt[role=button]:hover{background:var(--line);color:var(--ink)}.tkt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:-.2px;color:var(--ink3);background:var(--gray-soft);border-radius:5px;padding:1px 5px;margin-right:7px;white-space:nowrap;vertical-align:1px}
 .tcard .tkt{font-size:10px;margin-right:0;margin-bottom:5px;display:block;width:fit-content}
 .modal-head .tkt{font-size:12px;vertical-align:2px}
 .tv-arch .tkt{opacity:.6}
@@ -985,6 +985,9 @@ body.modal-open{overflow:hidden}
 .tcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 12px;cursor:pointer;box-shadow:0 1px 2px rgba(20,22,40,.06)}
 .tcard:hover{border-color:var(--line-strong);box-shadow:0 3px 10px rgba(22,24,29,.07)}
 .tcard.dragging{opacity:.4}
+.tv td.tv-ticket{white-space:nowrap;padding:0 10px}.tv td.tv-ticket .tkt{margin-right:0}
+.kb-fld{display:flex;align-items:baseline;gap:5px;font-size:12px;margin:0 0 4px;line-height:1.3}.kb-fv{font-weight:600;color:var(--ink);background:var(--accent-soft);border-radius:5px;padding:0 6px}.kb-fl{color:var(--ink3)}.kb-fl::before{content:'('}.kb-fl::after{content:')'}
+.kb-hint{font-size:12.5px;color:var(--ink3);margin-bottom:10px}.kbf-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}.kbf-mv{display:flex;gap:4px}
 .tcard .t{font-weight:600;font-size:13.5px;line-height:1.35;margin-bottom:8px}
 .tcard .meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 /* Global, so the board table gets the same lateness signal the lists have always had. */
