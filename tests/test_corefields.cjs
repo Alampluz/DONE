@@ -59,5 +59,5 @@ w.eval('window.__run()').then(r=>{ let ok=true;
  check('new-task drawer uses board labels and hides Priority (control kept in DOM)', /Stage/.test(r.drawerLabels) && /Owner/.test(r.drawerLabels) && /Store live/.test(r.drawerLabels) && r.prioHidden);
  check('plain board unchanged', /Status\|Priority\|Assignee\|Due date/.test(r.plainDrawer) && r.plainPrioShown);
  check('table header follows labels and drops hidden column; rows match', r.headOk && r.rowCells===r.rowCellsPlain-1);
- check('edit board shows current config and saves the new one', r.epShows==='Stage||Owner|Store live' && r.epChecks==='1d|0|1|1' && r.saved==='{"status":{"label":"Stage"},"assignee":{"label":"Owner","hidden":true},"due_date":{"label":"Go-live"}}');
+ check('edit board shows current config and saves the new one', r.epShows==='Stage||Owner|Store live' && r.epChecks==='1|0|1|1' && r.saved==='{"status":{"label":"Stage"},"assignee":{"label":"Owner","hidden":true},"due_date":{"label":"Go-live"}}');
  if(!ok) process.exit(1); });
