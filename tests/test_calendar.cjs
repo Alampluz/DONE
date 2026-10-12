@@ -105,7 +105,7 @@ const driver=`window.__run=function(){const r={};try{
  ];
  calWsHidden = new Set(); calWsFor = 'w1'; calMonth = new Date(2026,8,1);
  renderWorkspaceCalendarBody('w1');
- r.wsLegendChips = wsHost.querySelectorAll('.cal-lg').length;             // 2 active boards, archived left out
+ r.wsLegendChips = wsHost.querySelectorAll('.cal-lg:not(.cal-pick)').length;   // the Boards picker pill is not a board chip             // 2 active boards, archived left out
  r.wsLegendCounts = [...wsHost.querySelectorAll('.cal-lgn')].map(e=>e.textContent).join(',');   // "2,1"
  r.wsPills = wsHost.querySelectorAll('.cal-pill').length;                 // 3
  r.wsPillNamesBoard = /Brand Review/.test(wsHost.querySelector('[data-day="2026-09-09"] .cal-pill[title*="Copy check"]').getAttribute('title'));
@@ -117,7 +117,7 @@ const driver=`window.__run=function(){const r={};try{
  r.wsPillsAfterShow = wsHost.querySelectorAll('.cal-pill').length;        // 3
  // month arrows redraw the workspace grid, not a board
  calMove('w1',1);
- r.wsNavKeepsLegend = wsHost.querySelectorAll('.cal-lg').length===2 && /October 2026/.test(wsHost.querySelector('.cal-title').textContent);
+ r.wsNavKeepsLegend = wsHost.querySelectorAll('.cal-lg:not(.cal-pick)').length===2 && /October 2026/.test(wsHost.querySelector('.cal-title').textContent);
  calMove('w1',-1);
 
  // ---- My calendar on Home: List / Calendar toggle over the same person's tasks
