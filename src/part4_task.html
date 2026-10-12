@@ -75,6 +75,7 @@ async function openTask(id){
   S._taskHist = hist||[]; S._histEntity = id; S._histType = 'task';
   if(!t) return toast('Task not found', true);
   await boardPeopleLoad(t.project_id);     // pickers in the popup offer only people on this board
+  setStatusScope(t.project_id);
   S._taskDeps = depsOn||[];
   // Titles/statuses for what this task waits on — the board cache usually has them.
   let depTasks = [];
@@ -632,7 +633,7 @@ function depsSectionHTML(t, depsOn, depsBy, depTasks){
    picker can never disagree. */
 function depCandidates(taskId){
   const linked = new Set((S._taskDeps||[]).map(d=>d.depends_on));
-  return (S._tasks||[]).filter(x=>x.id!==taskId && x.status!=='done' && !x.archived_at && !linked.has(x.id));
+  return (S._tasks||[]).filter(x=>x.id!==taskId && !isDoneK(x.status) && !x.archived_at && !linked.has(x.id));
 }
 function addDepModal(taskId){
   const pool = depCandidates(taskId);
