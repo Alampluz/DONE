@@ -4358,6 +4358,7 @@ async function renderProject(id){
     db.from('project_fields').select('*').eq('project_id',id).order('position').order('created_at'),
     db.from('project_groups').select('*').eq('project_id',id).order('position').order('created_at'),
     db.from('board_views').select('*').eq('project_id',id).order('position').order('created_at'),
+    boardPeopleLoad(id),
   ]);
   S._views = (S._views||[]).filter(v=>v.project_id!==id).concat(Array.isArray(views)? views : []);
   if(navStale(_nav)) return;
@@ -4773,8 +4774,23 @@ function renderProjectFromCache(id){
    is another one. These look in the open board first, then at what the popup loaded. */
 function tvTaskById(tid){ return (S._tasks||[]).find(x=>x.id===tid) || (S._popTask && S._popTask.id===tid? S._popTask : null); }
 function tvFieldById(fid){ return (S._fields||[]).find(x=>x.id===fid) || (S._popFields||[]).find(x=>x.id===fid) || null; }
-function tvPeople(){
-  return S.profiles.filter(p=> p.active!==false && !(p.email||'').startsWith('forms+'));
+/* People offered in assignee pickers. When a board's access list is loaded (board_people RPC —
+   the same rules as the projects RLS: admins/management, workspace members, board members and
+   owners) only those people are offered; anyone else on the company list is not. */
+function tvPeople(pid){
+  const base = S.profiles.filter(p=> p.active!==false && !(p.email||'').startsWith('forms+'));
+  const bp = S._boardPeople; const id = pid || tvPid;
+  if(bp && bp.pid===id && bp.ids && bp.ids.size) return base.filter(p=>bp.ids.has(p.id));
+  return base;
+}
+async function boardPeopleLoad(pid){
+  if(!pid || (S._boardPeople && S._boardPeople.pid===pid)) return;
+  if(typeof db.rpc!=='function') return;
+  try{
+    const {data, error} = await db.rpc('board_people', {p:pid});
+    if(error || !Array.isArray(data)) return;
+    S._boardPeople = {pid, ids:new Set(data.map(x=> typeof x==='string'? x : (x.board_people||x.id||x)))};
+  }catch(e){}
 }
 /* Option registries for click-to-edit dropdown cells (rendering a <select> with all
    options in every cell made large projects extremely slow — cells are now plain text
@@ -4933,10 +4949,11 @@ function tvShowMenu(anchor, opts, renderOpt, onPick, withSearch, includeClear){
 }
 /* People multi-picker: checkbox rows, stays open while you tick, saves on every change.
    `ids` is the current list; onChange gets the new list in tick order. */
-function tvPeopleMulti(anchor, ids, onChange){
+function tvPeopleMulti(anchor, ids, onChange, pid){
   tvCloseMenu();
   let cur = [...ids];
-  const people = tvPeople().map(p=>({v:p.id,l:p.full_name}));
+  const people = tvPeople(pid).map(p=>({v:p.id,l:p.full_name}));
+  cur.forEach(id=>{ if(!people.some(o=>o.v===id)){ const p=prof(id); if(p) people.push({v:id,l:p.full_name}); } });   // already on the task, even without board access now
   // people already on the task float to the top so a long list still shows who is on it
   people.sort((a,b)=> (cur.includes(b.v)?1:0)-(cur.includes(a.v)?1:0));
   const m = document.createElement('div'); m.id='tvmenu';
@@ -5198,7 +5215,7 @@ async function tvMirrorEdit(el, tid, fid){
   if(show==='priority')
     return tvShowMenu(el, PRIORITIES.map(p=>({v:p.k,l:p.label})), o=>tvDotOpt(o, PRIORITIES, lt.priority), v=>v&&save({priority:v}));
   if(show==='assignee')
-    return tvPeopleMulti(el, taskAssignees(lt), ids=>save({assignee_ids:ids, assignee_id:ids[0]||null}));
+    return tvPeopleMulti(el, taskAssignees(lt), ids=>save({assignee_ids:ids, assignee_id:ids[0]||null}), lt.project_id);
   if(show==='due_date')
     return miniInputModal(f.label, 'date', lt.due_date||'', v=>save({due_date:v||null}), 'Editing here updates the linked task on the other board.');
   const rf = (S._linkedFields||{})[show]; if(!rf) return;
@@ -6546,7 +6563,7 @@ function newTaskModal(projectId, status='todo', groupId=null){
 }
 function assigneeOptions(projectId, selected){
   // staff can assign anyone; also include project members (partners)
-  return S.profiles.filter(p=>p.active).map(p=>
+  return tvPeople(projectId).map(p=>
     `<option value="${p.id}" ${p.id===selected?'selected':''}>${esc(p.full_name)}</option>`).join('');
 }
 /* Assignees in the task popup: the avatar stack opens the multi-picker (or, read-only, the list). */
@@ -6562,7 +6579,7 @@ function tvAsgPopup(el, tid){
       x.dataset.ids = ids.join(',');
       x.innerHTML = assigneeAvatars(t, +x.dataset.cap||3) + (x.classList.contains('asg-edit')? '<span class="asg-add" aria-hidden="true">＋</span>':'');
     });
-  });
+  }, t.project_id);
 }
 /* #/task/<id> — a shareable link straight to one task */
 async function openTaskRoute(id){
@@ -6587,6 +6604,7 @@ async function openTask(id){
   ]);
   S._taskHist = hist||[]; S._histEntity = id; S._histType = 'task';
   if(!t) return toast('Task not found', true);
+  await boardPeopleLoad(t.project_id);     // pickers in the popup offer only people on this board
   S._taskDeps = depsOn||[];
   // Titles/statuses for what this task waits on — the board cache usually has them.
   let depTasks = [];
@@ -7236,7 +7254,7 @@ function stRow(s){
     <select class="st-status" aria-label="Subtask status" onchange="stUpd('${s.id}','status',this.value,'${s.task_id}')">${STATUSES.map(x=>`<option value="${x.k}" ${x.k===s.status?'selected':''}>${x.label}</option>`).join('')}</select>
     <input class="st-title" aria-label="Subtask title" type="text" value="${esc(s.title)}" onchange="stUpd('${s.id}','title',this.value.trim(),'${s.task_id}')">
     <input class="st-type" aria-label="Subtask type" type="text" value="${esc(s.stype||'')}" placeholder="Type" onchange="stUpd('${s.id}','stype',this.value.trim()||null,'${s.task_id}')">
-    <select class="st-asg" aria-label="Subtask assignee" onchange="stUpd('${s.id}','assignee_id',this.value||null,'${s.task_id}')"><option value="">Unassigned</option>${S.profiles.filter(p=>p.active && !(p.email||'').startsWith('forms+')).map(p=>`<option value="${p.id}" ${p.id===s.assignee_id?'selected':''}>${esc(p.full_name)}</option>`).join('')}</select>
+    <select class="st-asg" aria-label="Subtask assignee" onchange="stUpd('${s.id}','assignee_id',this.value||null,'${s.task_id}')"><option value="">Unassigned</option>${tvPeople().map(p=>`<option value="${p.id}" ${p.id===s.assignee_id?'selected':''}>${esc(p.full_name)}</option>`).join('')}</select>
     <input class="st-due" aria-label="Subtask due date" type="date" value="${s.due_date||''}" onchange="stUpd('${s.id}','due_date',this.value||null,'${s.task_id}')">
     <button class="del" aria-label="Delete subtask" onclick="delSubtask('${s.id}','${s.task_id}')">✕</button></div>`;
 }
