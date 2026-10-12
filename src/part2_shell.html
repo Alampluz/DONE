@@ -71,13 +71,42 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
    were the two that failed. */
 /* `color` is the fill and the dot; `ink` is the label when the chip is a 10% tint of its own
    hue, where using `color` for both lands around 4:1. */
-const STATUSES = [
-  {k:'todo', label:'To Do', color:'var(--st-todo)', ink:'var(--st-todo-ink)'},
-  {k:'in_progress', label:'In Progress', color:'var(--st-prog)', ink:'var(--st-prog-ink)'},
-  {k:'review', label:'Review', color:'var(--st-review)', ink:'var(--st-review-ink)'},
-  {k:'blocked', label:'Blocked', color:'var(--st-blocked)', ink:'var(--st-blocked-ink)'},
-  {k:'done', label:'Done', color:'var(--st-done)', ink:'var(--st-done-ink)'},
+const DEFAULT_STATUSES = [
+  {k:'todo', label:'To Do', color:'var(--st-todo)', ink:'var(--st-todo-ink)', soft:'var(--st-todo-soft)', hex:'#6F7384'},
+  {k:'in_progress', label:'In Progress', color:'var(--st-prog)', ink:'var(--st-prog-ink)', soft:'var(--st-prog-soft)', hex:'#2273C9'},
+  {k:'review', label:'Review', color:'var(--st-review)', ink:'var(--st-review-ink)', soft:'var(--st-review-soft)', hex:'#9F6907'},
+  {k:'blocked', label:'Blocked', color:'var(--st-blocked)', ink:'var(--st-blocked-ink)', soft:'var(--st-blocked-soft)', hex:'#D04358'},
+  {k:'done', label:'Done', color:'var(--st-done)', ink:'var(--st-done-ink)', soft:'var(--st-done-soft)', hex:'#108456', done:true},
 ];
+/* Statuses are per board now (projects.field_config.statuses). STATUSES is whatever the open
+   board uses — setStatusScope() swaps it when a board or a task is opened; off a board it is
+   the union of every board's list so labels and colours still resolve on Home and dashboards.
+   A stored status is {k, label, color?, done?}: the five built-in keys keep their theme colours
+   unless recoloured; extra ones are s_<slug> with a hex colour. */
+let STATUSES = DEFAULT_STATUSES;
+const ST_PALETTE = ['#6F7384','#2273C9','#9F6907','#D04358','#108456','#6E56B8','#C2410C','#BE185D','#0F766E','#4D7C0F'];
+function statusDef(x){
+  const built = DEFAULT_STATUSES.find(s=>s.k===x.k);
+  const done = x.done!=null? !!x.done : !!(built && built.done);
+  if(built && (!x.color || x.color.toLowerCase()===built.hex.toLowerCase())) return {...built, label:(x.label||'').trim()||built.label, done};
+  const c = x.color || ST_PALETTE[5];
+  return {k:x.k, label:(x.label||'').trim()||x.k, color:c, ink:c, soft:c+'22', hex:c, done, custom:!built};
+}
+function boardStatuses(pid){
+  const l = pid? fieldConf(pid,'statuses') : null;
+  return (Array.isArray(l) && l.length)? l.map(statusDef) : DEFAULT_STATUSES;
+}
+function allStatuses(){
+  const seen = new Map(DEFAULT_STATUSES.map(s=>[s.k,s]));
+  (S.projects||[]).forEach(p=>{ const l=(p.field_config||{}).statuses; if(Array.isArray(l)) l.forEach(x=>{ const d=statusDef(x); if(!seen.has(d.k) || d.done!==seen.get(d.k).done) seen.set(d.k, seen.has(d.k)? {...seen.get(d.k), done: seen.get(d.k).done||d.done} : d); }); });
+  return [...seen.values()];
+}
+function setStatusScope(pid){ STATUSES = pid? boardStatuses(pid) : allStatuses(); }
+function isDoneK(k){ const s = STATUSES.find(x=>x.k===k) || allStatuses().find(x=>x.k===k); return s? !!s.done : k==='done'; }
+const isOpenK = k => !isDoneK(k);
+/* every key that counts as finished on any board — for server-side "open work" queries */
+function doneKeys(){ return allStatuses().filter(s=>s.done).map(s=>s.k); }
+const doneKeyList = () => '(' + doneKeys().map(k=>'"'+k+'"').join(',') + ')';
 /* Priority reads by weight, not just hue: Urgent and High are saturated fills, Normal and
    Low are neutral. Normal used to be the loudest colour on the board (saturated blue, on
    most rows), which put the visual emphasis on the value that needs the least attention.
@@ -1125,6 +1154,7 @@ function navigate(hash){
   if(view==='b'){ const p = boardFromSlug(parts[1]); if(!p){ toast('Board not found', true); location.hash='#/home'; return; } view='project'; parts[1]=p.id; }
   else if(view==='t'){ view='task'; parts[1]=decodeURIComponent(parts[1]||''); }
   S.route = {view, id:parts[1], tab:parts[2]};
+  setStatusScope(view==='project'? parts[1] : null);
   /* Every navigation bumps this. An async renderer captures it on entry and refuses to paint
      #content once it has changed, so a slow view cannot land on top of the one you clicked.
      18 Sep: Campaigns showed the Operations Dashboard because renderDashboard's widget query
