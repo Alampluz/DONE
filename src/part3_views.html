@@ -6,12 +6,12 @@ async function renderHome(){
   const C=$('#content');
   C.innerHTML = '<div class="empty">Loading…</div>';
   const [tks, reqs, apprs, cal] = await Promise.all([
-    allRows(()=>db.from('tasks').select('*').eq('assignee_id',S.me.id).neq('status','done').order('due_date',{ascending:true,nullsFirst:false}).order('id')),
+    allRows(()=>db.from('tasks').select('*').or(`assignee_id.eq.${S.me.id},assignee_ids.cs.{${S.me.id}}`).neq('status','done').order('due_date',{ascending:true,nullsFirst:false}).order('id')),
     db.from('requests').select('*').eq('submitted_by',S.me.id).not('status','in',"(done,cancelled)").order('created_at',{ascending:false}),
     db.from('approvals').select('*').eq('approver_id',S.me.id).eq('status','pending'),
     // My calendar: everything assigned to me that has a date, done included - a
     // finished task still happened on that day, and the grid greys it out.
-    allRows(()=>db.from('tasks').select('*').eq('assignee_id',S.me.id).is('archived_at',null).not('due_date','is',null).order('id')),
+    allRows(()=>db.from('tasks').select('*').or(`assignee_id.eq.${S.me.id},assignee_ids.cs.{${S.me.id}}`).is('archived_at',null).not('due_date','is',null).order('id')),
   ]);
   const tasks = tks.data||[], requests = reqs.data||[], approvals = apprs.data||[];
   S._myTasks = tasks;
@@ -92,7 +92,7 @@ function taskTable(tasks){
         <td style="color:var(--ink2)">${esc(p?p.name:'—')}</td>
         <td>${statusChip(t.status)}</td><td>${prioChip(t.priority)}</td>
         <td>${dueBadge(t.due_date, t.status==='done')||'<span style="color:var(--ink3)">—</span>'}</td>
-        <td>${avatar(prof(t.assignee_id), true)}</td></tr>`;
+        <td>${assigneeAvatars(t)}</td></tr>`;
     }).join('')}</tbody></table>`;
 }
 function requestTable(reqs){
@@ -169,7 +169,7 @@ async function renderWorkspace(id, tab){
     C.querySelector('#ws-board-list').innerHTML=visible.map(p=>{
       const c=counts[p.id]||{open:0,done:0};
       const imported=/imported from|sample import|monday\.com|monday board/i.test(p.description||'');
-      return `<div class="ws-board-row"><a class="ws-board-link" href="#/project/${p.id}">
+      return `<div class="ws-board-row"><a class="ws-board-link" href="${boardHash(p)}">
         <span class="ws-dot" style="background:${esc(p.color||'var(--accent)')}"></span>
         <span class="ws-board-identity"><strong>${esc(p.name)}</strong>${p.description&&!imported? `<span>${esc(p.description)}</span>`:''}</span></a>
         <div class="ws-board-metrics"><span class="ws-board-open ${c.open?'has-work':''}">${c.open} open</span><span>${c.done} done</span></div>
@@ -717,7 +717,7 @@ function newProjectModal(wsId){
     if(tpl) await applyTemplate(data.id, tpl.spec||{});
     S.projects.push(data); closeModals(); toast('Board created');
     logActivity('project', data.id, 'created', {name});
-    location.hash = '#/project/'+data.id;
+    location.hash = boardHash(data);
   };
 }
 
@@ -730,8 +730,8 @@ const boardFilters = {};
 const OPEN_STATES = new Set(['todo','in_progress','review','blocked']);
 const daysAgoISO = n => { const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString(); };
 const BF_QUICK = [
-  {k:'mine',       label:'My open',        test:t=> OPEN_STATES.has(t.status) && t.assignee_id===(S.me||{}).id},
-  {k:'unassigned', label:'Unassigned',     test:t=> OPEN_STATES.has(t.status) && !t.assignee_id},
+  {k:'mine',       label:'My open',        test:t=> OPEN_STATES.has(t.status) && isAssignee(t,(S.me||{}).id)},
+  {k:'unassigned', label:'Unassigned',     test:t=> OPEN_STATES.has(t.status) && !taskAssignees(t).length},
   {k:'urgent',     label:'Urgent open',    test:t=> OPEN_STATES.has(t.status) && t.priority==='urgent'},
   {k:'overdue',    label:'Overdue',        test:t=> OPEN_STATES.has(t.status) && t.due_date && daysDiff(t.due_date)<0},
   {k:'new7',       label:'New this week',  test:t=> (t.created_at||'') >= daysAgoISO(7)},
@@ -756,7 +756,7 @@ function bfApply(pid, rows){
           || (t.ticket_no||'').toLowerCase().includes(q))
     && (!f.status   || t.status===f.status)
     && (!f.priority || t.priority===f.priority)
-    && (!f.assignee || (f.assignee==='__none__' ? !t.assignee_id : t.assignee_id===f.assignee))
+    && (!f.assignee || (f.assignee==='__none__' ? !taskAssignees(t).length : isAssignee(t,f.assignee)))
     && (!f.group    || (f.group==='__none__' ? !t.group_id : t.group_id===f.group))
     && bfColsMatch(f, t)
   );
@@ -1003,9 +1003,9 @@ function filterBarHTML(pid){
     ${sel('priority','Priority', PRIORITIES.map(p=>({v:p.k,l:p.label})))}
     <button class="bf-sel ${f.assignee?'on':''}" onclick="bfPickPerson(this,'${pid}')">${f.assignee? esc(f.assignee==='__none__'?'Unassigned':(prof(f.assignee)?.full_name||'Person')) : 'Person'} ▾</button>
     ${(S._groups||[]).length? sel('group','Group', (S._groups||[]).map(g=>({v:g.id,l:g.name})).concat([{v:'__none__',l:'No group'}])) : ''}
+    ${boardMode==='board'? `<button class="bf-sel on" onclick="kbFieldsModal('${pid}')" title="Choose which details each card shows">⚙ Card fields</button>`:''}
     ${n? `<button class="bf-clear" onclick="bfClear('${pid}')">Clear ${n} filter${n>1?'s':''}</button>`:''}
     <span class="bf-count" id="bf-count"></span>
-    ${boardMode==='board'? `<button class="btn btn-ghost btn-sm" onclick="kbFieldsModal('${pid}')" title="Choose which details each card shows">Card fields</button>`:''}
     ${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="importExcel('${pid}')">Import Excel</button>
     <button class="btn btn-ghost btn-sm" onclick="exportBoardCSV('${pid}')">Export Excel</button>
     <button class="btn btn-ghost btn-sm" onclick="boardActivityModal('${pid}')">Activity</button>`:''}
@@ -1066,7 +1066,7 @@ function viewMenu(anchor, pid){
    colleagues (a notification + email each). There is deliberately NO public/no-login link — April
    removed that on 7 Sep and the `public_board` endpoint was dropped with it, so a board can only
    ever be read by someone signed in who has access to it. */
-const boardLink = pid => location.origin + location.pathname + '#/project/' + pid;
+const boardLink = pid => location.origin + location.pathname + boardHash(pid);
 async function copyText(t){ try{ await navigator.clipboard.writeText(t); toast('Link copied'); }catch(e){ toast('Copy failed — select the link and copy it', true); } }
 let _shareSel = new Set();
 /* Request forms whose submissions land on this board (request_types.default_project_id). */
@@ -1189,7 +1189,7 @@ function renderBoardBody(id){
   host.innerHTML = `<div class="board">${STATUSES.map(s=>{
     const list = rows.filter(t=>t.status===s.k);
     return `<div class="col" data-status="${s.k}">
-      <div class="col-head"><span class="dot" style="background:${s.color}"></span>${s.label}<span class="count">${list.length}</span></div>
+      <div class="col-head" style="background:${s.color}">${s.label}<span class="count">${list.length}</span></div>
       <div class="col-body" data-status="${s.k}">${list.slice(0,KB_CAP).map(taskCard).join('')}${list.length>KB_CAP? `<div class="kb-more">${(list.length-KB_CAP).toLocaleString()} more not drawn — use the Table view for the full list</div>`:''}</div>
       ${(canEditOnBoard(id) || isRequester() && boardPreset(id)!=='view')? `<button class="add-card" onclick="newTaskModal('${id}','${s.k}')">＋ Add task</button>`:''}
     </div>`;}).join('')}</div>`;
@@ -1203,9 +1203,12 @@ function renderWorkload(id, rows, host){
   const buckets = new Map();
   const bucket = key => { let b=buckets.get(key); if(!b){ b={key, counts:{}, open:0, total:0}; buckets.set(key,b); } return b; };
   (rows||[]).forEach(t=>{
-    const b = bucket(t.assignee_id||'__none__');
-    b.counts[t.status] = (b.counts[t.status]||0)+1;
-    b.total++; if(OPEN.has(t.status)) b.open++;
+    const who = taskAssignees(t);
+    (who.length? who : ['__none__']).forEach(id=>{
+      const b = bucket(id);
+      b.counts[t.status] = (b.counts[t.status]||0)+1;
+      b.total++; if(OPEN.has(t.status)) b.open++;
+    });
   });
   let list = [...buckets.values()];
   // real people first (by open desc), Unassigned always last
@@ -1428,8 +1431,29 @@ function renderWorkspaceCalendarBody(wsId){
    Personal, like sort: remembered in localStorage (workos.cardfields.<pid>) as an ordered list
    of keys. No saved list = the original card. Keys: ticket_no · priority · due_date · subtasks ·
    tags · assignee, and f:<field id> for any custom column (Brand, Platform, Number of SKUs…). */
-const KB_BUILTIN = [['ticket_no','Ticket ID'],['priority','Priority'],['due_date','Due date'],['subtasks','Subtask count'],['tags','Tags'],['assignee','Assignee']];
+const KB_BUILTIN = [['ticket_no','Ticket ID'],['priority','Priority'],['due_date','Due date'],['subtasks','Subtask count'],['comments','Comment count'],['tags','Tags'],['assignee','Assignee']];
 const KB_DEFAULT = KB_BUILTIN.map(x=>x[0]);
+/* With nothing saved, a card shows the board's first few custom columns (Brand, Platform…) after the
+   ticket ID, priority and due date, then the counts and the assignee. */
+function kbDefault(pid){
+  const f = (S._fields||[]).filter(x=>x.project_id===pid && !['link','mirror','file'].includes(x.ftype)).slice(0,4).map(x=>'f:'+x.id);
+  return ['ticket_no','priority','due_date'].concat(f, ['subtasks','comments','tags','assignee']);
+}
+/* Comment counts for the cards on screen: one small query per 100 cards, cached, painted into the cards. */
+const kbCmt = {};
+const KB_CMT_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.5A8 8 0 1 1 21 12z"/></svg>';
+function kbPaintCmt(){ document.querySelectorAll('.kb-cmt[data-cmt]').forEach(el=>{ const n=kbCmt[el.dataset.cmt]; el.innerHTML = n? KB_CMT_ICON+' '+n : ''; }); }
+async function kbLoadCmt(){
+  const ids = [...document.querySelectorAll('.kb-cmt[data-cmt]')].map(e=>e.dataset.cmt).filter(id=>!(id in kbCmt));
+  for(let i=0;i<ids.length;i+=100){
+    const part = ids.slice(i,i+100);
+    const {data, error} = await db.from('comments').select('entity_id').eq('entity_type','task').in('entity_id', part);
+    if(error) return;
+    part.forEach(id=>{ kbCmt[id]=0; });
+    (data||[]).forEach(r=>{ kbCmt[r.entity_id]=(kbCmt[r.entity_id]||0)+1; });
+  }
+  kbPaintCmt();
+}
 const kbFieldsLoad = pid => { try{ const v=JSON.parse(localStorage.getItem('workos.cardfields.'+pid)||'null'); return Array.isArray(v)? v : null; }catch(e){ return null; } };
 const kbFieldsSave = (pid, v) => { try{ v? localStorage.setItem('workos.cardfields.'+pid, JSON.stringify(v)) : localStorage.removeItem('workos.cardfields.'+pid); }catch(e){} };
 /* What a custom column reads as on a card — plain text, '' when empty (empty rows are skipped). */
@@ -1446,7 +1470,7 @@ function kbFieldText(t, f){
 }
 function taskCard(t){
   const done = t.status==='done';
-  const cfg = kbFieldsLoad(t.project_id) || KB_DEFAULT;
+  const cfg = kbFieldsLoad(t.project_id) || kbDefault(t.project_id);
   const flds = S._fields||[];
   const sc = (S._subs||{})[t.id];
   let tag='', rows='', chips='', who='';
@@ -1455,8 +1479,9 @@ function taskCard(t){
     else if(k==='priority') chips += prioChip(t.priority);
     else if(k==='due_date') chips += dueBadge(t.due_date, done);
     else if(k==='subtasks') chips += sc?.total? `<span class="subchip" style="font-size:11px;font-weight:700;color:var(--ink3);background:var(--gray-soft);border-radius:6px;padding:1px 6px">${sc.done}/${sc.total}</span>`:'';
+    else if(k==='comments') chips += `<span class="kb-cmt" data-cmt="${t.id}" title="Comments">${kbCmt[t.id]? KB_CMT_ICON+' '+kbCmt[t.id] : ''}</span>`;
     else if(k==='tags') chips += t.tags?.length? t.tags.slice(0,2).map(g=>`<span class="chip" style="background:var(--purple-soft);color:var(--purple)">${esc(g)}</span>`).join(''):'';
-    else if(k==='assignee') who = `<span style="margin-left:auto">${avatar(prof(t.assignee_id), true)}</span>`;
+    else if(k==='assignee') who = `<span style="margin-left:auto" data-asg="${t.id}">${assigneeAvatars(t)}</span>`;
     else if(k.startsWith('f:')){
       const f = flds.find(x=>x.id===k.slice(2)); if(!f) return;
       const txt = kbFieldText(t, f); if(!txt) return;
@@ -1471,7 +1496,7 @@ function kbFieldsModal(pid){
   const flds = (S._fields||[]).filter(f=>!['link','mirror','file'].includes(f.ftype));
   const all = KB_BUILTIN.map(([k,l])=>({k,l})).concat(flds.map(f=>({k:'f:'+f.id, l:f.label+' (column)'})));
   const known = new Set(all.map(x=>x.k));
-  const cur = (kbFieldsLoad(pid) || KB_DEFAULT).filter(k=>known.has(k));
+  const cur = (kbFieldsLoad(pid) || kbDefault(pid)).filter(k=>known.has(k));
   let order = cur.concat(all.map(x=>x.k).filter(k=>!cur.includes(k)));   // shown ones first, in their order
   const on = new Set(cur);
   const label = k => (all.find(x=>x.k===k)||{}).l || k;
@@ -1512,6 +1537,7 @@ function wireDnD(projectId){
 
     });
   });
+  kbLoadCmt();
 }
 /* KANBAN ONLY. Redraws the columns from S._tasks without refetching; the drag-drop handler
    uses it. It does not look at boardMode - calling it from the Table view (9 Sep) flipped the
@@ -1521,7 +1547,7 @@ function renderProjectFromCache(id){
   C.innerHTML = `<div class="board">${STATUSES.map(s=>{
     const list = S._tasks.filter(t=>t.status===s.k);
     return `<div class="col" data-status="${s.k}">
-      <div class="col-head"><span class="dot" style="background:${s.color}"></span>${s.label}<span class="count">${list.length}</span></div>
+      <div class="col-head" style="background:${s.color}">${s.label}<span class="count">${list.length}</span></div>
       <div class="col-body" data-status="${s.k}">${list.slice(0,KB_CAP).map(taskCard).join('')}${list.length>KB_CAP? `<div class="kb-more">${(list.length-KB_CAP).toLocaleString()} more not drawn — use the Table view for the full list</div>`:''}</div>
       <button class="add-card" onclick="newTaskModal('${id}','${s.k}')">＋ Add task</button>
     </div>`;}).join('')}</div>`;
@@ -1559,6 +1585,7 @@ function tvChip(label, color){
   return `<span class="tv-chip" style="background:${color}1C;color:${color}"><span class="cdot" style="background:${color}"></span>${esc(label)}</span>`;
 }
 function tvDisplay(kind, val, t){
+  if(kind==='assignees') return assigneeAvatars(t || {assignee_ids:val});
   if(val===undefined||val===null||val===''){
     if(kind==='status'||kind==='priority') return `<span class="tv-fill tv-fill-empty">—</span>`;
     return `<span class="tv-empty">—</span>`;
@@ -1640,6 +1667,18 @@ function tvEdit(el, ev){
     };
     return;
   }
+  // assignees: tick as many people as you like; each tick saves
+  if(kind==='assignees'){
+    tvPeopleMulti(el, taskAssignees(t), async ids=>{
+      const old = {ids:t.assignee_ids, id:t.assignee_id};
+      t.assignee_ids = ids; t.assignee_id = ids[0]||null;
+      const {error} = await db.from('tasks').update({assignee_ids:ids}).eq('id',tid);
+      if(error){ t.assignee_ids=old.ids; t.assignee_id=old.id; toast(error.message, true); }
+      el.innerHTML = tvDisplay('assignees', null, t);
+      document.querySelectorAll(`[data-asg="${tid}"]`).forEach(x=>{ x.innerHTML = assigneeAvatars(t, +x.dataset.cap||3); });
+    });
+    return;
+  }
   // popover menu for choice types — status/priority get minimal dot pills
   const opts = TVO[kind]||[];
   const renderOpt = o=>
@@ -1677,6 +1716,43 @@ function tvShowMenu(anchor, opts, renderOpt, onPick, withSearch, includeClear){
   }
   setTimeout(()=>document.addEventListener('mousedown', tvMenuOutside),0);
 }
+/* People multi-picker: checkbox rows, stays open while you tick, saves on every change.
+   `ids` is the current list; onChange gets the new list in tick order. */
+function tvPeopleMulti(anchor, ids, onChange){
+  tvCloseMenu();
+  let cur = [...ids];
+  const people = tvPeople().map(p=>({v:p.id,l:p.full_name}));
+  // people already on the task float to the top so a long list still shows who is on it
+  people.sort((a,b)=> (cur.includes(b.v)?1:0)-(cur.includes(a.v)?1:0));
+  const m = document.createElement('div'); m.id='tvmenu';
+  const row = o=>`<div class="opt multi ${cur.includes(o.v)?'on':''}" data-v="${esc(o.v)}"><span class="mbox">${cur.includes(o.v)?'✓':''}</span>${avatar(prof(o.v),true)}<span>${esc(o.l)}</span></div>`;
+  m.innerHTML = `<div class="search"><input placeholder="Search people…" aria-label="Search people"></div><div class="opts">${people.map(row).join('')}</div>
+    <div class="mfoot"><span class="mcnt">${cur.length} assigned</span><span class="clr">Clear all</span></div>`;
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+  const x = Math.min(r.left, window.innerWidth-mw-12);
+  const y = (r.bottom+mh+12 > window.innerHeight && r.top-mh-6 > 0)? r.top-mh-6 : r.bottom+4;
+  m.style.left=Math.max(8,x)+'px'; m.style.top=Math.max(8,y)+'px';
+  const paint = ()=>{
+    m.querySelectorAll('.opt').forEach(o=>{ const on=cur.includes(o.dataset.v); o.classList.toggle('on',on); o.querySelector('.mbox').textContent = on?'✓':''; });
+    m.querySelector('.mcnt').textContent = cur.length+' assigned';
+  };
+  m.querySelectorAll('.opt').forEach(o=>o.onmousedown=async e=>{
+    e.preventDefault(); const v=o.dataset.v;
+    cur = cur.includes(v)? cur.filter(x=>x!==v) : [...cur, v];
+    paint(); await onChange([...cur]);
+  });
+  m.querySelector('.clr').onmousedown = async e=>{ e.preventDefault(); if(!cur.length) return; cur=[]; paint(); await onChange([]); };
+  const si=m.querySelector('.search input'); si.focus();
+  si.oninput=()=>{ const q=si.value.toLowerCase(); m.querySelectorAll('.opt').forEach(o=>{ o.style.display = o.textContent.toLowerCase().includes(q)?'flex':'none'; }); };
+  setTimeout(()=>document.addEventListener('mousedown', tvMenuOutside),0);
+}
+/* Read-only stack: clicking lists who is on the task. */
+function tvPeoplePeek(anchor, t){
+  const ids = taskAssignees(t);
+  if(!ids.length) return;
+  tvShowMenu(anchor, ids.map(id=>({v:id,l:(prof(id)||{}).full_name||'—'})), o=>`${avatar(prof(o.v),true)}<span>${esc(o.l)}</span>`, ()=>{}, false, false);
+}
 /* ---- formula columns ----------------------------------------------------
    A small, safe expression language — no eval(). Supports numbers, "text",
    {Field} references (core + custom, by name), + - * / & comparisons, and
@@ -1690,7 +1766,7 @@ function fxEval(expr, t, depth=0){
       'name': t.title??'', 'title': t.title??'',
       'status': (STATUSES.find(x=>x.k===t.status)||{}).label||t.status||'',
       'priority': (PRIORITIES.find(x=>x.k===t.priority)||{}).label||t.priority||'',
-      'assignee': (prof(t.assignee_id)||{}).full_name||'',
+      'assignee': assigneeNames(t),
       'due date': t.due_date||'', 'due': t.due_date||'',
       'group': ((S._groups||[]).find(g=>g.id===t.group_id)||{}).name||'',
       'created': (t.created_at||'').slice(0,10),
@@ -1808,7 +1884,7 @@ async function loadLinkedData(tasks, fields){
   const idList = [...ids], chunks = [];
   for(let i=0; i<idList.length; i+=150) chunks.push(idList.slice(i, i+150));
   const [lts, lf] = await Promise.all([
-    Promise.all(chunks.map(c=> db.from('tasks').select('id,title,status,priority,assignee_id,due_date,group_id,project_id,custom').in('id',c))),
+    Promise.all(chunks.map(c=> db.from('tasks').select('id,title,status,priority,assignee_id,assignee_ids,due_date,group_id,project_id,custom').in('id',c))),
     targets.length? db.from('project_fields').select('id,label,ftype,options').in('project_id',targets) : Promise.resolve({data:[]}),
   ]);
   lts.forEach(lt=> (lt.data||[]).forEach(x=> S._linkedTasks[x.id]=x));
@@ -1821,7 +1897,7 @@ function tvLinkCell(t, f){
     return `<div class="tv-pickv ro">${tvDisplay('text', v, t)}</div>`;
   const lt = v? (S._linkedTasks||{})[v] : null;   // broken link / missing cache → dash
   const title = lt? String(lt.title||'') : '';
-  const chip = lt? `<span class="tv-linkchip" title="${esc(title)}" onclick="event.stopPropagation();location.hash='#/task/${lt.id}'">${tvLinkIcon()}<span class="lt">${esc(title.length>24? title.slice(0,24)+'…' : title)}</span></span>`
+  const chip = lt? `<span class="tv-linkchip" title="${esc(title)}" onclick="event.stopPropagation();location.hash='${taskHash(lt)}'">${tvLinkIcon()}<span class="lt">${esc(title.length>24? title.slice(0,24)+'…' : title)}</span></span>`
     : `<span class="tv-empty">—</span>`;
   if(!canEditTask(t)) return `<div class="tv-pickv ro">${chip}</div>`;
   return `<div class="tv-pickv" onclick="tvLinkPick(this,'${t.id}','${f.id}')">${chip}</div>`;
@@ -1841,7 +1917,7 @@ async function tvLinkPick(el, tid, fid){
   tvShowMenu(el, opts, o=>`${tvLinkIcon()}<span>${esc(o.l)}</span>`, async v=>{
     await tvCustom(tid, fid, v===null? '' : v);   // same save path as every other custom cell
     if(v && !(S._linkedTasks||{})[v]){            // picker rows carry id+title only — mirrors need the full row
-      const {data:full} = await db.from('tasks').select('id,title,status,priority,assignee_id,due_date,group_id,project_id,custom').eq('id',v).single();
+      const {data:full} = await db.from('tasks').select('id,title,status,priority,assignee_id,assignee_ids,due_date,group_id,project_id,custom').eq('id',v).single();
       if(full){ (S._linkedTasks||(S._linkedTasks={}))[full.id]=full; }
     }
     const y=scrollY; renderBoardBody(tvPid); scrollTo(0,y);
@@ -1858,7 +1934,7 @@ function mirrorText(t, f){
   if(!lt || !show) return '';
   if(show==='status')   return (STATUSES.find(s=>s.k===lt.status)||{}).label||lt.status||'';
   if(show==='priority') return (PRIORITIES.find(p=>p.k===lt.priority)||{}).label||lt.priority||'';
-  if(show==='assignee') return (prof(lt.assignee_id)||{}).full_name||'';
+  if(show==='assignee') return assigneeNames(lt);
   if(show==='due_date') return lt.due_date||'';
   if(show==='group')    return '';                 // remote group names aren't loaded — shown as a dash
   const rf = (S._linkedFields||{})[show];
@@ -1881,7 +1957,7 @@ function tvMirrorCell(t, f){
   if(lt && show){
     if(show==='status')        inner = statusChip(lt.status);
     else if(show==='priority') inner = prioChip(lt.priority);
-    else if(show==='assignee'){ const p=prof(lt.assignee_id); inner = p? `${avatar(p,true)}<span>${esc(p.full_name)}</span>` : inner; }
+    else if(show==='assignee'){ if(taskAssignees(lt).length) inner = assigneeAvatars(lt); }
     else if(show==='due_date') inner = lt.due_date? esc(fmtDate(lt.due_date)) : inner;
     else { const s = mirrorText(t, f); inner = s? esc(s) : inner; }
   }
@@ -1907,9 +1983,7 @@ async function tvMirrorEdit(el, tid, fid){
   if(show==='priority')
     return tvShowMenu(el, PRIORITIES.map(p=>({v:p.k,l:p.label})), o=>tvDotOpt(o, PRIORITIES, lt.priority), v=>v&&save({priority:v}));
   if(show==='assignee')
-    return tvShowMenu(el, S.profiles.filter(p=>p.active).map(p=>({v:p.id,l:p.full_name})),
-      o=>`${avatar(prof(o.v),true)}<span>${esc(o.l)}</span>${o.v===lt.assignee_id?'<span class="opt-cur">✓</span>':''}`,
-      v=>save({assignee_id:v||null}), true, true);
+    return tvPeopleMulti(el, taskAssignees(lt), ids=>save({assignee_ids:ids, assignee_id:ids[0]||null}));
   if(show==='due_date')
     return miniInputModal(f.label, 'date', lt.due_date||'', v=>save({due_date:v||null}), 'Editing here updates the linked task on the other board.');
   const rf = (S._linkedFields||{})[show]; if(!rf) return;
@@ -1987,7 +2061,7 @@ function exportBoardCSV(pid){
     (groups.find(g=>g.id===t.group_id)||{}).name||'',
     (STATUSES.find(s=>s.k===t.status)||{}).label||t.status||'',
     (PRIORITIES.find(x=>x.k===t.priority)||{}).label||t.priority||'',
-    (prof(t.assignee_id)||{}).full_name||'',
+    assigneeNames(t),
     t.due_date||'',
     ...flds.map(f=>cell(t,f)),
     (t.created_at||'').slice(0,10),
@@ -2317,7 +2391,7 @@ async function restoreTask(logId, pid){
   toast('Task restored — back on the board');
   closeModals();
   if(S.route.view==='project' && S.route.id===pid) renderProject(pid);
-  else location.hash = '#/project/'+pid;
+  else location.hash = boardHash(pid);
 }
 /* ---- column sort, per person ----
    A sort is a way of looking at a board, not a property of it, so it is remembered per person
@@ -2334,7 +2408,7 @@ function tvSortValue(t, key){
   if(key==='ticket_no') return t.ticket_no||'';
   if(key==='status')    { const i=STATUSES.findIndex(s=>s.k===t.status);   return i<0? 99 : i; }
   if(key==='priority')  { const i=PRIORITIES.findIndex(p=>p.k===t.priority); return i<0? 99 : i; }
-  if(key==='assignee')  { const p=prof(t.assignee_id); return p? (p.full_name||'').toLowerCase() : ''; }
+  if(key==='assignee')  return assigneeNames(t).toLowerCase();
   if(key==='due_date')  return t.due_date||'';
   if(key.startsWith('f:')){
     const f=(S._fields||[]).find(x=>x.id===key.slice(2)); const v=(t.custom||{})[key.slice(2)];
@@ -2589,7 +2663,7 @@ function tvRowHTML(t, flds, gc){
     <td class="tv-name"><span class="tv-dots" title="Task options" onclick="event.stopPropagation();rowMenu(this,'${t.id}')">⋯</span><div class="tv-open" draggable="${canEditTask(t)&&!arch}" ondragstart="tvDragStart(event,'${t.id}')" ondragend="tvDragEnd(event)" onclick="openTask('${t.id}')">${dep}${tvHasTicketCol()? '' : ticketTag(t)}${esc(t.title)}${sc&&sc.total? `<span class="subchip">${sc.done}/${sc.total}</span>`:''}</div>${arch&&canEdit()?`<span class="tv-restore" onclick="event.stopPropagation();tvUnarchive('${t.id}')">Restore</span>`:''}</td>
     ${tvHasTicketCol()? `<td class="tv-ticket">${ticketTag(t)}</td>`:''}
     <td>${tvPickHTML('status', t.id, 'status', false, t.status, t)}</td>
-    ${coreHidden(t.project_id,'assignee')?'':`<td>${tvPickHTML('people', t.id, 'assignee_id', false, t.assignee_id, t)}</td>`}
+    ${coreHidden(t.project_id,'assignee')?'':`<td>${tvPickHTML('assignees', t.id, 'assignee_ids', false, taskAssignees(t), t)}</td>`}
     ${coreHidden(t.project_id,'due_date')?'':`<td>${tvPickHTML('due', t.id, 'due_date', false, t.due_date, t)}</td>`}
     ${coreHidden(t.project_id,'priority')?'':`<td>${tvPickHTML('priority', t.id, 'priority', false, t.priority, t)}</td>`}
     ${flds.map(f=>`<td>${tvCell(t,f)}</td>`).join('')}
@@ -2694,7 +2768,7 @@ async function tvBulkApply(field, value){
   const ids=[...tvSel]; if(!ids.length) return;
   const error = await forIdChunks(ids, part=> db.from('tasks').update({[field]:value}).in('id',part));
   if(error) return toast(error.message, true);
-  S._tasks.forEach(t=>{ if(tvSel.has(t.id)) t[field]=value; });
+  S._tasks.forEach(t=>{ if(tvSel.has(t.id)){ t[field]=value; if(field==='assignee_id') t.assignee_ids = value? [value] : []; } });
   toast(ids.length+' task'+(ids.length>1?'s':'')+' updated');
   const changed = await echoAutomation(ids, {[field]:value});
   if(changed.length) automationToast(changed);
@@ -2782,7 +2856,7 @@ function rowMenu(anchor, tid){
   ctxMenu(anchor, items);
 }
 function copyTaskLink(tid){
-  const url = location.origin + location.pathname + '#/task/' + tid;
+  const url = location.origin + location.pathname + taskHash(tvTaskById(tid) || tid);
   const done = ()=>toast('Task link copied');
   if(navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(done, ()=>prompt('Copy this link:', url));
   else prompt('Copy this link:', url);
@@ -2866,7 +2940,7 @@ async function taskDuplicate(tid){
   const {data, error}=await db.from('tasks').insert({
     project_id:t.project_id, group_id:t.group_id, title:t.title+' (copy)',
     description:t.description, status:t.status, priority:t.priority,
-    assignee_id:t.assignee_id, due_date:t.due_date, tags:t.tags,
+    assignee_id:t.assignee_id, assignee_ids:t.assignee_ids||[], due_date:t.due_date, tags:t.tags,
     custom:t.custom||{}, created_by:S.me.id, position:(t.position||0)+0.5,
   }).select().single();
   if(error) return toast(error.message, true);
@@ -2955,9 +3029,10 @@ function groupModal(pid, g){
 }
 async function tvCore(tid, field, val){
   const t=tvTaskById(tid); if(!t) return;
-  const old=t[field]; t[field]=val;
+  const old=t[field], oldIds=t.assignee_ids; t[field]=val;
+  if(field==='assignee_id') t.assignee_ids = val? [val] : [];
   const {error}=await db.from('tasks').update({[field]:val}).eq('id',tid);
-  if(error){ t[field]=old; toast(error.message, true); return; }
+  if(error){ t[field]=old; t.assignee_ids=oldIds; toast(error.message, true); return; }
   // an automation may have moved or changed the row behind us - show what it did
   const changed = await echoAutomation(tid, {[field]:val});
   // renderBoardBody redraws whichever view is open; renderProjectFromCache is the kanban only
