@@ -539,6 +539,10 @@ td.tv-name .tv-open{padding-left:20px}
 .tv-fill-empty{background:var(--gray-soft);color:var(--ink3)}
 .tv td .tv-chip{width:100%;max-width:150px;justify-content:center;overflow:hidden;text-overflow:ellipsis}
 .tv td .tv-chip>span:last-child{overflow:hidden;text-overflow:ellipsis}
+.tv-lab{display:inline-flex;align-items:center;gap:7px;font-weight:500;color:var(--ink);white-space:nowrap;max-width:100%;overflow:hidden}
+.tv-lab .cdot{width:7px;height:7px;border-radius:50%;flex:none}
+.tv-lab>span:last-child{overflow:hidden;text-overflow:ellipsis}
+.tv td .tv-pickv:has(>.tv-lab){justify-content:flex-start;padding:6px 12px}
 .tv td .tv-pickv:has(>.tv-chip){justify-content:center;padding:0 8px}
 /* assignee avatar stack — overlapping heads, +N when more than the cap */
 .asg-stack{display:inline-flex;align-items:center;cursor:pointer}
@@ -4861,13 +4865,26 @@ function tvChip(label, color){
 /* A dropdown or brand value always gets the same colour: a known marketplace name takes that
    platform's colour, anything else hashes to one of the ten label tints. */
 const PF_ALIAS = {shopee:'Shopee', lazada:'Lazada', laz:'Lazada', shp:'Shopee', tiktok:'TikTok Shop', 'tiktok shop':'TikTok Shop', tt:'TikTok Shop', shopify:'Shopify', amazon:'Amazon'};
-function labelChip(val){
-  const key = String(val).trim().toLowerCase();
+function labelColor(val){
+  const key = String(val??'').trim().toLowerCase();
   const pf = PF_ALIAS[key] && PLATFORMS.find(x=>x.k===PF_ALIAS[key]);
-  if(pf) return tvChip(val, pf.color);
+  if(pf) return {c:pf.color, s:pf.color+'1C'};
   let h = 0; for(const ch of key) h = (h*31 + ch.charCodeAt(0)) >>> 0;
   const i = h % 10;
-  return `<span class="tv-chip" title="${esc(val)}" style="background:var(--lab-${i}-s);color:var(--lab-${i})"><span class="cdot" style="background:var(--lab-${i})"></span><span>${esc(val)}</span></span>`;
+  return {c:`var(--lab-${i})`, s:`var(--lab-${i}-s)`};
+}
+/* Only Status, Priority and the marketplace columns get a coloured pill. Every other dropdown
+   (Brand, Country, Campaign type…) is plain text with a small colour dot — enough to scan,
+   without the whole table turning into a rainbow. */
+function labelChip(val){
+  const {c,s} = labelColor(val);
+  const key = String(val??'').trim().toLowerCase();
+  if(PF_ALIAS[key]) return `<span class="tv-chip" title="${esc(val)}" style="background:${s};color:${c}"><span class="cdot" style="background:${c}"></span><span>${esc(val)}</span></span>`;
+  return `<span class="tv-lab" title="${esc(val)}"><span class="cdot" style="background:${c}"></span><span>${esc(val)}</span></span>`;
+}
+/* the same colour as a dot in a dropdown's option list */
+function labelOpt(o, cur){
+  return `<span class="opt-dot" style="background:${labelColor(o.l).c}"></span><span>${esc(o.l)}</span>${o.v===cur? '<span class="opt-cur">✓</span>':''}`;
 }
 function tvDisplay(kind, val, t){
   if(kind==='assignees') return assigneeAvatars(t || {assignee_ids:val});
@@ -4970,7 +4987,8 @@ function tvEdit(el, ev){
     kind==='status'? tvDotOpt(o, STATUSES, cur) :
     kind==='priority'? tvDotOpt(o, PRIORITIES, cur) :
     kind==='platform'? tvDotOpt(o, PLATFORMS, cur) :
-    kind==='people'? `${avatar(prof(o.v),true)}<span>${esc(o.l)}</span>` : esc(o.l);
+    kind==='people'? `${avatar(prof(o.v),true)}<span>${esc(o.l)}</span>` :
+    (kind==='brand'||kind.startsWith('f_'))? labelOpt(o, cur) : esc(o.l);
   const canClear = !(cust!=='1' && (field==='status'||field==='priority'));
   // people pickers are always searchable; other lists once they get long
   tvShowMenu(el, opts, renderOpt, save, kind==='people' || opts.length>5, canClear);
