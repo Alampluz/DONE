@@ -34,6 +34,7 @@
   --st-todo:#6F7384; --st-todo-ink:#616473; --st-prog:#2273C9; --st-prog-ink:#1E66B2;
   --st-review:#9F6907; --st-review-ink:#8B5C06; --st-blocked:#D04358; --st-blocked-ink:#B0394B;
   --st-done:#108456; --st-done-ink:#0E734B;
+  --st-todo-soft:#EEF0F4; --st-prog-soft:#E6F0FC; --st-review-soft:#FBF2DC; --st-blocked-soft:#FCE8EB; --st-done-soft:#E3F5EC;
   color-scheme:light;
   --radius:14px; --shadow:0 1px 2px rgba(22,24,29,.05),0 10px 30px rgba(22,24,29,.05);
 }
@@ -57,6 +58,7 @@
   --st-todo:#9FA3B4; --st-todo-ink:#AEB2C2; --st-prog:#6BA6E8; --st-prog-ink:#7FB4EE;
   --st-review:#D9A441; --st-review-ink:#E0B25C; --st-blocked:#E8737F; --st-blocked-ink:#ED8791;
   --st-done:#4FBA84; --st-done-ink:#62C795;
+  --st-todo-soft:#262932; --st-prog-soft:#1C2A3E; --st-review-soft:#33290F; --st-blocked-soft:#3A1F26; --st-done-soft:#15302A;
   color-scheme:dark;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.3);
 }
@@ -183,12 +185,12 @@ a{color:var(--accent-ink);text-decoration:none}
 .cm-btn:disabled{opacity:.3;cursor:default}
 .nav-item{display:flex;align-items:center;gap:10px;margin:1px 10px;padding:8px 12px;border-radius:9px;color:var(--sidebar-ink);font-weight:500;font-size:13.5px;cursor:pointer;user-select:none;transition:all .12s}
 .nav-item:hover{background:var(--sidebar-hover);color:var(--ink)}
-.nav-item.active{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.nav-item.active{background:var(--accent-soft);color:var(--accent-ink);font-weight:600;box-shadow:inset 3px 0 0 var(--accent)}
 .nav-item .count{margin-left:auto;background:var(--gray-soft);color:var(--ink2);font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px}
 .nav-item .count.hot{background:var(--red);color:#fff}
 .ws-item{display:flex;align-items:center;gap:10px;margin:1px 10px;padding:7px 12px;border-radius:9px;font-size:13px;cursor:pointer;color:var(--sidebar-ink);transition:all .12s}
 .ws-item:hover{background:var(--sidebar-hover);color:var(--ink)}
-.ws-item.active{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.ws-item.active{background:var(--accent-soft);color:var(--accent-ink);font-weight:600;box-shadow:inset 3px 0 0 var(--accent)}
 .ws-dot{width:8px;min-width:8px;height:8px;border-radius:50%}
 .ws-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #sidebar-user{margin-top:auto;padding:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
@@ -203,14 +205,14 @@ a{color:var(--accent-ink);text-decoration:none}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
 
 /* ---------- shared components ---------- */
-.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:8px;font-weight:600;font-size:13.5px;transition:filter .12s;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border-radius:99px;font-weight:600;font-size:13.5px;transition:filter .12s;white-space:nowrap}
 .btn:hover{filter:brightness(.96)}
-.btn-primary{background:var(--btn-ink);color:var(--btn-on)}
-.btn-primary:hover{background:var(--btn-ink-h);filter:none}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-ink);filter:none}
 .btn-ghost{background:var(--panel);border:1px solid var(--line);color:var(--ink)}
 .btn-danger{background:var(--red);color:#fff}
 .btn-green{background:var(--green);color:#fff}
-.btn-sm{padding:5px 11px;font-size:12.5px;border-radius:7px}
+.btn-sm{padding:5px 11px;font-size:12.5px;border-radius:99px}
 .btn:disabled{opacity:.55;cursor:default}
 .chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
 .avatar{width:28px;height:28px;min-width:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;letter-spacing:.3px}
@@ -238,8 +240,8 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
    scrolled away after ~20 rows. Bounding the wrap gives it one. A short group simply renders
    short — max-height does not force the box open. */
 .tv-wrap{overflow:auto;max-height:calc(100vh - 232px);background:var(--panel);border:1px solid var(--line);border-radius:12px}
-table.tv{border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:100%}
-.tv th{white-space:nowrap;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink3);font-weight:700;padding:9px 14px;border-bottom:1px solid var(--line);background:var(--panel-2);position:sticky;top:0;z-index:2}
+table.tv{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%;font-variant-numeric:tabular-nums}
+.tv th{white-space:nowrap;text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);font-weight:700;padding:7px 12px;border-bottom:1px solid var(--line-2);background:var(--panel);position:sticky;top:0;z-index:2}
 .tv th.col-edit{cursor:pointer}
 .tv th.col-edit:hover{color:var(--accent)}
 /* Column header menu (Rename · Sort). The ⋯ shows on hover; a sorted column keeps its arrow. */
@@ -282,19 +284,31 @@ table.tv{border-collapse:separate;border-spacing:0;font-size:13.5px;min-width:10
 .tv tbody tr:first-child td{border-top:none}
 .tv tbody tr:hover td{background:var(--hover)}
 .tv td.tv-name{min-width:260px}
-.tv td input{width:100%;border:none;background:transparent;padding:11px 14px;font:inherit;color:var(--ink)}
+.tv td input{width:100%;border:none;background:transparent;padding:8px 12px;font:inherit;color:var(--ink)}
 .tv td input:focus{outline:2px solid var(--accent);outline-offset:-2px;background:var(--field);border-radius:6px}
-.tv td input[type=checkbox]{width:auto;margin:13px 14px;accent-color:var(--accent)}
-.tv td .tv-open{padding:11px 14px;cursor:pointer;font-weight:600;display:flex;align-items:center}
+.tv td input[type=checkbox]{width:auto;margin:10px 12px;accent-color:var(--accent)}
+.tv td .tv-open{padding:8px 12px;cursor:pointer;font-weight:600;display:flex;align-items:center;min-height:36px}
 .tv td .tv-open:hover{color:var(--accent)}
 .tv-addcol{padding:4px 10px;font-weight:700;color:var(--ink3);cursor:pointer;white-space:nowrap;border:1px dashed var(--line);border-radius:7px;font-size:11px;letter-spacing:.4px}
 .tv-addcol:hover{color:var(--accent);border-color:var(--accent)}
 
+/* board summary strip — the numbers before the rows */
+.bstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.bstat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 14px 9px;display:flex;flex-direction:column;gap:2px;min-width:0;cursor:pointer}
+.bstat:hover{border-color:var(--line-strong)}
+.bstat.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.bstat .l{font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--ink3)}
+.bstat b{font:600 20px/1.15 'Fraunces',Georgia,serif;letter-spacing:.2px;color:var(--ink)}
+.bstat .t{font-size:11.5px;font-weight:600;color:var(--ink3)}
+@media(max-width:700px){.bstats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* grouped table view (monday-style sections) */
-.tv-group{margin-bottom:22px}
-.tv-group-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.tv-group-head .bar{width:4px;height:18px;border-radius:2px}
-.tv-group-head h3{font-size:14.5px;font-weight:700}
+/* each group is a rounded card: colour on the left edge and a soft tint behind the title */
+.tv-group{margin-bottom:16px;background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--gc,var(--mark));border-radius:18px;overflow:hidden}
+.tv-group-head{display:flex;align-items:center;gap:10px;padding:9px 14px;background:color-mix(in srgb,var(--gc,var(--mark)) 10%,var(--panel));border-bottom:1px solid var(--line-2)}
+.tv-group-head .bar{display:none}
+.tv-group-head h3{font-size:13.5px;font-weight:700;cursor:pointer}
+.tv-group .tv-wrap{border:0;border-radius:0;max-height:none}
+.tv-group.collapsed .tv-group-head{border-bottom:0}
 .tv-group-head .cnt{font-size:12px;color:var(--ink3);font-weight:600}
 .tv-group-head .g-edit{font-size:12px;color:var(--ink3);cursor:pointer;font-weight:600;opacity:0;transition:opacity .12s}
 .tv-group-head:hover .g-edit{opacity:1}
@@ -375,8 +389,8 @@ tr.tv-arch .tv-name .tv-open{text-decoration:line-through}
 .np-empty{padding:34px 26px;text-align:center;color:var(--ink3);font-size:12.5px;line-height:1.6}
 /* ---- per-board filter bar ---- */
 .bfbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.bfbar .bf-q{width:220px;padding:7px 11px;font-size:13px;border:1px solid var(--line);border-radius:8px;background:var(--field)}
-.bfbar .bf-sel{padding:7px 10px;font-size:12.5px;font-weight:600;border:1px solid var(--line);border-radius:8px;background:var(--field);color:var(--ink2);cursor:pointer;width:auto}
+.bfbar .bf-q{width:220px;padding:6px 12px;font-size:13px;border:1px solid var(--line);border-radius:99px;background:var(--field)}
+.bfbar .bf-sel{padding:6px 11px;font-size:12.5px;font-weight:600;border:1px solid var(--line);border-radius:99px;background:var(--field);color:var(--ink2);cursor:pointer;width:auto}
 .bfbar .bf-sel:hover{border-color:var(--ink3)}
 .bfbar .bf-sel.on,.bfbar .bf-q.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
 .bfbar .bf-clear{font-size:12px;font-weight:700;color:var(--accent);padding:6px 9px;border-radius:8px}
@@ -505,13 +519,18 @@ td.tv-name .tv-open{padding-left:20px}
 .ws-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .danger-note{background:var(--red-soft);border:1px solid var(--red);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px;color:var(--red)}
 .tv .subchip{font-size:11.5px;font-weight:700;color:var(--ink3);background:var(--gray-soft);border-radius:6px;padding:2px 7px;margin-left:8px;white-space:nowrap}
-.tv-pickv{padding:8px 14px;cursor:pointer;white-space:nowrap;font-size:13px;min-height:40px;display:flex;align-items:center;gap:8px}
+.tv-pickv{padding:6px 12px;cursor:pointer;white-space:nowrap;font-size:13px;min-height:36px;display:flex;align-items:center;gap:8px}
 .tv-pickv:hover{box-shadow:inset 0 0 0 1px var(--line);border-radius:8px}
-.tv-pickv.fillcell{padding:0;border-radius:0}
-.tv-pickv.fillcell:hover{box-shadow:inset 0 0 0 2px rgba(255,255,255,.55);border-radius:0}
+.tv-pickv.fillcell{padding:0 8px;justify-content:center}
+.tv-pickv.fillcell:hover{box-shadow:inset 0 0 0 1px var(--line);border-radius:8px}
 .tv-empty{color:var(--ink3);font-weight:600}
-.tv-fill{display:flex;align-items:center;justify-content:center;width:100%;min-height:40px;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.2px;text-align:center}
-.tv-fill-empty{background:var(--gray-soft);color:var(--ink2)}
+/* Status / priority / platform / brand cells are pills of one width, so a column reads as
+   one straight stripe (soft tint + coloured text + dot, not a solid block). */
+.tv-fill{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;max-width:118px;min-height:0;padding:4px 10px;border-radius:99px;font-weight:700;font-size:12px;letter-spacing:.1px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-fill .cdot{width:7px;height:7px;border-radius:50%;flex:none}
+.tv-fill-empty{background:var(--gray-soft);color:var(--ink3)}
+.tv td .tv-chip{width:100%;max-width:118px;justify-content:center;overflow:hidden;text-overflow:ellipsis}
+.tv td .tv-pickv:has(>.tv-chip){justify-content:center;padding:0 8px}
 /* assignee avatar stack — overlapping heads, +N when more than the cap */
 .asg-stack{display:inline-flex;align-items:center;cursor:pointer}
 .asg-stack>*+*{margin-left:-7px}
@@ -522,7 +541,7 @@ td.tv-name .tv-open{padding-left:20px}
 .asg-add{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:99px;border:1.5px dashed var(--line-strong);color:var(--ink3);font-size:13px;line-height:1}
 .asg-edit:hover .asg-add{border-color:var(--accent);color:var(--accent)}
 #tvmenu .opt.multi .mbox{margin-right:2px}
-.tv-fill.mini{min-height:0;padding:7px 10px;border-radius:7px;width:100%}
+.tv-fill.mini{max-width:none}
 .tv td.tv-check,.tv th.tv-check{min-width:38px;width:38px;text-align:center}
 /* Freeze the checkbox + Task columns. The board is ~1000px wider than the viewport on a
    laptop; without this you scroll right to reach a column and lose which row you are on. */
@@ -536,7 +555,7 @@ td.tv-name .tv-open{padding-left:20px}
 .tv tbody tr.rowsel td{background:var(--accent-soft)}
 .tv tr.tv-row td:first-child{border-left:3px solid var(--gcol, transparent)}
 .tv-quickadd{border-top:1px solid var(--line-2)}
-.tv-quickadd input{width:100%;border:none;background:transparent;padding:11px 14px 11px 52px;font:inherit;color:var(--ink)}
+.tv-quickadd input{width:100%;border:none;background:transparent;padding:9px 14px 9px 44px;font:inherit;color:var(--ink);font-size:12.5px}
 .tv-quickadd input::placeholder{color:var(--ink3);font-weight:600}
 .tv-quickadd input:focus{outline:none;background:var(--hover)}
 #tvbulk{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:350;background:var(--bar);color:var(--bar-ink);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.35);display:flex;align-items:center;gap:6px;padding:10px 14px;animation:pop .15s ease}
@@ -738,7 +757,7 @@ td.tv-name .tv-open{padding-left:20px}
 .task-modal .ic-val .tv-pickv:hover{box-shadow:none;background:var(--hover,var(--gray-soft))}
 .task-modal .ic-val .tv-pickv:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .task-modal .ic-val .tv-pickv.fillcell{padding:0}
-.task-modal .ic-val .tv-fill{min-height:36px}
+.task-modal .ic-val .tv-fill{max-width:none;width:auto}
 .task-modal .ic-val .tv-pickv input{border:0;background:none;padding:0;height:24px;font-size:13.5px}
 .task-modal .ic-val .tv-pickv input:focus{box-shadow:none}
 .task-modal .ic-val.ic-checkbox{border:0;background:none;min-height:0}
@@ -923,7 +942,7 @@ body.modal-open{overflow:hidden}
 .ihelp-pop b{color:var(--ink);font-weight:600}
 /* Ticket number tag - CS-260908-001 - in front of a task title. Monospace and quiet:
    it is a reference you read out, not the thing you scan the row for. */
-.tkt[role=button]{cursor:pointer}.tkt[role=button]:hover{background:var(--line);color:var(--ink)}.tkt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:-.2px;color:var(--ink3);background:var(--gray-soft);border-radius:5px;padding:1px 5px;margin-right:7px;white-space:nowrap;vertical-align:1px}
+.tkt[role=button]{cursor:pointer}.tkt[role=button]:hover{background:var(--line);color:var(--ink)}.tkt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:-.2px;color:var(--ink2);background:var(--gray-soft);border-radius:99px;padding:2px 8px;margin-right:7px;white-space:nowrap;vertical-align:1px}
 .tcard .tkt{font-size:10px;margin-right:0;margin-bottom:5px;display:block;width:fit-content}
 .modal-head .tkt{font-size:12px;vertical-align:2px}
 .tv-arch .tkt{opacity:.6}
@@ -3899,6 +3918,10 @@ const BF_QUICK = [
   {k:'overdue',    label:'Overdue',        test:t=> OPEN_STATES.has(t.status) && t.due_date && daysDiff(t.due_date)<0},
   {k:'new7',       label:'New this week',  test:t=> (t.created_at||'') >= daysAgoISO(7)},
   {k:'done7',      label:'Done this week', test:t=> t.status==='done' && (t.completed_at||'') >= daysAgoISO(7)},
+  // the summary tiles above the board set these; they are not offered as chips
+  {k:'open',       label:'Open',           tile:true, test:t=> OPEN_STATES.has(t.status)},
+  {k:'week',       label:'Due this week',  tile:true, test:t=> OPEN_STATES.has(t.status) && t.due_date && daysDiff(t.due_date)>=0 && daysDiff(t.due_date)<=7},
+  {k:'donemonth',  label:'Done this month',tile:true, test:t=> t.status==='done' && (t.completed_at||t.updated_at||'').slice(0,7)===new Date().toISOString().slice(0,7)},
 ];
 /* The Overdue chip is a due-date idea; a board that has switched Due date off does not get it. */
 const bfQuickOffered = (pid, x) => !(x.k==='overdue' && coreHidden(pid,'due_date'));
@@ -3908,6 +3931,7 @@ const bfGet = pid => (boardFilters[pid] || (boardFilters[pid] = {q:'', status:''
 function bfActiveCount(pid){ const f=bfGet(pid); return ['q','status','priority','assignee','group','quick'].filter(k=>f[k]).length + Object.keys(f.cols||{}).length; }
 function bfSet(pid, key, val){ bfGet(pid)[key] = val; renderBoardBody(pid); }
 function bfQuick(pid, k){ const f=bfGet(pid); f.quick = (f.quick===k)? '' : k; bfQuickSave(pid, f.quick); renderProject(pid); }
+function boardStatsRepaint(pid){ const old=document.querySelector('.bstats'); if(!old) return; const t=document.createElement('template'); t.innerHTML=boardStatsHTML(pid).trim(); if(t.content.firstChild) old.replaceWith(t.content.firstChild); else old.remove(); }
 function bfClear(pid){ boardFilters[pid] = {q:'', status:'', priority:'', assignee:'', group:'', quick:'', cols:{}}; bfQuickSave(pid,''); renderProject(pid); }
 function bfApply(pid, rows){
   const f = bfGet(pid);
@@ -4150,8 +4174,31 @@ function renderBoardChrome(pid){
   const C=$('#content'); if(!C) return;
   if(boardMode==='report'){ C.innerHTML = viewTabsHTML(pid) + '<div id="board-body"></div>'; renderBoardReport(pid); return; }
   widgetProjScope = null;
-  C.innerHTML = viewTabsHTML(pid) + presetNoticeHTML(pid) + filterBarHTML(pid) + '<div id="board-body"></div>';
+  C.innerHTML = viewTabsHTML(pid) + presetNoticeHTML(pid) + boardStatsHTML(pid) + filterBarHTML(pid) + '<div id="board-body"></div>';
   renderBoardBody(pid);
+}
+/* Open / Overdue / Due this week / Done this month — the numbers before the rows. Each tile is a
+   quick filter: clicking one sets the matching chip (and clicking it again clears it). */
+function boardStatsHTML(pid){
+  const all = (S._tasksAll||S._tasks||[]).filter(t=>!t.archived_at);
+  if(!all.length) return '';
+  const me = (S.me||{}).id, today = new Date(); today.setHours(0,0,0,0);
+  const day = d=>{ const x=new Date(d+'T00:00:00'); return Math.round((x-today)/86400000); };
+  const open = all.filter(t=>OPEN_STATES.has(t.status));
+  const mine = open.filter(t=>isAssignee(t,me)).length;
+  const over = open.filter(t=>t.due_date && day(t.due_date)<0);
+  const oldest = over.length? Math.max(...over.map(t=>-day(t.due_date))) : 0;
+  const week = open.filter(t=>t.due_date && day(t.due_date)>=0 && day(t.due_date)<=7);
+  const ym = today.toISOString().slice(0,7);
+  const done = all.filter(t=>t.status==='done' && ((t.completed_at||t.updated_at||'').slice(0,7)===ym)).length;
+  const f = bfGet(pid).quick||'';
+  const tile = (k,l,n,t,col)=>`<div class="bstat ${f===k?'on':''}" role="button" tabindex="0" onclick="bfQuick('${pid}','${k}')" onkeydown="kbActivate(event)"><span class="l">${l}</span><b ${col?`style="color:${col}"`:''}>${n}</b><span class="t" ${col?`style="color:${col}"`:''}>${t}</span></div>`;
+  return `<div class="bstats">
+    ${tile('open','Open',open.length, mine? mine+' mine':'none mine')}
+    ${tile('overdue','Overdue',over.length, over.length? 'oldest '+oldest+' day'+(oldest===1?'':'s'):'nothing late', over.length? 'var(--st-blocked-ink)':'')}
+    ${tile('week','Due this week',week.length, week.filter(t=>t.status==='review').length+' in review', week.length? 'var(--st-review-ink)':'')}
+    ${tile('donemonth','Done this month',done,'', 'var(--st-done-ink)')}
+  </div>`;
 }
 function filterBarHTML(pid){
   const f = bfGet(pid), n = bfActiveCount(pid);
@@ -4159,7 +4206,7 @@ function filterBarHTML(pid){
   const sel = (key, label, opts) => `<select class="bf-sel ${f[key]?'on':''}" onchange="bfSet('${pid}','${key}',this.value)">
       <option value="">${label}</option>
       ${opts.map(o=>`<option value="${o.v}" ${f[key]===o.v?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`;
-  const quick = BF_QUICK.filter(x=>bfQuickOffered(pid,x)).map(x=>`<button class="bf-chip ${f.quick===x.k?'on':''}" onclick="bfQuick('${pid}','${x.k}')">${x.label}</button>`).join('');
+  const quick = BF_QUICK.filter(x=>!x.tile && bfQuickOffered(pid,x)).map(x=>`<button class="bf-chip ${f.quick===x.k?'on':''}" onclick="bfQuick('${pid}','${x.k}')">${x.label}</button>`).join('');
   return `<div class="bfbar bf-quickbar">${quick}</div><div class="bfbar">
     <input class="bf-q ${f.q?'on':''}" placeholder="Search tasks…" value="${esc(f.q)}" oninput="bfSet('${pid}','q',this.value)">
     ${sel('status','Status', STATUSES.map(s=>({v:s.k,l:s.label})))}
@@ -4345,6 +4392,7 @@ function renderBoardBody(id){
   S._lastRowSet = rows;               // what the view is actually showing — exports read this
   const cnt = $('#bf-count');
   if(cnt) cnt.textContent = bfActiveCount(id)? `${rows.length} of ${(S._tasks||[]).length} tasks` : '';
+  boardStatsRepaint(id);
   // keep the select/search states in sync without rebuilding the bar
   if(boardMode==='table'){ renderProjectTableView(id, rows, host); return; }
   if(boardMode==='workload'){ renderWorkload(id, rows, host); return; }
@@ -4753,8 +4801,8 @@ function tvDisplay(kind, val, t){
     if(kind==='status'||kind==='priority') return `<span class="tv-fill tv-fill-empty">—</span>`;
     return `<span class="tv-empty">—</span>`;
   }
-  if(kind==='status'){ const s=STATUSES.find(x=>x.k===val); return s? `<span class="tv-fill" style="background:${s.color}">${esc(s.label)}</span>` : esc(val); }
-  if(kind==='priority'){ const p=PRIORITIES.find(x=>x.k===val); return p? `<span class="tv-fill" style="background:${p.fill||p.color};color:${p.fillInk||'#fff'}">${esc(p.label)}</span>` : esc(val); }
+  if(kind==='status'){ const s=STATUSES.find(x=>x.k===val); return s? `<span class="tv-fill" style="background:${s.color.replace(/\)$/,'-soft)')};color:${s.color.replace(/\)$/,'-ink)')}"><i class="cdot" style="background:${s.color}"></i>${esc(s.label)}</span>` : esc(val); }
+  if(kind==='priority'){ const p=PRIORITIES.find(x=>x.k===val); return p? `<span class="tv-fill" style="background:${p.soft};color:${p.color}"><i class="cdot" style="background:${p.color}"></i>${esc(p.label)}</span>` : esc(val); }
   if(kind==='people'){ const p=prof(val); return p? `${avatar(p,true)}<span>${esc(p.full_name)}</span>` : `<span class="tv-empty">—</span>`; }
   if(kind==='due') return dueBadge(val, t?.status==='done') || esc(tvFmtDate(val));
   if(kind==='date') return esc(tvFmtDate(val));
@@ -5879,7 +5927,7 @@ function renderProjectTableView(id, rowSet, host){
   C.innerHTML = sortBar + groups.map((g,i)=>{
     const rows = SRC.filter(t=>t.group_id===g.id).sort(byPos);
     const closed = tvCollapsed.has(g.id);
-    return `<div class="tv-group ${closed?'collapsed':''}" id="tvg-${g.id}">
+    return `<div class="tv-group ${closed?'collapsed':''}" id="tvg-${g.id}" style="--gc:${g.color}">
       <div class="tv-group-head"><span class="caret" onclick="tvToggleGroup('${g.id}')">${closed?'▸':'▾'}</span><span class="bar" style="background:${g.color}"></span>
         <h3 style="color:${g.color}" onclick="tvToggleGroup('${g.id}')">${esc(g.name)}</h3><span class="cnt">${rows.length} task${rows.length===1?'':'s'}</span>
         ${canManageBoard(id)? `<span class="g-edit" onclick="editGroupModal('${g.id}','${id}')">Edit</span>`:''}
