@@ -1657,6 +1657,17 @@ function tvFmtDate(v){
 function tvChip(label, color){
   return `<span class="tv-chip" style="background:${color}1C;color:${color}"><span class="cdot" style="background:${color}"></span>${esc(label)}</span>`;
 }
+/* A dropdown or brand value always gets the same colour: a known marketplace name takes that
+   platform's colour, anything else hashes to one of the ten label tints. */
+const PF_ALIAS = {shopee:'Shopee', lazada:'Lazada', laz:'Lazada', shp:'Shopee', tiktok:'TikTok Shop', 'tiktok shop':'TikTok Shop', tt:'TikTok Shop', shopify:'Shopify', amazon:'Amazon'};
+function labelChip(val){
+  const key = String(val).trim().toLowerCase();
+  const pf = PF_ALIAS[key] && PLATFORMS.find(x=>x.k===PF_ALIAS[key]);
+  if(pf) return tvChip(val, pf.color);
+  let h = 0; for(const ch of key) h = (h*31 + ch.charCodeAt(0)) >>> 0;
+  const i = h % 10;
+  return `<span class="tv-chip" title="${esc(val)}" style="background:var(--lab-${i}-s);color:var(--lab-${i})"><span class="cdot" style="background:var(--lab-${i})"></span><span>${esc(val)}</span></span>`;
+}
 function tvDisplay(kind, val, t){
   if(kind==='assignees') return assigneeAvatars(t || {assignee_ids:val});
   if(val===undefined||val===null||val===''){
@@ -1676,7 +1687,7 @@ function tvDisplay(kind, val, t){
   if(kind==='platform'){ const p=PLATFORMS.find(x=>x.k===val); const c=p?p.color:'#8E93A8'; return `<span class="tv-chip" style="background:${c}1C;color:${c}"><span class="cdot" style="background:${c}"></span>${esc(val)}</span>`; }
   if(kind==='file'){ if(!val||!val.path) return `<span class="tv-empty">—</span>`;
     return `<a class="tv-link tv-filechip" href="#" data-sign="${esc(val.path)}" target="_blank" rel="noopener" title="${esc(val.name||'file')}" onclick="event.stopPropagation()">📎 ${esc((val.name||'file').length>18?(val.name.slice(0,17)+'…'):val.name)}</a>`; }
-  if(kind==='brand'||kind.startsWith('f_')) return `<span class="tv-chip" style="background:var(--gray-soft);color:var(--ink)">${esc(val)}</span>`;
+  if(kind==='brand'||kind.startsWith('f_')) return labelChip(val);
   return esc(val);
 }
 function tvPickHTML(kind, tid, field, isCustom, val, t){
