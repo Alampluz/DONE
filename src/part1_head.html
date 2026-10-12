@@ -553,7 +553,8 @@ td.tv-name .tv-open{padding-left:20px}
 .tv td.tv-name,.tv th.tv-name{box-shadow:1px 0 0 var(--line)}
 .tv td.tv-check input,.tv th.tv-check input{width:auto;margin:0;accent-color:var(--accent);cursor:pointer}
 .tv tbody tr.rowsel td{background:var(--accent-soft)}
-.tv tr.tv-row td:first-child{border-left:3px solid var(--gcol, transparent)}
+/* the group card already carries the colour on its left edge, so rows no longer repeat it */
+.tv tr.tv-row td:first-child{border-left:0}
 .tv-quickadd{border-top:1px solid var(--line-2)}
 .tv-quickadd input{width:100%;border:none;background:transparent;padding:9px 14px 9px 44px;font:inherit;color:var(--ink);font-size:12.5px}
 .tv-quickadd input::placeholder{color:var(--ink3);font-weight:600}
