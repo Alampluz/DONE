@@ -120,7 +120,11 @@ a{color:var(--accent-ink);text-decoration:none}
 
 /* ---------- layout ---------- */
 #app{display:flex;height:100vh;overflow:hidden}
-#sidebar{width:248px;min-width:248px;background:var(--sidebar);color:var(--sidebar-ink);display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid var(--line)}
+#sidebar{width:248px;min-width:248px;background:var(--sidebar);color:var(--sidebar-ink);display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid var(--line);position:relative}
+/* « in the sidebar corner and the ☰ in the topbar both hide/show it on desktop */
+.nav-collapse{position:absolute;top:14px;right:10px;width:26px;height:26px;border-radius:7px;color:var(--ink3);font-size:15px;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+.nav-collapse:hover{background:var(--sidebar-hover);color:var(--ink)}
+@media(min-width:701px){ body.nav-collapsed #sidebar{display:none} }
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden}
 #topbar{height:58px;min-height:58px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 22px}
 #content{flex:1;overflow-y:auto;padding:24px 28px}
@@ -508,6 +512,16 @@ td.tv-name .tv-open{padding-left:20px}
 .tv-empty{color:var(--ink3);font-weight:600}
 .tv-fill{display:flex;align-items:center;justify-content:center;width:100%;min-height:40px;color:#fff;font-weight:700;font-size:12.5px;letter-spacing:.2px;text-align:center}
 .tv-fill-empty{background:var(--gray-soft);color:var(--ink2)}
+/* assignee avatar stack — overlapping heads, +N when more than the cap */
+.asg-stack{display:inline-flex;align-items:center;cursor:pointer}
+.asg-stack>*+*{margin-left:-7px}
+.asg-stack .avatar{box-shadow:0 0 0 2px var(--panel)}
+.asg-more{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 5px;border-radius:99px;background:var(--gray-soft);color:var(--ink2);font-size:11px;font-weight:700;margin-left:-4px}
+.asg-edit{display:inline-flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px}
+.asg-edit:hover{background:var(--hover)}
+.asg-add{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:99px;border:1.5px dashed var(--line-strong);color:var(--ink3);font-size:13px;line-height:1}
+.asg-edit:hover .asg-add{border-color:var(--accent);color:var(--accent)}
+#tvmenu .opt.multi .mbox{margin-right:2px}
 .tv-fill.mini{min-height:0;padding:7px 10px;border-radius:7px;width:100%}
 .tv td.tv-check,.tv th.tv-check{min-width:38px;width:38px;text-align:center}
 /* Freeze the checkbox + Task columns. The board is ~1000px wider than the viewport on a
@@ -979,6 +993,7 @@ body.modal-open{overflow:hidden}
 .col{background:var(--gray-soft);border-radius:14px;min-width:272px;width:272px;display:flex;flex-direction:column;max-height:calc(100vh - 190px)}
 .col-head{display:flex;align-items:center;gap:8px;padding:12px 14px 8px;font-weight:700;font-size:13px}
 .col-head .dot{width:8px;height:8px;border-radius:50%}
+.col-head{border-radius:14px 14px 0 0;color:#fff;margin-bottom:8px;padding-bottom:12px}.col-head .count{color:#fff;opacity:.85}.kb-cmt{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--ink3)}.kb-cmt:empty{display:none}
 .col-head .count{margin-left:auto;color:var(--ink3);font-size:12px;font-weight:600}
 .col-body{padding:4px 8px 8px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:60px}
 .col-body.dragover{background:rgba(91,91,214,.07);border-radius:10px}
@@ -1047,13 +1062,13 @@ body.modal-open{overflow:hidden}
    The sidebar used to be display:none below 700px with nothing in its place, which left
    a phone user stranded on My Work with no route to anything and no way to sign out.
    It is now an off-canvas drawer opened by #navburger in the topbar. */
-#navburger{display:none;align-items:center;justify-content:center;width:38px;height:38px;
+#navburger{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
   margin-left:-6px;border-radius:9px;color:var(--ink2);flex:none}
 #navburger:hover{background:var(--gray-soft);color:var(--ink)}
 #navscrim{display:none;position:fixed;inset:0;background:rgba(15,16,26,.42);z-index:150}
 @media(max-width:700px){
   .field-grid{grid-template-columns:1fr}
-  #navburger{display:inline-flex}
+  .nav-collapse{display:none}
   #topbar{padding:0 14px;gap:8px}
   #content{padding:16px 14px}
   #sidebar{position:fixed;inset:0 auto 0 0;z-index:160;width:min(84vw,288px);min-width:0;
@@ -1129,6 +1144,7 @@ body.modal-open{overflow:hidden}
   <div id="navscrim" onclick="navClose()"></div>
   <nav id="sidebar" aria-label="Main">
     <div class="logo"><img class="logo-img" src="data:image/png;base64,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" alt="DONE"><span id="logo-co" class="logo-co">Operations</span></div>
+    <button type="button" class="nav-collapse" aria-label="Hide sidebar" aria-expanded="true" title="Hide sidebar" onclick="navToggle()">«</button>
     <div id="nav-main"></div>
     <div id="ws-section-title"></div>
     <div id="nav-ws"></div>
@@ -1272,7 +1288,7 @@ function canEditTask(t){
   if(presetExempt(t.project_id)) return true;
   const pr = boardPreset(t.project_id);
   if(pr==='everything') return true;
-  if(pr==='assigned') return t.assignee_id===S.me.id || t.created_by===S.me.id;
+  if(pr==='assigned') return isAssignee(t,S.me.id) || t.created_by===S.me.id;
   return false;
 }
 /* What a restricted member sees at the top of the board, or '' when unrestricted. */
@@ -1383,6 +1399,22 @@ function avatarStack(ids, cap=3){
     + shown.map(id=>`<span style="margin-left:-6px">${avatar(prof(id),true)}</span>`).join('')
     + (extra>0? `<span class="chip" style="margin-left:4px;background:var(--gray-soft);color:var(--ink2)">+${extra}</span>`:'')
     + (ids.length? '' : `<span style="color:var(--ink3);font-size:12.5px">none</span>`) + `</span>`;
+}
+/* Multi-assignee. tasks.assignee_ids is the list; assignee_id mirrors its first entry (a DB
+   trigger keeps the two in step whichever one a writer touches), so older queries still work. */
+function taskAssignees(t){
+  if(!t) return [];
+  const a = Array.isArray(t.assignee_ids)? t.assignee_ids.filter(Boolean) : [];
+  return a.length? a : (t.assignee_id? [t.assignee_id] : []);
+}
+function isAssignee(t, uid){ return !!uid && taskAssignees(t).includes(uid); }
+function assigneeNames(t){ return taskAssignees(t).map(id=>(prof(id)||{}).full_name||'').filter(Boolean).join(', '); }
+/* Avatars only — names sit in the tooltip and in the picker that opens on click. */
+function assigneeAvatars(t, cap=3){
+  const ids = taskAssignees(t);
+  if(!ids.length) return `<span class="tv-empty">—</span>`;
+  const shown = ids.slice(0,cap), extra = ids.length-shown.length;
+  return `<span class="asg-stack" title="${esc(assigneeNames(t))}">${shown.map(id=>avatar(prof(id),true)).join('')}${extra>0? `<span class="asg-more">+${extra}</span>`:''}</span>`;
 }
 /* Ownership is a list now and is edited by the crowns in Board members /
    Members of <workspace>, not by a picker in the edit dialog. */
@@ -1685,6 +1717,25 @@ let _ctxItems = [];
    these are only for showing it and for typing it into a filter box. A board with no key
    has unnumbered tasks, which is why every one of these tolerates a blank. */
 const ticketNo = t => (t && t.ticket_no) || '';
+/* Readable links. A board is #/b/BD (its ticket key) or #/b/business-development (its name)
+   when that is unique, else the uuid form; a task is #/t/BD-260830-021. */
+const slugify = s => (s||'').toString().toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-+|-+$/g,'');
+function boardHash(p){
+  p = (p && typeof p==='object')? p : projById(p);
+  if(!p) return '#/home';
+  const live = (S.projects||[]).filter(x=>!x.archived_at);
+  if(p.key && live.filter(x=>(x.key||'').toLowerCase()===p.key.toLowerCase()).length===1) return '#/b/'+encodeURIComponent(p.key);
+  const sl = slugify(p.name);
+  if(sl && live.filter(x=>slugify(x.name)===sl).length===1) return '#/b/'+encodeURIComponent(sl);
+  return '#/project/'+p.id;
+}
+function boardFromSlug(s){
+  s = decodeURIComponent(s||'').toLowerCase(); if(!s) return null;
+  const all = S.projects||[];
+  return all.find(x=>x.id===s) || all.find(x=>(x.key||'').toLowerCase()===s && !x.archived_at) || all.find(x=>(x.key||'').toLowerCase()===s)
+      || all.find(x=>slugify(x.name)===s && !x.archived_at) || all.find(x=>slugify(x.name)===s) || null;
+}
+const taskHash = t => (t && t.ticket_no)? '#/t/'+encodeURIComponent(t.ticket_no) : '#/task/'+((t&&t.id)||t);
 /* The grey monospace tag used in front of a task title, wherever a title is shown. */
 function ticketTag(t, cls){
   const n = ticketNo(t); if(!n) return '';
@@ -1735,7 +1786,7 @@ async function forIdChunks(ids, fn){
    Every write that can fire a rule calls this: re-read the rows, patch the cache with what
    the server actually holds, and hand back the changes we did not ask for so the caller can
    redraw and say so out loud. */
-const AUTO_ECHO = ['group_id','status','priority','assignee_id','due_date','archived_at'];
+const AUTO_ECHO = ['group_id','status','priority','assignee_id','assignee_ids','due_date','archived_at'];
 async function echoAutomation(ids, sent){
   ids = [].concat(ids).filter(Boolean); if(!ids.length) return [];
   let data=[];
@@ -1768,6 +1819,7 @@ function automationToast(changed){
     status:    ()=> 'set the status to '+statusLabel(c.value),
     priority:  ()=> 'set the priority to '+prioLabel(c.value),
     assignee_id:()=> c.value? 'assigned it to '+(prof(c.value)||{}).full_name : 'cleared the assignee',
+    assignee_ids:()=> (c.value||[]).length? 'assigned it to '+c.value.map(id=>(prof(id)||{}).full_name).join(', ') : 'cleared the assignees',
     due_date:  ()=> c.value? 'set the due date to '+fmtDate(c.value) : 'cleared the due date',
     archived_at:()=> c.value? 'archived it' : 'restored it',
   }[c.field];
@@ -2184,7 +2236,11 @@ function navigate(hash){
   if(location.hash !== hash) { location.hash = hash; return; }
   closeModals();
   const parts = hash.replace(/^#\//,'').split('/');
-  const view = parts[0]||'home';
+  let view = parts[0]||'home';
+  /* Short links: #/b/<board key or name> and #/t/<ticket no>. They resolve to the same
+     renderers as #/project/<uuid> and #/task/<uuid>, which still work. */
+  if(view==='b'){ const p = boardFromSlug(parts[1]); if(!p){ toast('Board not found', true); location.hash='#/home'; return; } view='project'; parts[1]=p.id; }
+  else if(view==='t'){ view='task'; parts[1]=decodeURIComponent(parts[1]||''); }
   S.route = {view, id:parts[1], tab:parts[2]};
   /* Every navigation bumps this. An async renderer captures it on entry and refuses to paint
      #content once it has changed, so a slow view cannot land on top of the one you clicked.
@@ -2225,7 +2281,20 @@ function navClose(restore){
   if(b){ b.setAttribute('aria-expanded','false'); b.setAttribute('aria-label','Open navigation'); }
   if(restore!==false){ try{ b && b.focus({preventScroll:true}); }catch(e){} }
 }
-function navToggle(){ document.body.classList.contains('nav-open')? navClose() : navOpen(); }
+/* Above 700px the burger collapses the sidebar instead (remembered per browser), so a wide
+   table gets the full width back; below it the drawer logic above applies. */
+const NAV_COLLAPSE_KEY = 'workos.navcollapsed';
+function navCollapsed(){ return document.body.classList.contains('nav-collapsed'); }
+function navSetCollapsed(on){
+  document.body.classList.toggle('nav-collapsed', !!on);
+  try{ localStorage.setItem(NAV_COLLAPSE_KEY, on?'1':'0'); }catch(e){}
+  document.querySelectorAll('#navburger,.nav-collapse').forEach(b=>{ b.setAttribute('aria-expanded', on?'false':'true'); b.setAttribute('aria-label', on?'Show sidebar':'Hide sidebar'); });
+}
+try{ if(localStorage.getItem(NAV_COLLAPSE_KEY)==='1') document.body.classList.add('nav-collapsed'); }catch(e){}
+function navToggle(){
+  if(window.innerWidth > 700) return navSetCollapsed(!navCollapsed());
+  document.body.classList.contains('nav-open')? navClose() : navOpen();
+}
 /* Following a link inside the drawer should close it. */
 function navGo(){ navClose(false); }
 document.addEventListener('keydown', e=>{
@@ -2754,8 +2823,8 @@ function gsSync(scroll){
 function gsGo(i){
   const r = gsRows[i]; if(!r) return;
   closeModals();
-  if(r.k==='task')        location.hash = '#/task/' + r.id;
-  else if(r.k==='board')  location.hash = '#/project/' + r.id;
+  if(r.k==='task')        location.hash = taskHash({id:r.id, ticket_no:r.s});
+  else if(r.k==='board')  location.hash = boardHash(r.id);
   else if(r.k==='ws')     location.hash = '#/ws/' + r.id;
   else if(r.k==='person') profileModal(r.id);
 }
@@ -3039,7 +3108,7 @@ async function openNotif(id){
   await refreshNotifs();
   if(n.entity_type==='task') openTask(n.entity_id);
   else if(n.entity_type==='request') openRequest(n.entity_id);
-  else if(n.entity_type==='project') location.hash = '#/project/'+n.entity_id;
+  else if(n.entity_type==='project') location.hash = boardHash(n.entity_id);
 }
 
 /* ================= PUBLIC FORM (no login) ================= */
@@ -3100,12 +3169,12 @@ async function renderHome(){
   const C=$('#content');
   C.innerHTML = '<div class="empty">Loading…</div>';
   const [tks, reqs, apprs, cal] = await Promise.all([
-    allRows(()=>db.from('tasks').select('*').eq('assignee_id',S.me.id).neq('status','done').order('due_date',{ascending:true,nullsFirst:false}).order('id')),
+    allRows(()=>db.from('tasks').select('*').or(`assignee_id.eq.${S.me.id},assignee_ids.cs.{${S.me.id}}`).neq('status','done').order('due_date',{ascending:true,nullsFirst:false}).order('id')),
     db.from('requests').select('*').eq('submitted_by',S.me.id).not('status','in',"(done,cancelled)").order('created_at',{ascending:false}),
     db.from('approvals').select('*').eq('approver_id',S.me.id).eq('status','pending'),
     // My calendar: everything assigned to me that has a date, done included - a
     // finished task still happened on that day, and the grid greys it out.
-    allRows(()=>db.from('tasks').select('*').eq('assignee_id',S.me.id).is('archived_at',null).not('due_date','is',null).order('id')),
+    allRows(()=>db.from('tasks').select('*').or(`assignee_id.eq.${S.me.id},assignee_ids.cs.{${S.me.id}}`).is('archived_at',null).not('due_date','is',null).order('id')),
   ]);
   const tasks = tks.data||[], requests = reqs.data||[], approvals = apprs.data||[];
   S._myTasks = tasks;
@@ -3186,7 +3255,7 @@ function taskTable(tasks){
         <td style="color:var(--ink2)">${esc(p?p.name:'—')}</td>
         <td>${statusChip(t.status)}</td><td>${prioChip(t.priority)}</td>
         <td>${dueBadge(t.due_date, t.status==='done')||'<span style="color:var(--ink3)">—</span>'}</td>
-        <td>${avatar(prof(t.assignee_id), true)}</td></tr>`;
+        <td>${assigneeAvatars(t)}</td></tr>`;
     }).join('')}</tbody></table>`;
 }
 function requestTable(reqs){
@@ -3263,7 +3332,7 @@ async function renderWorkspace(id, tab){
     C.querySelector('#ws-board-list').innerHTML=visible.map(p=>{
       const c=counts[p.id]||{open:0,done:0};
       const imported=/imported from|sample import|monday\.com|monday board/i.test(p.description||'');
-      return `<div class="ws-board-row"><a class="ws-board-link" href="#/project/${p.id}">
+      return `<div class="ws-board-row"><a class="ws-board-link" href="${boardHash(p)}">
         <span class="ws-dot" style="background:${esc(p.color||'var(--accent)')}"></span>
         <span class="ws-board-identity"><strong>${esc(p.name)}</strong>${p.description&&!imported? `<span>${esc(p.description)}</span>`:''}</span></a>
         <div class="ws-board-metrics"><span class="ws-board-open ${c.open?'has-work':''}">${c.open} open</span><span>${c.done} done</span></div>
@@ -3811,7 +3880,7 @@ function newProjectModal(wsId){
     if(tpl) await applyTemplate(data.id, tpl.spec||{});
     S.projects.push(data); closeModals(); toast('Board created');
     logActivity('project', data.id, 'created', {name});
-    location.hash = '#/project/'+data.id;
+    location.hash = boardHash(data);
   };
 }
 
@@ -3824,8 +3893,8 @@ const boardFilters = {};
 const OPEN_STATES = new Set(['todo','in_progress','review','blocked']);
 const daysAgoISO = n => { const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString(); };
 const BF_QUICK = [
-  {k:'mine',       label:'My open',        test:t=> OPEN_STATES.has(t.status) && t.assignee_id===(S.me||{}).id},
-  {k:'unassigned', label:'Unassigned',     test:t=> OPEN_STATES.has(t.status) && !t.assignee_id},
+  {k:'mine',       label:'My open',        test:t=> OPEN_STATES.has(t.status) && isAssignee(t,(S.me||{}).id)},
+  {k:'unassigned', label:'Unassigned',     test:t=> OPEN_STATES.has(t.status) && !taskAssignees(t).length},
   {k:'urgent',     label:'Urgent open',    test:t=> OPEN_STATES.has(t.status) && t.priority==='urgent'},
   {k:'overdue',    label:'Overdue',        test:t=> OPEN_STATES.has(t.status) && t.due_date && daysDiff(t.due_date)<0},
   {k:'new7',       label:'New this week',  test:t=> (t.created_at||'') >= daysAgoISO(7)},
@@ -3850,7 +3919,7 @@ function bfApply(pid, rows){
           || (t.ticket_no||'').toLowerCase().includes(q))
     && (!f.status   || t.status===f.status)
     && (!f.priority || t.priority===f.priority)
-    && (!f.assignee || (f.assignee==='__none__' ? !t.assignee_id : t.assignee_id===f.assignee))
+    && (!f.assignee || (f.assignee==='__none__' ? !taskAssignees(t).length : isAssignee(t,f.assignee)))
     && (!f.group    || (f.group==='__none__' ? !t.group_id : t.group_id===f.group))
     && bfColsMatch(f, t)
   );
@@ -4097,9 +4166,9 @@ function filterBarHTML(pid){
     ${sel('priority','Priority', PRIORITIES.map(p=>({v:p.k,l:p.label})))}
     <button class="bf-sel ${f.assignee?'on':''}" onclick="bfPickPerson(this,'${pid}')">${f.assignee? esc(f.assignee==='__none__'?'Unassigned':(prof(f.assignee)?.full_name||'Person')) : 'Person'} ▾</button>
     ${(S._groups||[]).length? sel('group','Group', (S._groups||[]).map(g=>({v:g.id,l:g.name})).concat([{v:'__none__',l:'No group'}])) : ''}
+    ${boardMode==='board'? `<button class="bf-sel on" onclick="kbFieldsModal('${pid}')" title="Choose which details each card shows">⚙ Card fields</button>`:''}
     ${n? `<button class="bf-clear" onclick="bfClear('${pid}')">Clear ${n} filter${n>1?'s':''}</button>`:''}
     <span class="bf-count" id="bf-count"></span>
-    ${boardMode==='board'? `<button class="btn btn-ghost btn-sm" onclick="kbFieldsModal('${pid}')" title="Choose which details each card shows">Card fields</button>`:''}
     ${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="importExcel('${pid}')">Import Excel</button>
     <button class="btn btn-ghost btn-sm" onclick="exportBoardCSV('${pid}')">Export Excel</button>
     <button class="btn btn-ghost btn-sm" onclick="boardActivityModal('${pid}')">Activity</button>`:''}
@@ -4160,7 +4229,7 @@ function viewMenu(anchor, pid){
    colleagues (a notification + email each). There is deliberately NO public/no-login link — April
    removed that on 7 Sep and the `public_board` endpoint was dropped with it, so a board can only
    ever be read by someone signed in who has access to it. */
-const boardLink = pid => location.origin + location.pathname + '#/project/' + pid;
+const boardLink = pid => location.origin + location.pathname + boardHash(pid);
 async function copyText(t){ try{ await navigator.clipboard.writeText(t); toast('Link copied'); }catch(e){ toast('Copy failed — select the link and copy it', true); } }
 let _shareSel = new Set();
 /* Request forms whose submissions land on this board (request_types.default_project_id). */
@@ -4283,7 +4352,7 @@ function renderBoardBody(id){
   host.innerHTML = `<div class="board">${STATUSES.map(s=>{
     const list = rows.filter(t=>t.status===s.k);
     return `<div class="col" data-status="${s.k}">
-      <div class="col-head"><span class="dot" style="background:${s.color}"></span>${s.label}<span class="count">${list.length}</span></div>
+      <div class="col-head" style="background:${s.color}">${s.label}<span class="count">${list.length}</span></div>
       <div class="col-body" data-status="${s.k}">${list.slice(0,KB_CAP).map(taskCard).join('')}${list.length>KB_CAP? `<div class="kb-more">${(list.length-KB_CAP).toLocaleString()} more not drawn — use the Table view for the full list</div>`:''}</div>
       ${(canEditOnBoard(id) || isRequester() && boardPreset(id)!=='view')? `<button class="add-card" onclick="newTaskModal('${id}','${s.k}')">＋ Add task</button>`:''}
     </div>`;}).join('')}</div>`;
@@ -4297,9 +4366,12 @@ function renderWorkload(id, rows, host){
   const buckets = new Map();
   const bucket = key => { let b=buckets.get(key); if(!b){ b={key, counts:{}, open:0, total:0}; buckets.set(key,b); } return b; };
   (rows||[]).forEach(t=>{
-    const b = bucket(t.assignee_id||'__none__');
-    b.counts[t.status] = (b.counts[t.status]||0)+1;
-    b.total++; if(OPEN.has(t.status)) b.open++;
+    const who = taskAssignees(t);
+    (who.length? who : ['__none__']).forEach(id=>{
+      const b = bucket(id);
+      b.counts[t.status] = (b.counts[t.status]||0)+1;
+      b.total++; if(OPEN.has(t.status)) b.open++;
+    });
   });
   let list = [...buckets.values()];
   // real people first (by open desc), Unassigned always last
@@ -4522,8 +4594,29 @@ function renderWorkspaceCalendarBody(wsId){
    Personal, like sort: remembered in localStorage (workos.cardfields.<pid>) as an ordered list
    of keys. No saved list = the original card. Keys: ticket_no · priority · due_date · subtasks ·
    tags · assignee, and f:<field id> for any custom column (Brand, Platform, Number of SKUs…). */
-const KB_BUILTIN = [['ticket_no','Ticket ID'],['priority','Priority'],['due_date','Due date'],['subtasks','Subtask count'],['tags','Tags'],['assignee','Assignee']];
+const KB_BUILTIN = [['ticket_no','Ticket ID'],['priority','Priority'],['due_date','Due date'],['subtasks','Subtask count'],['comments','Comment count'],['tags','Tags'],['assignee','Assignee']];
 const KB_DEFAULT = KB_BUILTIN.map(x=>x[0]);
+/* With nothing saved, a card shows the board's first few custom columns (Brand, Platform…) after the
+   ticket ID, priority and due date, then the counts and the assignee. */
+function kbDefault(pid){
+  const f = (S._fields||[]).filter(x=>x.project_id===pid && !['link','mirror','file'].includes(x.ftype)).slice(0,4).map(x=>'f:'+x.id);
+  return ['ticket_no','priority','due_date'].concat(f, ['subtasks','comments','tags','assignee']);
+}
+/* Comment counts for the cards on screen: one small query per 100 cards, cached, painted into the cards. */
+const kbCmt = {};
+const KB_CMT_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.5A8 8 0 1 1 21 12z"/></svg>';
+function kbPaintCmt(){ document.querySelectorAll('.kb-cmt[data-cmt]').forEach(el=>{ const n=kbCmt[el.dataset.cmt]; el.innerHTML = n? KB_CMT_ICON+' '+n : ''; }); }
+async function kbLoadCmt(){
+  const ids = [...document.querySelectorAll('.kb-cmt[data-cmt]')].map(e=>e.dataset.cmt).filter(id=>!(id in kbCmt));
+  for(let i=0;i<ids.length;i+=100){
+    const part = ids.slice(i,i+100);
+    const {data, error} = await db.from('comments').select('entity_id').eq('entity_type','task').in('entity_id', part);
+    if(error) return;
+    part.forEach(id=>{ kbCmt[id]=0; });
+    (data||[]).forEach(r=>{ kbCmt[r.entity_id]=(kbCmt[r.entity_id]||0)+1; });
+  }
+  kbPaintCmt();
+}
 const kbFieldsLoad = pid => { try{ const v=JSON.parse(localStorage.getItem('workos.cardfields.'+pid)||'null'); return Array.isArray(v)? v : null; }catch(e){ return null; } };
 const kbFieldsSave = (pid, v) => { try{ v? localStorage.setItem('workos.cardfields.'+pid, JSON.stringify(v)) : localStorage.removeItem('workos.cardfields.'+pid); }catch(e){} };
 /* What a custom column reads as on a card — plain text, '' when empty (empty rows are skipped). */
@@ -4540,7 +4633,7 @@ function kbFieldText(t, f){
 }
 function taskCard(t){
   const done = t.status==='done';
-  const cfg = kbFieldsLoad(t.project_id) || KB_DEFAULT;
+  const cfg = kbFieldsLoad(t.project_id) || kbDefault(t.project_id);
   const flds = S._fields||[];
   const sc = (S._subs||{})[t.id];
   let tag='', rows='', chips='', who='';
@@ -4549,8 +4642,9 @@ function taskCard(t){
     else if(k==='priority') chips += prioChip(t.priority);
     else if(k==='due_date') chips += dueBadge(t.due_date, done);
     else if(k==='subtasks') chips += sc?.total? `<span class="subchip" style="font-size:11px;font-weight:700;color:var(--ink3);background:var(--gray-soft);border-radius:6px;padding:1px 6px">${sc.done}/${sc.total}</span>`:'';
+    else if(k==='comments') chips += `<span class="kb-cmt" data-cmt="${t.id}" title="Comments">${kbCmt[t.id]? KB_CMT_ICON+' '+kbCmt[t.id] : ''}</span>`;
     else if(k==='tags') chips += t.tags?.length? t.tags.slice(0,2).map(g=>`<span class="chip" style="background:var(--purple-soft);color:var(--purple)">${esc(g)}</span>`).join(''):'';
-    else if(k==='assignee') who = `<span style="margin-left:auto">${avatar(prof(t.assignee_id), true)}</span>`;
+    else if(k==='assignee') who = `<span style="margin-left:auto" data-asg="${t.id}">${assigneeAvatars(t)}</span>`;
     else if(k.startsWith('f:')){
       const f = flds.find(x=>x.id===k.slice(2)); if(!f) return;
       const txt = kbFieldText(t, f); if(!txt) return;
@@ -4565,7 +4659,7 @@ function kbFieldsModal(pid){
   const flds = (S._fields||[]).filter(f=>!['link','mirror','file'].includes(f.ftype));
   const all = KB_BUILTIN.map(([k,l])=>({k,l})).concat(flds.map(f=>({k:'f:'+f.id, l:f.label+' (column)'})));
   const known = new Set(all.map(x=>x.k));
-  const cur = (kbFieldsLoad(pid) || KB_DEFAULT).filter(k=>known.has(k));
+  const cur = (kbFieldsLoad(pid) || kbDefault(pid)).filter(k=>known.has(k));
   let order = cur.concat(all.map(x=>x.k).filter(k=>!cur.includes(k)));   // shown ones first, in their order
   const on = new Set(cur);
   const label = k => (all.find(x=>x.k===k)||{}).l || k;
@@ -4606,6 +4700,7 @@ function wireDnD(projectId){
 
     });
   });
+  kbLoadCmt();
 }
 /* KANBAN ONLY. Redraws the columns from S._tasks without refetching; the drag-drop handler
    uses it. It does not look at boardMode - calling it from the Table view (9 Sep) flipped the
@@ -4615,7 +4710,7 @@ function renderProjectFromCache(id){
   C.innerHTML = `<div class="board">${STATUSES.map(s=>{
     const list = S._tasks.filter(t=>t.status===s.k);
     return `<div class="col" data-status="${s.k}">
-      <div class="col-head"><span class="dot" style="background:${s.color}"></span>${s.label}<span class="count">${list.length}</span></div>
+      <div class="col-head" style="background:${s.color}">${s.label}<span class="count">${list.length}</span></div>
       <div class="col-body" data-status="${s.k}">${list.slice(0,KB_CAP).map(taskCard).join('')}${list.length>KB_CAP? `<div class="kb-more">${(list.length-KB_CAP).toLocaleString()} more not drawn — use the Table view for the full list</div>`:''}</div>
       <button class="add-card" onclick="newTaskModal('${id}','${s.k}')">＋ Add task</button>
     </div>`;}).join('')}</div>`;
@@ -4653,6 +4748,7 @@ function tvChip(label, color){
   return `<span class="tv-chip" style="background:${color}1C;color:${color}"><span class="cdot" style="background:${color}"></span>${esc(label)}</span>`;
 }
 function tvDisplay(kind, val, t){
+  if(kind==='assignees') return assigneeAvatars(t || {assignee_ids:val});
   if(val===undefined||val===null||val===''){
     if(kind==='status'||kind==='priority') return `<span class="tv-fill tv-fill-empty">—</span>`;
     return `<span class="tv-empty">—</span>`;
@@ -4734,6 +4830,18 @@ function tvEdit(el, ev){
     };
     return;
   }
+  // assignees: tick as many people as you like; each tick saves
+  if(kind==='assignees'){
+    tvPeopleMulti(el, taskAssignees(t), async ids=>{
+      const old = {ids:t.assignee_ids, id:t.assignee_id};
+      t.assignee_ids = ids; t.assignee_id = ids[0]||null;
+      const {error} = await db.from('tasks').update({assignee_ids:ids}).eq('id',tid);
+      if(error){ t.assignee_ids=old.ids; t.assignee_id=old.id; toast(error.message, true); }
+      el.innerHTML = tvDisplay('assignees', null, t);
+      document.querySelectorAll(`[data-asg="${tid}"]`).forEach(x=>{ x.innerHTML = assigneeAvatars(t, +x.dataset.cap||3); });
+    });
+    return;
+  }
   // popover menu for choice types — status/priority get minimal dot pills
   const opts = TVO[kind]||[];
   const renderOpt = o=>
@@ -4771,6 +4879,43 @@ function tvShowMenu(anchor, opts, renderOpt, onPick, withSearch, includeClear){
   }
   setTimeout(()=>document.addEventListener('mousedown', tvMenuOutside),0);
 }
+/* People multi-picker: checkbox rows, stays open while you tick, saves on every change.
+   `ids` is the current list; onChange gets the new list in tick order. */
+function tvPeopleMulti(anchor, ids, onChange){
+  tvCloseMenu();
+  let cur = [...ids];
+  const people = tvPeople().map(p=>({v:p.id,l:p.full_name}));
+  // people already on the task float to the top so a long list still shows who is on it
+  people.sort((a,b)=> (cur.includes(b.v)?1:0)-(cur.includes(a.v)?1:0));
+  const m = document.createElement('div'); m.id='tvmenu';
+  const row = o=>`<div class="opt multi ${cur.includes(o.v)?'on':''}" data-v="${esc(o.v)}"><span class="mbox">${cur.includes(o.v)?'✓':''}</span>${avatar(prof(o.v),true)}<span>${esc(o.l)}</span></div>`;
+  m.innerHTML = `<div class="search"><input placeholder="Search people…" aria-label="Search people"></div><div class="opts">${people.map(row).join('')}</div>
+    <div class="mfoot"><span class="mcnt">${cur.length} assigned</span><span class="clr">Clear all</span></div>`;
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+  const x = Math.min(r.left, window.innerWidth-mw-12);
+  const y = (r.bottom+mh+12 > window.innerHeight && r.top-mh-6 > 0)? r.top-mh-6 : r.bottom+4;
+  m.style.left=Math.max(8,x)+'px'; m.style.top=Math.max(8,y)+'px';
+  const paint = ()=>{
+    m.querySelectorAll('.opt').forEach(o=>{ const on=cur.includes(o.dataset.v); o.classList.toggle('on',on); o.querySelector('.mbox').textContent = on?'✓':''; });
+    m.querySelector('.mcnt').textContent = cur.length+' assigned';
+  };
+  m.querySelectorAll('.opt').forEach(o=>o.onmousedown=async e=>{
+    e.preventDefault(); const v=o.dataset.v;
+    cur = cur.includes(v)? cur.filter(x=>x!==v) : [...cur, v];
+    paint(); await onChange([...cur]);
+  });
+  m.querySelector('.clr').onmousedown = async e=>{ e.preventDefault(); if(!cur.length) return; cur=[]; paint(); await onChange([]); };
+  const si=m.querySelector('.search input'); si.focus();
+  si.oninput=()=>{ const q=si.value.toLowerCase(); m.querySelectorAll('.opt').forEach(o=>{ o.style.display = o.textContent.toLowerCase().includes(q)?'flex':'none'; }); };
+  setTimeout(()=>document.addEventListener('mousedown', tvMenuOutside),0);
+}
+/* Read-only stack: clicking lists who is on the task. */
+function tvPeoplePeek(anchor, t){
+  const ids = taskAssignees(t);
+  if(!ids.length) return;
+  tvShowMenu(anchor, ids.map(id=>({v:id,l:(prof(id)||{}).full_name||'—'})), o=>`${avatar(prof(o.v),true)}<span>${esc(o.l)}</span>`, ()=>{}, false, false);
+}
 /* ---- formula columns ----------------------------------------------------
    A small, safe expression language — no eval(). Supports numbers, "text",
    {Field} references (core + custom, by name), + - * / & comparisons, and
@@ -4784,7 +4929,7 @@ function fxEval(expr, t, depth=0){
       'name': t.title??'', 'title': t.title??'',
       'status': (STATUSES.find(x=>x.k===t.status)||{}).label||t.status||'',
       'priority': (PRIORITIES.find(x=>x.k===t.priority)||{}).label||t.priority||'',
-      'assignee': (prof(t.assignee_id)||{}).full_name||'',
+      'assignee': assigneeNames(t),
       'due date': t.due_date||'', 'due': t.due_date||'',
       'group': ((S._groups||[]).find(g=>g.id===t.group_id)||{}).name||'',
       'created': (t.created_at||'').slice(0,10),
@@ -4902,7 +5047,7 @@ async function loadLinkedData(tasks, fields){
   const idList = [...ids], chunks = [];
   for(let i=0; i<idList.length; i+=150) chunks.push(idList.slice(i, i+150));
   const [lts, lf] = await Promise.all([
-    Promise.all(chunks.map(c=> db.from('tasks').select('id,title,status,priority,assignee_id,due_date,group_id,project_id,custom').in('id',c))),
+    Promise.all(chunks.map(c=> db.from('tasks').select('id,title,status,priority,assignee_id,assignee_ids,due_date,group_id,project_id,custom').in('id',c))),
     targets.length? db.from('project_fields').select('id,label,ftype,options').in('project_id',targets) : Promise.resolve({data:[]}),
   ]);
   lts.forEach(lt=> (lt.data||[]).forEach(x=> S._linkedTasks[x.id]=x));
@@ -4915,7 +5060,7 @@ function tvLinkCell(t, f){
     return `<div class="tv-pickv ro">${tvDisplay('text', v, t)}</div>`;
   const lt = v? (S._linkedTasks||{})[v] : null;   // broken link / missing cache → dash
   const title = lt? String(lt.title||'') : '';
-  const chip = lt? `<span class="tv-linkchip" title="${esc(title)}" onclick="event.stopPropagation();location.hash='#/task/${lt.id}'">${tvLinkIcon()}<span class="lt">${esc(title.length>24? title.slice(0,24)+'…' : title)}</span></span>`
+  const chip = lt? `<span class="tv-linkchip" title="${esc(title)}" onclick="event.stopPropagation();location.hash='${taskHash(lt)}'">${tvLinkIcon()}<span class="lt">${esc(title.length>24? title.slice(0,24)+'…' : title)}</span></span>`
     : `<span class="tv-empty">—</span>`;
   if(!canEditTask(t)) return `<div class="tv-pickv ro">${chip}</div>`;
   return `<div class="tv-pickv" onclick="tvLinkPick(this,'${t.id}','${f.id}')">${chip}</div>`;
@@ -4935,7 +5080,7 @@ async function tvLinkPick(el, tid, fid){
   tvShowMenu(el, opts, o=>`${tvLinkIcon()}<span>${esc(o.l)}</span>`, async v=>{
     await tvCustom(tid, fid, v===null? '' : v);   // same save path as every other custom cell
     if(v && !(S._linkedTasks||{})[v]){            // picker rows carry id+title only — mirrors need the full row
-      const {data:full} = await db.from('tasks').select('id,title,status,priority,assignee_id,due_date,group_id,project_id,custom').eq('id',v).single();
+      const {data:full} = await db.from('tasks').select('id,title,status,priority,assignee_id,assignee_ids,due_date,group_id,project_id,custom').eq('id',v).single();
       if(full){ (S._linkedTasks||(S._linkedTasks={}))[full.id]=full; }
     }
     const y=scrollY; renderBoardBody(tvPid); scrollTo(0,y);
@@ -4952,7 +5097,7 @@ function mirrorText(t, f){
   if(!lt || !show) return '';
   if(show==='status')   return (STATUSES.find(s=>s.k===lt.status)||{}).label||lt.status||'';
   if(show==='priority') return (PRIORITIES.find(p=>p.k===lt.priority)||{}).label||lt.priority||'';
-  if(show==='assignee') return (prof(lt.assignee_id)||{}).full_name||'';
+  if(show==='assignee') return assigneeNames(lt);
   if(show==='due_date') return lt.due_date||'';
   if(show==='group')    return '';                 // remote group names aren't loaded — shown as a dash
   const rf = (S._linkedFields||{})[show];
@@ -4975,7 +5120,7 @@ function tvMirrorCell(t, f){
   if(lt && show){
     if(show==='status')        inner = statusChip(lt.status);
     else if(show==='priority') inner = prioChip(lt.priority);
-    else if(show==='assignee'){ const p=prof(lt.assignee_id); inner = p? `${avatar(p,true)}<span>${esc(p.full_name)}</span>` : inner; }
+    else if(show==='assignee'){ if(taskAssignees(lt).length) inner = assigneeAvatars(lt); }
     else if(show==='due_date') inner = lt.due_date? esc(fmtDate(lt.due_date)) : inner;
     else { const s = mirrorText(t, f); inner = s? esc(s) : inner; }
   }
@@ -5001,9 +5146,7 @@ async function tvMirrorEdit(el, tid, fid){
   if(show==='priority')
     return tvShowMenu(el, PRIORITIES.map(p=>({v:p.k,l:p.label})), o=>tvDotOpt(o, PRIORITIES, lt.priority), v=>v&&save({priority:v}));
   if(show==='assignee')
-    return tvShowMenu(el, S.profiles.filter(p=>p.active).map(p=>({v:p.id,l:p.full_name})),
-      o=>`${avatar(prof(o.v),true)}<span>${esc(o.l)}</span>${o.v===lt.assignee_id?'<span class="opt-cur">✓</span>':''}`,
-      v=>save({assignee_id:v||null}), true, true);
+    return tvPeopleMulti(el, taskAssignees(lt), ids=>save({assignee_ids:ids, assignee_id:ids[0]||null}));
   if(show==='due_date')
     return miniInputModal(f.label, 'date', lt.due_date||'', v=>save({due_date:v||null}), 'Editing here updates the linked task on the other board.');
   const rf = (S._linkedFields||{})[show]; if(!rf) return;
@@ -5081,7 +5224,7 @@ function exportBoardCSV(pid){
     (groups.find(g=>g.id===t.group_id)||{}).name||'',
     (STATUSES.find(s=>s.k===t.status)||{}).label||t.status||'',
     (PRIORITIES.find(x=>x.k===t.priority)||{}).label||t.priority||'',
-    (prof(t.assignee_id)||{}).full_name||'',
+    assigneeNames(t),
     t.due_date||'',
     ...flds.map(f=>cell(t,f)),
     (t.created_at||'').slice(0,10),
@@ -5411,7 +5554,7 @@ async function restoreTask(logId, pid){
   toast('Task restored — back on the board');
   closeModals();
   if(S.route.view==='project' && S.route.id===pid) renderProject(pid);
-  else location.hash = '#/project/'+pid;
+  else location.hash = boardHash(pid);
 }
 /* ---- column sort, per person ----
    A sort is a way of looking at a board, not a property of it, so it is remembered per person
@@ -5428,7 +5571,7 @@ function tvSortValue(t, key){
   if(key==='ticket_no') return t.ticket_no||'';
   if(key==='status')    { const i=STATUSES.findIndex(s=>s.k===t.status);   return i<0? 99 : i; }
   if(key==='priority')  { const i=PRIORITIES.findIndex(p=>p.k===t.priority); return i<0? 99 : i; }
-  if(key==='assignee')  { const p=prof(t.assignee_id); return p? (p.full_name||'').toLowerCase() : ''; }
+  if(key==='assignee')  return assigneeNames(t).toLowerCase();
   if(key==='due_date')  return t.due_date||'';
   if(key.startsWith('f:')){
     const f=(S._fields||[]).find(x=>x.id===key.slice(2)); const v=(t.custom||{})[key.slice(2)];
@@ -5683,7 +5826,7 @@ function tvRowHTML(t, flds, gc){
     <td class="tv-name"><span class="tv-dots" title="Task options" onclick="event.stopPropagation();rowMenu(this,'${t.id}')">⋯</span><div class="tv-open" draggable="${canEditTask(t)&&!arch}" ondragstart="tvDragStart(event,'${t.id}')" ondragend="tvDragEnd(event)" onclick="openTask('${t.id}')">${dep}${tvHasTicketCol()? '' : ticketTag(t)}${esc(t.title)}${sc&&sc.total? `<span class="subchip">${sc.done}/${sc.total}</span>`:''}</div>${arch&&canEdit()?`<span class="tv-restore" onclick="event.stopPropagation();tvUnarchive('${t.id}')">Restore</span>`:''}</td>
     ${tvHasTicketCol()? `<td class="tv-ticket">${ticketTag(t)}</td>`:''}
     <td>${tvPickHTML('status', t.id, 'status', false, t.status, t)}</td>
-    ${coreHidden(t.project_id,'assignee')?'':`<td>${tvPickHTML('people', t.id, 'assignee_id', false, t.assignee_id, t)}</td>`}
+    ${coreHidden(t.project_id,'assignee')?'':`<td>${tvPickHTML('assignees', t.id, 'assignee_ids', false, taskAssignees(t), t)}</td>`}
     ${coreHidden(t.project_id,'due_date')?'':`<td>${tvPickHTML('due', t.id, 'due_date', false, t.due_date, t)}</td>`}
     ${coreHidden(t.project_id,'priority')?'':`<td>${tvPickHTML('priority', t.id, 'priority', false, t.priority, t)}</td>`}
     ${flds.map(f=>`<td>${tvCell(t,f)}</td>`).join('')}
@@ -5788,7 +5931,7 @@ async function tvBulkApply(field, value){
   const ids=[...tvSel]; if(!ids.length) return;
   const error = await forIdChunks(ids, part=> db.from('tasks').update({[field]:value}).in('id',part));
   if(error) return toast(error.message, true);
-  S._tasks.forEach(t=>{ if(tvSel.has(t.id)) t[field]=value; });
+  S._tasks.forEach(t=>{ if(tvSel.has(t.id)){ t[field]=value; if(field==='assignee_id') t.assignee_ids = value? [value] : []; } });
   toast(ids.length+' task'+(ids.length>1?'s':'')+' updated');
   const changed = await echoAutomation(ids, {[field]:value});
   if(changed.length) automationToast(changed);
@@ -5876,7 +6019,7 @@ function rowMenu(anchor, tid){
   ctxMenu(anchor, items);
 }
 function copyTaskLink(tid){
-  const url = location.origin + location.pathname + '#/task/' + tid;
+  const url = location.origin + location.pathname + taskHash(tvTaskById(tid) || tid);
   const done = ()=>toast('Task link copied');
   if(navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(done, ()=>prompt('Copy this link:', url));
   else prompt('Copy this link:', url);
@@ -5960,7 +6103,7 @@ async function taskDuplicate(tid){
   const {data, error}=await db.from('tasks').insert({
     project_id:t.project_id, group_id:t.group_id, title:t.title+' (copy)',
     description:t.description, status:t.status, priority:t.priority,
-    assignee_id:t.assignee_id, due_date:t.due_date, tags:t.tags,
+    assignee_id:t.assignee_id, assignee_ids:t.assignee_ids||[], due_date:t.due_date, tags:t.tags,
     custom:t.custom||{}, created_by:S.me.id, position:(t.position||0)+0.5,
   }).select().single();
   if(error) return toast(error.message, true);
@@ -6049,9 +6192,10 @@ function groupModal(pid, g){
 }
 async function tvCore(tid, field, val){
   const t=tvTaskById(tid); if(!t) return;
-  const old=t[field]; t[field]=val;
+  const old=t[field], oldIds=t.assignee_ids; t[field]=val;
+  if(field==='assignee_id') t.assignee_ids = val? [val] : [];
   const {error}=await db.from('tasks').update({[field]:val}).eq('id',tid);
-  if(error){ t[field]=old; toast(error.message, true); return; }
+  if(error){ t[field]=old; t.assignee_ids=oldIds; toast(error.message, true); return; }
   // an automation may have moved or changed the row behind us - show what it did
   const changed = await echoAutomation(tid, {[field]:val});
   // renderBoardBody redraws whichever view is open; renderProjectFromCache is the kanban only
@@ -6321,12 +6465,29 @@ function assigneeOptions(projectId, selected){
   return S.profiles.filter(p=>p.active).map(p=>
     `<option value="${p.id}" ${p.id===selected?'selected':''}>${esc(p.full_name)}</option>`).join('');
 }
+/* Assignees in the task popup: the avatar stack opens the multi-picker (or, read-only, the list). */
+function tvAsgPopup(el, tid){
+  const t = tvTaskById(tid) || S._popTask; if(!t) return;
+  if(el.classList.contains('ro')) return tvPeoplePeek(el, t);
+  tvPeopleMulti(el, taskAssignees(t), async ids=>{
+    const old = {ids:t.assignee_ids, id:t.assignee_id};
+    t.assignee_ids = ids; t.assignee_id = ids[0]||null;
+    const {error} = await db.from('tasks').update({assignee_ids:ids}).eq('id',tid);
+    if(error){ t.assignee_ids=old.ids; t.assignee_id=old.id; return toast(error.message, true); }
+    document.querySelectorAll(`[data-asg="${tid}"]`).forEach(x=>{
+      x.dataset.ids = ids.join(',');
+      x.innerHTML = assigneeAvatars(t, +x.dataset.cap||3) + (x.classList.contains('asg-edit')? '<span class="asg-add" aria-hidden="true">＋</span>':'');
+    });
+  });
+}
 /* #/task/<id> — a shareable link straight to one task */
 async function openTaskRoute(id){
-  const {data:t} = await db.from('tasks').select('id,project_id').eq('id',id).single();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id||'');
+  const q = db.from('tasks').select('id,project_id');
+  const {data:t} = await (isUuid? q.eq('id',id) : q.ilike('ticket_no', id||'')).limit(1).maybeSingle();
   if(!t){ toast('Task not found — it may have been deleted or you may not have access', true); location.hash='#/home'; return; }
-  location.hash = '#/project/' + t.project_id;
-  setTimeout(()=>openTask(id), 450);
+  location.hash = boardHash(t.project_id);
+  setTimeout(()=>openTask(t.id), 450);
 }
 async function openTask(id){
   const [{data:t}, {data:chk}, {data:comments}, {data:atts}, {data:subs}, {data:hist}, {data:apprs}, {data:depsOn}, {data:depsBy}] = await Promise.all([
@@ -6368,12 +6529,10 @@ async function openTask(id){
   const nComments = (comments||[]).filter(c=>!c.deleted_at).length;
   const showComments = sectionOn(t.project_id,'comments'), showActivity = !isExternal();
   const chkDone = (chk||[]).filter(c=>c.done).length;
-  const owner = prof(t.assignee_id);
   const tabOn = {fields: flds.length>0, subtasks: cfg.tabs.includes('subtasks') && sectionOn(t.project_id,'subtasks'),
     files: cfg.tabs.includes('files'), comments: showComments, activity: showActivity};
-  const first = tabOn.fields? 'fields' : 'details';
-  const tabDefs = [['fields','Fields'],['details','Details'],['subtasks','Subtasks'],['files','Files'],['comments','Comments'],['activity','Activity']]
-    .filter(([k])=> k==='details' || tabOn[k]);
+  const tabDefs = icTabDefs(cfg, k=> k==='details' || tabOn[k]);
+  const first = (tabDefs.find(([k])=>k==='fields'||k==='details')||['details'])[0];   // opens on whichever of the two comes first
   const subsHTML = sectionOn(t.project_id,'subtasks')? `<section class="tv-sec"><label>Subtasks</label>
             <div id="tv-subprog">${subProgressBar(subs||[])}</div>
             <div id="tv-subs">${(subs||[]).map(stRow).join('')}</div>
@@ -6396,8 +6555,7 @@ async function openTask(id){
       </div>
       <div class="tv-prop" ${coreHidden(t.project_id,'assignee')?'hidden':''}>
         <label for="tv-assignee">${esc(coreLabel(t.project_id,'assignee'))}</label>
-        <div class="tv-prop-val"><span id="tv-owner-av">${owner? avatar(owner,true):''}</span>
-          <select id="tv-assignee" class="tv-bare" ${edit?'':'disabled'}><option value="">Unassigned</option>${assigneeOptions(t.project_id, t.assignee_id)}</select></div>
+        <div class="tv-prop-val"><span id="tv-assignee" class="tv-pickv asg-edit${edit?'':' ro'}" role="button" tabindex="0" data-asg="${t.id}" data-cap="6" data-ids="${taskAssignees(t).join(',')}" title="${edit?'Assign people':'Assigned people'}" onclick="tvAsgPopup(this,'${t.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();tvAsgPopup(this,'${t.id}')}">${assigneeAvatars(t,6)}${edit?'<span class="asg-add" aria-hidden="true">＋</span>':''}</span></div>
       </div>
       <div class="tv-prop" ${coreHidden(t.project_id,'due_date')?'hidden':''}>
         <label for="tv-due">${esc(coreLabel(t.project_id,'due_date'))}</label>
@@ -6406,9 +6564,9 @@ async function openTask(id){
     </div>
     <div class="tv-tabbar"><div class="tv-tabs" role="tablist" aria-label="Task sections">${tabDefs.map(([k,l])=>
         `<button role="tab" class="tv-tab${k===first?' on':''}" id="tv-tab-${k}" aria-controls="tv-pane-${k}" aria-selected="${k===first}" ${k===first?'':'tabindex="-1"'}>${l}${k==='comments'? ` <span class="tv-count" id="tv-comment-count">${nComments||''}</span>`:''}</button>`).join('')}</div>
-      ${canManageBoard(t.project_id)? `<button class="tv-tab-add" aria-label="Add or remove tabs" title="Add or remove tabs" onclick="icTabMenu(this,'${t.id}','${t.project_id}')">＋</button>`:''}</div>
+      ${canManageBoard(t.project_id)? `<button class="tv-tab-add" aria-label="Add, remove, rename or reorder tabs" title="Add, remove, rename or reorder tabs" onclick="icTabMenu(this,'${t.id}','${t.project_id}')">＋</button>`:''}</div>
     <div class="modal-body">
-      ${tabOn.fields? `<div role="tabpanel" id="tv-pane-fields" aria-labelledby="tv-tab-fields">
+      ${tabOn.fields? `<div role="tabpanel" id="tv-pane-fields" aria-labelledby="tv-tab-fields" ${first==='fields'?'':'hidden'}>
         ${canManageBoard(t.project_id)? `<div class="ic-bar"><button class="btn btn-ghost btn-sm" onclick="icLayoutModal('${t.id}')">Edit layout</button></div>`:''}
         <div id="ic-cards" class="ic-grid">${icCardsHTML(S._popTask, flds, cfg)}</div></div>`:''}
       <div role="tabpanel" id="tv-pane-details" aria-labelledby="tv-tab-details" class="tv-grid" ${first==='details'?'':'hidden'}>
@@ -6449,7 +6607,7 @@ async function openTask(id){
       title:m.querySelector('#tv-title').value.trim()||t.title,
       ...(desc? {description:desc.value} : {}),      // Description may be switched off on this board
       status:m.querySelector('#tv-status').value, priority:m.querySelector('#tv-prio').value,
-      assignee_id:m.querySelector('#tv-assignee').value||null, due_date:m.querySelector('#tv-due').value||null,
+      due_date:m.querySelector('#tv-due').value||null,      // assignees save on each tick in the picker
     };
     const {error} = await db.from('tasks').update(upd).eq('id',t.id);
     if(error) return toast(error.message, true);
@@ -6515,8 +6673,7 @@ function wireTaskView(m, t){
   if(side && !side.children.length){ side.remove(); m.querySelector('#tv-pane-details').classList.add('solo'); }
   setTimeout(()=>{ const box=m.querySelector('.modal'); if(box && box.contains(document.activeElement) && document.activeElement.id==='tv-title-view') box.focus({preventScroll:true}); }, 0);
   ['#tv-status','#tv-prio'].forEach(sel=>{ const el=m.querySelector(sel); if(el) el.addEventListener('change', ()=>tvPaintPills(m)); });
-  const asg = m.querySelector('#tv-assignee'), av = m.querySelector('#tv-owner-av');
-  if(asg && av) asg.addEventListener('change', ()=>{ const p = prof(asg.value); av.innerHTML = p? avatar(p,true) : ''; });
+
   // Tabs: click, and ←/→/Home/End between them (WAI-ARIA tabs pattern)
   const tabs = [...m.querySelectorAll('.tv-tab')];
   tabs.forEach((b,i)=>{
@@ -6557,6 +6714,11 @@ const IC_TABS = [{k:'subtasks', label:'Subtasks'}, {k:'files', label:'Files'}];
 const IC_FTYPE = {text:'Text', number:'Number', date:'Date', select:'Dropdown', checkbox:'Checkbox', person:'Person',
   brand:'Brand', platform:'Platform', file:'File', formula:'Formula', link:'Link to board', mirror:'Mirror'};
 const icTabs = v => Array.isArray(v)? IC_TABS.map(x=>x.k).filter(k=>v.includes(k)) : [];
+/* Every tab the popup can have, in its default order. A board can reorder them and rename them
+   (item_card.tabOrder / item_card.tabNames); what is stored is read defensively. */
+const IC_ALL_TABS = [['fields','Fields'],['details','Details'],['subtasks','Subtasks'],['files','Files'],['comments','Comments'],['activity','Activity']];
+const icTabOrder = v => Array.isArray(v)? [...new Set(v.filter(k=>IC_ALL_TABS.some(x=>x[0]===k)))] : [];
+const icTabNames = v => { const o={}; if(v && typeof v==='object' && !Array.isArray(v)) IC_ALL_TABS.forEach(([k])=>{ const n=String(v[k]==null?'':v[k]).trim().slice(0,24); if(n) o[k]=n; }); return o; };
 function icDefaultCards(flds){
   const dp = new Set(['date','person','file']);
   const a = flds.filter(f=>!dp.has(f.ftype)).map(f=>f.id), b = flds.filter(f=>dp.has(f.ftype)).map(f=>f.id);
@@ -6573,8 +6735,9 @@ function icConfig(pid, flds){
   const raw = ((projById(pid)||{}).field_config||{}).item_card;
   const ok = raw && typeof raw==='object' && !Array.isArray(raw);
   const tabs = icTabs(ok? raw.tabs : null);
+  const tabOrder = icTabOrder(ok? raw.tabOrder : null), tabNames = icTabNames(ok? raw.tabNames : null);
   if(!(ok && Array.isArray(raw.cards) && raw.cards.length))
-    return {cards:icDefaultCards(flds), hidden:[], tabs, custom:false};
+    return {cards:icDefaultCards(flds), hidden:[], tabs, tabOrder, tabNames, custom:false};
   const ids = new Set(flds.map(f=>f.id));
   const hidden = [...new Set((Array.isArray(raw.hidden)? raw.hidden : []).filter(id=>ids.has(id)))];
   const seen = new Set(hidden);
@@ -6583,9 +6746,9 @@ function icConfig(pid, flds){
     title: String(c.title==null? 'Information' : c.title).slice(0,60),
     fields: (Array.isArray(c.fields)? c.fields : []).filter(id=>{ if(!ids.has(id) || seen.has(id)) return false; seen.add(id); return true; }),
   }));
-  if(!cards.length) return {cards:icDefaultCards(flds), hidden:[], tabs, custom:false};
+  if(!cards.length) return {cards:icDefaultCards(flds), hidden:[], tabs, tabOrder, tabNames, custom:false};
   flds.forEach(f=>{ if(!seen.has(f.id)) cards[cards.length-1].fields.push(f.id); });
-  return {cards, hidden, tabs, custom:true};
+  return {cards, hidden, tabs, tabOrder, tabNames, custom:true};
 }
 /* The popup can open a task from Home, the calendar or search, where the board behind it is a
    different one (or none). Load this task's own columns then; add to the option lists and the
@@ -6600,7 +6763,7 @@ async function icLoadFields(t){
       const ids = links.map(f=>(t.custom||{})[f.id]).filter(v=>typeof v==='string' && LINK_ID_RE.test(v));
       const targets = [...new Set(links.map(f=>(f.options||{}).project_id).filter(Boolean))];
       const [lt, lf] = await Promise.all([
-        ids.length? db.from('tasks').select('id,title,status,priority,assignee_id,due_date,group_id,project_id,custom').in('id',ids) : Promise.resolve({data:[]}),
+        ids.length? db.from('tasks').select('id,title,status,priority,assignee_id,assignee_ids,due_date,group_id,project_id,custom').in('id',ids) : Promise.resolve({data:[]}),
         targets.length? db.from('project_fields').select('id,label,ftype,options').in('project_id',targets) : Promise.resolve({data:[]}),
       ]);
       S._linkedTasks = S._linkedTasks||{}; S._linkedFields = S._linkedFields||{};
@@ -6658,6 +6821,36 @@ async function icSaveItemCard(pid, patch){
   if(error){ toast(error.message, true); return false; }
   p.field_config = fc; return true;
 }
+/* The tabs this board shows, in its order and under its names. Unlisted tabs keep their default slot after the listed ones. */
+function icTabDefs(cfg, keep){
+  const ord = cfg.tabOrder||[], names = cfg.tabNames||{};
+  const base = IC_ALL_TABS.filter(([k])=>keep(k));
+  const idx = k => { const i=ord.indexOf(k); return i<0? 999 : i; };
+  return base.map(([k,l],n)=>({k,l,n})).sort((a,b)=> idx(a.k)-idx(b.k) || a.n-b.n).map(x=>[x.k, names[x.k]||x.l]);
+}
+function icTabsModal(taskId, pid){
+  if(!canManageBoard(pid)) return;
+  const cfg = icConfig(pid, S._popFields||[]);
+  const live = new Set(['details','comments','activity'].concat(cfg.tabs.filter(k=>true)).concat((S._popFields||[]).length? ['fields']:[]));
+  const defs = icTabDefs(cfg, k=>live.has(k));
+  let order = defs.map(d=>d[0]); const names = Object.assign({}, cfg.tabNames);
+  const dflt = k => (IC_ALL_TABS.find(x=>x[0]===k)||[])[1];
+  const m = modal(`<div class="modal-head"><h2>Rename or reorder tabs</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body"><div class="kb-hint">Applies to every task on this board. Leave a name empty to keep its original name.</div><div id="tbm-list"></div></div>
+    <div class="modal-foot"><button class="btn btn-ghost" id="tbm-reset">Reset to default</button><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="tbm-save">Save</button></div>`);
+  const draw = ()=>{
+    m.querySelector('#tbm-list').innerHTML = order.map((k,i)=>`<div class="kbf-row">
+      <input class="tbm-name" data-k="${k}" value="${esc(names[k]||'')}" placeholder="${esc(dflt(k))}" maxlength="24" aria-label="Name for the ${esc(dflt(k))} tab">
+      <span class="kbf-mv"><button class="btn btn-ghost btn-sm" data-up="${i}" ${i===0?'disabled':''} aria-label="Move left">▲</button><button class="btn btn-ghost btn-sm" data-dn="${i}" ${i===order.length-1?'disabled':''} aria-label="Move right">▼</button></span></div>`).join('');
+    m.querySelectorAll('.tbm-name').forEach(inp=>inp.oninput=()=>{ names[inp.dataset.k]=inp.value; });
+    m.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.up; [order[i-1],order[i]]=[order[i],order[i-1]]; draw(); });
+    m.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.dn; [order[i+1],order[i]]=[order[i],order[i+1]]; draw(); });
+  };
+  draw();
+  const done = async patch=>{ if(!await icSaveItemCard(pid, patch)) return; toast('Tabs updated for every task on this board'); closeModals(); openTask(taskId); };
+  m.querySelector('#tbm-save').onclick = ()=>{ const nm={}; order.forEach(k=>{ const v=(names[k]||'').trim(); if(v) nm[k]=v.slice(0,24); }); done({tabOrder:order, tabNames:Object.keys(nm).length? nm : null}); };
+  m.querySelector('#tbm-reset').onclick = ()=> done({tabOrder:null, tabNames:null});
+}
 function icTabMenu(btn, taskId, pid){
   const cur = icConfig(pid, S._popFields||[]).tabs;
   ctxMenu(btn, IC_TABS.map(x=>({
@@ -6669,7 +6862,7 @@ function icTabMenu(btn, taskId, pid){
       toast('Tabs updated for every task on this board');
       closeModals(); openTask(taskId);
     },
-  })));
+  })).concat(['-', {label:'Rename or reorder tabs…', fn:()=>icTabsModal(taskId, pid)}]));
 }
 /* ---- Edit layout: cards, their columns and order, hidden columns, extra tabs ---- */
 function icLayListHTML(d, byId){
@@ -7409,7 +7602,7 @@ async function convertToTask(reqId){
     if(error) return toast(error.message, true);
     await db.from('requests').update({project_id, status: r.status==='submitted'||r.status==='in_review'?'in_progress':r.status}).eq('id',r.id);
     closeModals(); toast('Task created from request'); logActivity('request', r.id, 'converted_to_task', {task:task.id});
-    location.hash = '#/project/'+project_id;
+    location.hash = boardHash(project_id);
   };
 }
 
@@ -7853,7 +8046,7 @@ async function exportWidgetCSV(id){
     const rows = await widgetTaskRows(cfg, w.wtype, 500);
     if(cfg.entity==='requests') return downloadXLSX(xlsxFilename(w.title||'Widget'), [['Ticket','Title','Status','Created'], ...rows.map(r=>['WO-'+(r.ticket_no||''), r.title, r.status, (r.created_at||'').slice(0,10)])]);
     return downloadXLSX(xlsxFilename(w.title||'Widget'), [['Ticket','Task','Board','Status','Priority','Due','Assignee'],
-      ...rows.map(t=>[t.ticket_no||'', t.title, (projById(t.project_id)||{}).name||'', statusLabel(t.status), prioLabel(t.priority), t.due_date||'', (prof(t.assignee_id)||{}).full_name||''])]);
+      ...rows.map(t=>[t.ticket_no||'', t.title, (projById(t.project_id)||{}).name||'', statusLabel(t.status), prioLabel(t.priority), t.due_date||'', assigneeNames(t)])]);
   }
   downloadXLSX(xlsxFilename(w.title||'Widget'), [['Label','Count'], ...(await widgetGroups(cfg, w.wtype)).map(g=>[g.label, g.n])]);
 }
