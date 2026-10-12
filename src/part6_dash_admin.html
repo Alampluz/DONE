@@ -389,7 +389,7 @@ async function exportWidgetCSV(id){
     const rows = await widgetTaskRows(cfg, w.wtype, 500);
     if(cfg.entity==='requests') return downloadXLSX(xlsxFilename(w.title||'Widget'), [['Ticket','Title','Status','Created'], ...rows.map(r=>['WO-'+(r.ticket_no||''), r.title, r.status, (r.created_at||'').slice(0,10)])]);
     return downloadXLSX(xlsxFilename(w.title||'Widget'), [['Ticket','Task','Board','Status','Priority','Due','Assignee'],
-      ...rows.map(t=>[t.ticket_no||'', t.title, (projById(t.project_id)||{}).name||'', statusLabel(t.status), prioLabel(t.priority), t.due_date||'', (prof(t.assignee_id)||{}).full_name||''])]);
+      ...rows.map(t=>[t.ticket_no||'', t.title, (projById(t.project_id)||{}).name||'', statusLabel(t.status), prioLabel(t.priority), t.due_date||'', assigneeNames(t)])]);
   }
   downloadXLSX(xlsxFilename(w.title||'Widget'), [['Label','Count'], ...(await widgetGroups(cfg, w.wtype)).map(g=>[g.label, g.n])]);
 }
