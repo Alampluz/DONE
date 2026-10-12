@@ -909,7 +909,7 @@ body.modal-open{overflow:hidden}
 .ihelp-pop b{color:var(--ink);font-weight:600}
 /* Ticket number tag - CS-260908-001 - in front of a task title. Monospace and quiet:
    it is a reference you read out, not the thing you scan the row for. */
-.tkt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:-.2px;color:var(--ink3);background:var(--gray-soft);border-radius:5px;padding:1px 5px;margin-right:7px;white-space:nowrap;vertical-align:1px}
+.tkt[role=button]{cursor:pointer}.tkt[role=button]:hover{background:var(--line);color:var(--ink)}.tkt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:-.2px;color:var(--ink3);background:var(--gray-soft);border-radius:5px;padding:1px 5px;margin-right:7px;white-space:nowrap;vertical-align:1px}
 .tcard .tkt{font-size:10px;margin-right:0;margin-bottom:5px;display:block;width:fit-content}
 .modal-head .tkt{font-size:12px;vertical-align:2px}
 .tv-arch .tkt{opacity:.6}
@@ -985,6 +985,9 @@ body.modal-open{overflow:hidden}
 .tcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 12px;cursor:pointer;box-shadow:0 1px 2px rgba(20,22,40,.06)}
 .tcard:hover{border-color:var(--line-strong);box-shadow:0 3px 10px rgba(22,24,29,.07)}
 .tcard.dragging{opacity:.4}
+.tv td.tv-ticket{white-space:nowrap;padding:0 10px}.tv td.tv-ticket .tkt{margin-right:0}
+.kb-fld{display:flex;align-items:baseline;gap:5px;font-size:12px;margin:0 0 4px;line-height:1.3}.kb-fv{font-weight:600;color:var(--ink);background:var(--accent-soft);border-radius:5px;padding:0 6px}.kb-fl{color:var(--ink3)}.kb-fl::before{content:'('}.kb-fl::after{content:')'}
+.kb-hint{font-size:12.5px;color:var(--ink3);margin-bottom:10px}.kbf-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}.kbf-mv{display:flex;gap:4px}
 .tcard .t{font-weight:600;font-size:13.5px;line-height:1.35;margin-bottom:8px}
 .tcard .meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 /* Global, so the board table gets the same lateness signal the lists have always had. */
@@ -1685,7 +1688,14 @@ const ticketNo = t => (t && t.ticket_no) || '';
 /* The grey monospace tag used in front of a task title, wherever a title is shown. */
 function ticketTag(t, cls){
   const n = ticketNo(t); if(!n) return '';
-  return `<span class="tkt${cls? ' '+cls:''}" title="Ticket number">${esc(n)}</span>`;
+  return `<span class="tkt${cls? ' '+cls:''}" title="Click to copy ticket number" role="button" tabindex="0" onclick="copyTicketNo(event,this)" onkeydown="if(event.key==='Enter'||event.key===' ')copyTicketNo(event,this)">${esc(n)}</span>`;
+}
+/* Click the ticket tag = copy its number. Must not open the task / start a drag behind it. */
+async function copyTicketNo(e, el){
+  e.stopPropagation(); e.preventDefault();
+  const n = (el.textContent||'').trim(); if(!n) return;
+  try{ await navigator.clipboard.writeText(n); toast('Copied '+n); }
+  catch(_){ prompt('Copy this ticket number:', n); }
 }
 /* A board key: up to 6 letters/digits, upper-cased, no spaces or punctuation. */
 const boardKeyClean = v => String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
@@ -4089,6 +4099,7 @@ function filterBarHTML(pid){
     ${(S._groups||[]).length? sel('group','Group', (S._groups||[]).map(g=>({v:g.id,l:g.name})).concat([{v:'__none__',l:'No group'}])) : ''}
     ${n? `<button class="bf-clear" onclick="bfClear('${pid}')">Clear ${n} filter${n>1?'s':''}</button>`:''}
     <span class="bf-count" id="bf-count"></span>
+    ${boardMode==='board'? `<button class="btn btn-ghost btn-sm" onclick="kbFieldsModal('${pid}')" title="Choose which details each card shows">Card fields</button>`:''}
     ${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="importExcel('${pid}')">Import Excel</button>
     <button class="btn btn-ghost btn-sm" onclick="exportBoardCSV('${pid}')">Export Excel</button>
     <button class="btn btn-ghost btn-sm" onclick="boardActivityModal('${pid}')">Activity</button>`:''}
@@ -4507,15 +4518,71 @@ function renderWorkspaceCalendarBody(wsId){
   host.innerHTML = calWsLegendHTML(wsId, projects, counts)
     + (projects.length? calendarHTML(wsId, rows, {everywhere:'each board\'s Table view shows everything'}) : `<div class="card empty">No boards yet in this workspace${isStaff()? ' — create the first one.':''}</div>`);
 }
+/* ---- Board (kanban) cards: which details each card shows ----
+   Personal, like sort: remembered in localStorage (workos.cardfields.<pid>) as an ordered list
+   of keys. No saved list = the original card. Keys: ticket_no · priority · due_date · subtasks ·
+   tags · assignee, and f:<field id> for any custom column (Brand, Platform, Number of SKUs…). */
+const KB_BUILTIN = [['ticket_no','Ticket ID'],['priority','Priority'],['due_date','Due date'],['subtasks','Subtask count'],['tags','Tags'],['assignee','Assignee']];
+const KB_DEFAULT = KB_BUILTIN.map(x=>x[0]);
+const kbFieldsLoad = pid => { try{ const v=JSON.parse(localStorage.getItem('workos.cardfields.'+pid)||'null'); return Array.isArray(v)? v : null; }catch(e){ return null; } };
+const kbFieldsSave = (pid, v) => { try{ v? localStorage.setItem('workos.cardfields.'+pid, JSON.stringify(v)) : localStorage.removeItem('workos.cardfields.'+pid); }catch(e){} };
+/* What a custom column reads as on a card — plain text, '' when empty (empty rows are skipped). */
+function kbFieldText(t, f){
+  if(f.ftype==='formula') return fxDisplay(f, t);
+  if(f.ftype==='link' || f.ftype==='mirror' || f.ftype==='file') return '';
+  const v = (t.custom||{})[f.id];
+  if(v==null || v==='' || v===false) return '';
+  if(f.ftype==='checkbox') return '✓';
+  if(f.ftype==='date')     return esc(fmtDate(v));
+  if(f.ftype==='person')   { const p=prof(v); return p? esc(p.full_name||'') : ''; }
+  if(Array.isArray(v))     return esc(v.join(', '));
+  return esc(String(v));
+}
 function taskCard(t){
   const done = t.status==='done';
-  const chk = t._chk;
+  const cfg = kbFieldsLoad(t.project_id) || KB_DEFAULT;
+  const flds = S._fields||[];
+  const sc = (S._subs||{})[t.id];
+  let tag='', rows='', chips='', who='';
+  cfg.forEach(k=>{
+    if(k==='ticket_no') tag = ticketTag(t);
+    else if(k==='priority') chips += prioChip(t.priority);
+    else if(k==='due_date') chips += dueBadge(t.due_date, done);
+    else if(k==='subtasks') chips += sc?.total? `<span class="subchip" style="font-size:11px;font-weight:700;color:var(--ink3);background:var(--gray-soft);border-radius:6px;padding:1px 6px">${sc.done}/${sc.total}</span>`:'';
+    else if(k==='tags') chips += t.tags?.length? t.tags.slice(0,2).map(g=>`<span class="chip" style="background:var(--purple-soft);color:var(--purple)">${esc(g)}</span>`).join(''):'';
+    else if(k==='assignee') who = `<span style="margin-left:auto">${avatar(prof(t.assignee_id), true)}</span>`;
+    else if(k.startsWith('f:')){
+      const f = flds.find(x=>x.id===k.slice(2)); if(!f) return;
+      const txt = kbFieldText(t, f); if(!txt) return;
+      rows += `<div class="kb-fld"><span class="kb-fv">${txt}</span><span class="kb-fl">${esc(f.label)}</span></div>`;
+    }
+  });
   return `<div class="tcard" draggable="${canEditTask(t)}" data-id="${t.id}" onclick="openTask('${t.id}')">
-    <div class="t">${ticketTag(t)}${esc(t.title)}</div>
-    <div class="meta">${prioChip(t.priority)}${dueBadge(t.due_date, done)}
-      ${(S._subs||{})[t.id]?.total? `<span class="subchip" style="font-size:11px;font-weight:700;color:var(--ink3);background:var(--gray-soft);border-radius:6px;padding:1px 6px">${S._subs[t.id].done}/${S._subs[t.id].total}</span>`:''}
-      ${t.tags?.length? t.tags.slice(0,2).map(g=>`<span class="chip" style="background:var(--purple-soft);color:var(--purple)">${esc(g)}</span>`).join(''):''}
-      <span style="margin-left:auto">${avatar(prof(t.assignee_id), true)}</span></div></div>`;
+    <div class="t">${tag}${esc(t.title)}</div>${rows}
+    ${(chips||who)? `<div class="meta">${chips}${who}</div>`:''}</div>`;
+}
+function kbFieldsModal(pid){
+  const flds = (S._fields||[]).filter(f=>!['link','mirror','file'].includes(f.ftype));
+  const all = KB_BUILTIN.map(([k,l])=>({k,l})).concat(flds.map(f=>({k:'f:'+f.id, l:f.label+' (column)'})));
+  const known = new Set(all.map(x=>x.k));
+  const cur = (kbFieldsLoad(pid) || KB_DEFAULT).filter(k=>known.has(k));
+  let order = cur.concat(all.map(x=>x.k).filter(k=>!cur.includes(k)));   // shown ones first, in their order
+  const on = new Set(cur);
+  const label = k => (all.find(x=>x.k===k)||{}).l || k;
+  const m = modal(`<div class="modal-head"><h2>Card fields</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body"><div class="kb-hint">Tick what each card should show, and use the arrows to set the order. This is your own view of the board — other people keep theirs.</div><div id="kbf-list"></div></div>
+    <div class="modal-foot"><button class="btn btn-ghost" id="kbf-reset">Reset to default</button><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="kbf-save">Save</button></div>`);
+  const draw = ()=>{
+    m.querySelector('#kbf-list').innerHTML = order.map((k,i)=>`<div class="kbf-row">
+      <label class="chk"><input type="checkbox" data-k="${esc(k)}" ${on.has(k)?'checked':''}> ${esc(label(k))}</label>
+      <span class="kbf-mv"><button class="btn btn-ghost btn-sm" data-up="${i}" ${i===0?'disabled':''} aria-label="Move up">▲</button><button class="btn btn-ghost btn-sm" data-dn="${i}" ${i===order.length-1?'disabled':''} aria-label="Move down">▼</button></span></div>`).join('');
+    m.querySelectorAll('#kbf-list input').forEach(c=>c.onchange=()=>{ c.checked? on.add(c.dataset.k) : on.delete(c.dataset.k); });
+    m.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.up; [order[i-1],order[i]]=[order[i],order[i-1]]; draw(); });
+    m.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.dn; [order[i+1],order[i]]=[order[i],order[i+1]]; draw(); });
+  };
+  draw();
+  m.querySelector('#kbf-save').onclick = ()=>{ kbFieldsSave(pid, order.filter(k=>on.has(k))); closeModals(); renderBoardBody(pid); };
+  m.querySelector('#kbf-reset').onclick = ()=>{ kbFieldsSave(pid, null); closeModals(); renderBoardBody(pid); };
 }
 function wireDnD(projectId){
   let dragId=null;
@@ -5588,9 +5655,12 @@ function tvTh(pid, key, label, extraCls, extraAttrs){
   return `<th class="${extraCls||''}${on?' sorted':''}${filt?' filtered':''}" ${extraAttrs||''}><span class="th-in">${esc(label)}${on? `<span class="th-sort">${srt.dir==='desc'?'▼':'▲'}</span>`:''}${filt? `<span class="th-filt" title="Filtered: ${esc(tvColFilterLabel(pid,key))}">${TH_FILT_ICON}</span>`:''}<span class="th-dots" title="Column options" onclick="event.stopPropagation();tvColMenu(this,'${pid}','${key}')">⋯</span></span></th>`;
 }
 const TH_FILT_ICON = '<svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 3.5h11L9.2 8.6v4.3L6.8 11.6V8.6z"/></svg>';
+/* Ticket numbers are made by the database (assign_task_ticket_no), so the column is read-only:
+   no picker, no edit. It only appears on a board that has numbered tasks. */
+const tvHasTicketCol = () => (S._tasksAll||S._tasks||[]).some(t=>t.ticket_no);
 function tvHeadHTML(id, flds, showAddCol, gid){
   return `<tr>
-    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}${tvTh(id,'title','Task','tv-name')}${tvTh(id,'status',coreLabel(id,'status'))}${coreHidden(id,'assignee')?'':tvTh(id,'assignee',coreLabel(id,'assignee'))}${coreHidden(id,'due_date')?'':tvTh(id,'due_date',coreLabel(id,'due_date'))}${coreHidden(id,'priority')?'':tvTh(id,'priority',coreLabel(id,'priority'))}
+    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}${tvTh(id,'title','Task','tv-name')}${tvHasTicketCol()? tvTh(id,'ticket_no','Ticket','tv-ticket'):''}${tvTh(id,'status',coreLabel(id,'status'))}${coreHidden(id,'assignee')?'':tvTh(id,'assignee',coreLabel(id,'assignee'))}${coreHidden(id,'due_date')?'':tvTh(id,'due_date',coreLabel(id,'due_date'))}${coreHidden(id,'priority')?'':tvTh(id,'priority',coreLabel(id,'priority'))}
     ${flds.map(f=>tvTh(id,'f:'+f.id,f.label, canManageBoard(id)?'col-edit':'', canManageBoard(id)?`onclick="editColumnModal('${f.id}','${id}')" title="Edit column"`:'')).join('')}
     ${isStaff()? (showAddCol&&canManageBoard(id)? `<th><span class="tv-addcol" onclick="addColumnModal('${id}')">＋ Column</span></th>`:'<th></th>'):''}
   </tr>`;
@@ -5610,7 +5680,8 @@ function tvRowHTML(t, flds, gc){
   const dep = taskHasOpenDeps(t.id)? depIconHTML() : '';
   return `<tr class="tv-row${tvSel.has(t.id)?' rowsel':''}${arch?' tv-arch':''}" data-tid="${t.id}" ${gc?`style="--gcol:${gc}"`:''}>
     ${canEdit()?`<td class="tv-check">${canEditTask(t)?`<input type="checkbox" ${tvSel.has(t.id)?'checked':''} onchange="tvSelToggle('${t.id}',this.checked)">`:''}</td>`:''}
-    <td class="tv-name"><span class="tv-dots" title="Task options" onclick="event.stopPropagation();rowMenu(this,'${t.id}')">⋯</span><div class="tv-open" draggable="${canEditTask(t)&&!arch}" ondragstart="tvDragStart(event,'${t.id}')" ondragend="tvDragEnd(event)" onclick="openTask('${t.id}')">${dep}${ticketTag(t)}${esc(t.title)}${sc&&sc.total? `<span class="subchip">${sc.done}/${sc.total}</span>`:''}</div>${arch&&canEdit()?`<span class="tv-restore" onclick="event.stopPropagation();tvUnarchive('${t.id}')">Restore</span>`:''}</td>
+    <td class="tv-name"><span class="tv-dots" title="Task options" onclick="event.stopPropagation();rowMenu(this,'${t.id}')">⋯</span><div class="tv-open" draggable="${canEditTask(t)&&!arch}" ondragstart="tvDragStart(event,'${t.id}')" ondragend="tvDragEnd(event)" onclick="openTask('${t.id}')">${dep}${tvHasTicketCol()? '' : ticketTag(t)}${esc(t.title)}${sc&&sc.total? `<span class="subchip">${sc.done}/${sc.total}</span>`:''}</div>${arch&&canEdit()?`<span class="tv-restore" onclick="event.stopPropagation();tvUnarchive('${t.id}')">Restore</span>`:''}</td>
+    ${tvHasTicketCol()? `<td class="tv-ticket">${ticketTag(t)}</td>`:''}
     <td>${tvPickHTML('status', t.id, 'status', false, t.status, t)}</td>
     ${coreHidden(t.project_id,'assignee')?'':`<td>${tvPickHTML('people', t.id, 'assignee_id', false, t.assignee_id, t)}</td>`}
     ${coreHidden(t.project_id,'due_date')?'':`<td>${tvPickHTML('due', t.id, 'due_date', false, t.due_date, t)}</td>`}
@@ -5638,7 +5709,7 @@ function renderProjectTableView(id, rowSet, host){
   const SRC = rowSet || S._tasks || [];
   const flds = S._fields||[], groups = S._groups||[];
   tvBuildOpts(flds);
-  const cols = 2+['assignee','due_date','priority'].filter(k=>!coreHidden(id,k)).length+(canEdit()?1:0)+flds.length+(isStaff()?1:0);
+  const cols = 2+(tvHasTicketCol()?1:0)+['assignee','due_date','priority'].filter(k=>!coreHidden(id,k)).length+(canEdit()?1:0)+flds.length+(isStaff()?1:0);
   const byPos = tvSortFn(id, (a,b)=> (a.position||0)-(b.position||0));
   const srt = tvSortLoad(id);
   const sortBar = srt? `<div class="tv-sortbar">Sorted by <b>${esc(tvSortLabel(id,srt.key))}</b> ${srt.dir==='desc'?'▼':'▲'} · <span class="clr" onclick="tvSortSet('${id}',null)">Clear</span></div>` : '';
