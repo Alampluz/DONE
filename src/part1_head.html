@@ -909,7 +909,7 @@ body.modal-open{overflow:hidden}
 .ihelp-pop b{color:var(--ink);font-weight:600}
 /* Ticket number tag - CS-260908-001 - in front of a task title. Monospace and quiet:
    it is a reference you read out, not the thing you scan the row for. */
-.tkt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:-.2px;color:var(--ink3);background:var(--gray-soft);border-radius:5px;padding:1px 5px;margin-right:7px;white-space:nowrap;vertical-align:1px}
+.tkt[role=button]{cursor:pointer}.tkt[role=button]:hover{background:var(--line,#e3e5ec);color:var(--ink)}.tkt{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;font-weight:600;letter-spacing:-.2px;color:var(--ink3);background:var(--gray-soft);border-radius:5px;padding:1px 5px;margin-right:7px;white-space:nowrap;vertical-align:1px}
 .tcard .tkt{font-size:10px;margin-right:0;margin-bottom:5px;display:block;width:fit-content}
 .modal-head .tkt{font-size:12px;vertical-align:2px}
 .tv-arch .tkt{opacity:.6}
