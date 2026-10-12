@@ -586,7 +586,14 @@ const ticketNo = t => (t && t.ticket_no) || '';
 /* The grey monospace tag used in front of a task title, wherever a title is shown. */
 function ticketTag(t, cls){
   const n = ticketNo(t); if(!n) return '';
-  return `<span class="tkt${cls? ' '+cls:''}" title="Ticket number">${esc(n)}</span>`;
+  return `<span class="tkt${cls? ' '+cls:''}" title="Click to copy ticket number" role="button" tabindex="0" onclick="copyTicketNo(event,this)" onkeydown="if(event.key==='Enter'||event.key===' ')copyTicketNo(event,this)">${esc(n)}</span>`;
+}
+/* Click the ticket tag = copy its number. Must not open the task / start a drag behind it. */
+async function copyTicketNo(e, el){
+  e.stopPropagation(); e.preventDefault();
+  const n = (el.textContent||'').trim(); if(!n) return;
+  try{ await navigator.clipboard.writeText(n); toast('Copied '+n); }
+  catch(_){ prompt('Copy this ticket number:', n); }
 }
 /* A board key: up to 6 letters/digits, upper-cased, no spaces or punctuation. */
 const boardKeyClean = v => String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
