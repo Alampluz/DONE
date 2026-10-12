@@ -35,6 +35,11 @@
   --st-review:#9F6907; --st-review-ink:#8B5C06; --st-blocked:#D04358; --st-blocked-ink:#B0394B;
   --st-done:#108456; --st-done-ink:#0E734B;
   --st-todo-soft:#EEF0F4; --st-prog-soft:#E6F0FC; --st-review-soft:#FBF2DC; --st-blocked-soft:#FCE8EB; --st-done-soft:#E3F5EC;
+  /* label colours for dropdown / brand values — each value hashes to one of these, so "Defective"
+     is the same colour on every row and every board */
+  --lab-0:#1F6FD0; --lab-0-s:#E6F0FC; --lab-1:#B47A08; --lab-1-s:#FBF2DC; --lab-2:#128A5B; --lab-2-s:#E3F5EC;
+  --lab-3:#C8384F; --lab-3-s:#FCE8EB; --lab-4:#6E56B8; --lab-4-s:#F0EBFA; --lab-5:#0F766E; --lab-5-s:#E0F2EF;
+  --lab-6:#C2410C; --lab-6-s:#FDEBE3; --lab-7:#BE185D; --lab-7-s:#FCE7F1; --lab-8:#4D7C0F; --lab-8-s:#ECF5DF; --lab-9:#4B5563; --lab-9-s:#EEF0F4;
   color-scheme:light;
   --radius:14px; --shadow:0 1px 2px rgba(22,24,29,.05),0 10px 30px rgba(22,24,29,.05);
 }
@@ -59,6 +64,9 @@
   --st-review:#D9A441; --st-review-ink:#E0B25C; --st-blocked:#E8737F; --st-blocked-ink:#ED8791;
   --st-done:#4FBA84; --st-done-ink:#62C795;
   --st-todo-soft:#262932; --st-prog-soft:#1C2A3E; --st-review-soft:#33290F; --st-blocked-soft:#3A1F26; --st-done-soft:#15302A;
+  --lab-0:#7FB4F2; --lab-0-s:#1C2A3E; --lab-1:#E8B94F; --lab-1-s:#33290F; --lab-2:#5CCB97; --lab-2-s:#15302A;
+  --lab-3:#F07A8C; --lab-3-s:#3A1F26; --lab-4:#B9A4F0; --lab-4-s:#2A2140; --lab-5:#6FD3C7; --lab-5-s:#16332F;
+  --lab-6:#F49A6B; --lab-6-s:#3A2419; --lab-7:#F08BBE; --lab-7-s:#3A1F2E; --lab-8:#A3D16B; --lab-8-s:#24311A; --lab-9:#B4B2AA; --lab-9-s:#262932;
   color-scheme:dark;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.3);
 }
@@ -529,7 +537,8 @@ td.tv-name .tv-open{padding-left:20px}
 .tv-fill{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;max-width:118px;min-height:0;padding:4px 10px;border-radius:99px;font-weight:700;font-size:12px;letter-spacing:.1px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tv-fill .cdot{width:7px;height:7px;border-radius:50%;flex:none}
 .tv-fill-empty{background:var(--gray-soft);color:var(--ink3)}
-.tv td .tv-chip{width:100%;max-width:118px;justify-content:center;overflow:hidden;text-overflow:ellipsis}
+.tv td .tv-chip{width:100%;max-width:150px;justify-content:center;overflow:hidden;text-overflow:ellipsis}
+.tv td .tv-chip>span:last-child{overflow:hidden;text-overflow:ellipsis}
 .tv td .tv-pickv:has(>.tv-chip){justify-content:center;padding:0 8px}
 /* assignee avatar stack — overlapping heads, +N when more than the cap */
 .asg-stack{display:inline-flex;align-items:center;cursor:pointer}
@@ -4846,6 +4855,17 @@ function tvFmtDate(v){
 function tvChip(label, color){
   return `<span class="tv-chip" style="background:${color}1C;color:${color}"><span class="cdot" style="background:${color}"></span>${esc(label)}</span>`;
 }
+/* A dropdown or brand value always gets the same colour: a known marketplace name takes that
+   platform's colour, anything else hashes to one of the ten label tints. */
+const PF_ALIAS = {shopee:'Shopee', lazada:'Lazada', laz:'Lazada', shp:'Shopee', tiktok:'TikTok Shop', 'tiktok shop':'TikTok Shop', tt:'TikTok Shop', shopify:'Shopify', amazon:'Amazon'};
+function labelChip(val){
+  const key = String(val).trim().toLowerCase();
+  const pf = PF_ALIAS[key] && PLATFORMS.find(x=>x.k===PF_ALIAS[key]);
+  if(pf) return tvChip(val, pf.color);
+  let h = 0; for(const ch of key) h = (h*31 + ch.charCodeAt(0)) >>> 0;
+  const i = h % 10;
+  return `<span class="tv-chip" title="${esc(val)}" style="background:var(--lab-${i}-s);color:var(--lab-${i})"><span class="cdot" style="background:var(--lab-${i})"></span><span>${esc(val)}</span></span>`;
+}
 function tvDisplay(kind, val, t){
   if(kind==='assignees') return assigneeAvatars(t || {assignee_ids:val});
   if(val===undefined||val===null||val===''){
@@ -4865,7 +4885,7 @@ function tvDisplay(kind, val, t){
   if(kind==='platform'){ const p=PLATFORMS.find(x=>x.k===val); const c=p?p.color:'#8E93A8'; return `<span class="tv-chip" style="background:${c}1C;color:${c}"><span class="cdot" style="background:${c}"></span>${esc(val)}</span>`; }
   if(kind==='file'){ if(!val||!val.path) return `<span class="tv-empty">—</span>`;
     return `<a class="tv-link tv-filechip" href="#" data-sign="${esc(val.path)}" target="_blank" rel="noopener" title="${esc(val.name||'file')}" onclick="event.stopPropagation()">📎 ${esc((val.name||'file').length>18?(val.name.slice(0,17)+'…'):val.name)}</a>`; }
-  if(kind==='brand'||kind.startsWith('f_')) return `<span class="tv-chip" style="background:var(--gray-soft);color:var(--ink)">${esc(val)}</span>`;
+  if(kind==='brand'||kind.startsWith('f_')) return labelChip(val);
   return esc(val);
 }
 function tvPickHTML(kind, tid, field, isCustom, val, t){
