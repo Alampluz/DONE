@@ -300,6 +300,12 @@ table.tv{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%
 .tv-addcol{padding:4px 10px;font-weight:700;color:var(--ink3);cursor:pointer;white-space:nowrap;border:1px dashed var(--line);border-radius:7px;font-size:11px;letter-spacing:.4px}
 .tv-addcol:hover{color:var(--accent);border-color:var(--accent)}
 
+.ep-sts{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.ep-st{display:flex;align-items:center;gap:8px}
+.ep-st .ep-st-col{width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:50%;background:none;cursor:pointer}
+.ep-st .ep-st-label{flex:1;min-width:0}
+.ep-st-mv{display:inline-flex;gap:2px}.ep-st-mv button,.ep-st-x{color:var(--ink3);padding:4px 6px;border-radius:6px;font-size:11px}
+.ep-st-mv button:hover,.ep-st-x:hover{background:var(--gray-soft);color:var(--ink)}
 /* board summary strip — the numbers before the rows */
 .bstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .bstat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 14px 9px;display:flex;flex-direction:column;gap:2px;min-width:0;cursor:pointer}
