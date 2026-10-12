@@ -1249,7 +1249,7 @@ const PRIORITIES = [
    not use (projects.field_config, 7 Sep) — an onboarding board has a "Store live" date, not a due date;
    a CS board has an SLA, not a priority. Status can be renamed but never hidden. */
 const CORE_FIELDS = [
-  {k:'status',   label:'Status',   hideable:false},
+  {k:'status',   label:'Status',   hideable:true},    // hidden only from the table — a board with its own "Production status" column asked for this; kanban and filters still use it
   {k:'priority', label:'Priority', hideable:true},
   {k:'assignee', label:'Assignee', hideable:true},
   {k:'due_date', label:'Due date', hideable:true},
@@ -3629,7 +3629,7 @@ function editProjectModal(pid){
       <label style="margin-top:14px">Standard fields on this board ${helpIcon('Rename them to match the work, and untick whatever this board doesn\'t use.')}</label>
       <div class="ep-fields">
         ${CORE_FIELDS.map(f=>`<div class="ep-field">
-          <label class="chk" style="margin:0" title="${f.hideable?'Show this field on the board':'Status is always shown'}"><input type="checkbox" data-epf-show="${f.k}" ${coreHidden(pid,f.k)?'':'checked'} ${f.hideable?'':'disabled'}><span>${esc(f.label)}</span></label>
+          <label class="chk" style="margin:0" title="Show this field on the board"><input type="checkbox" data-epf-show="${f.k}" ${coreHidden(pid,f.k)?'':'checked'} ${f.hideable?'':'disabled'}><span>${esc(f.label)}</span></label>
           <input data-epf-label="${f.k}" value="${esc(fieldConf(pid,f.k).label||'')}" placeholder="${esc(f.label)}" maxlength="24">
         </div>`).join('')}
       </div>
@@ -5988,7 +5988,7 @@ const TH_FILT_ICON = '<svg viewBox="0 0 16 16" width="10" height="10" fill="none
 const tvHasTicketCol = () => (S._tasksAll||S._tasks||[]).some(t=>t.ticket_no);
 function tvHeadHTML(id, flds, showAddCol, gid){
   return `<tr>
-    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}${tvTh(id,'title','Task','tv-name')}${tvHasTicketCol()? tvTh(id,'ticket_no','Ticket','tv-ticket'):''}${tvTh(id,'status',coreLabel(id,'status'))}${coreHidden(id,'assignee')?'':tvTh(id,'assignee',coreLabel(id,'assignee'))}${coreHidden(id,'due_date')?'':tvTh(id,'due_date',coreLabel(id,'due_date'))}${coreHidden(id,'priority')?'':tvTh(id,'priority',coreLabel(id,'priority'))}
+    ${canEdit()?`<th class="tv-check"><input type="checkbox" title="Select all" onchange="tvSelGroup(this,'${gid}')"></th>`:''}${tvTh(id,'title','Task','tv-name')}${tvHasTicketCol()? tvTh(id,'ticket_no','Ticket','tv-ticket'):''}${coreHidden(id,'status')?'':tvTh(id,'status',coreLabel(id,'status'))}${coreHidden(id,'assignee')?'':tvTh(id,'assignee',coreLabel(id,'assignee'))}${coreHidden(id,'due_date')?'':tvTh(id,'due_date',coreLabel(id,'due_date'))}${coreHidden(id,'priority')?'':tvTh(id,'priority',coreLabel(id,'priority'))}
     ${flds.map(f=>tvTh(id,'f:'+f.id,f.label, canManageBoard(id)?'col-edit':'', canManageBoard(id)?`onclick="editColumnModal('${f.id}','${id}')" title="Edit column"`:'')).join('')}
     ${isStaff()? (showAddCol&&canManageBoard(id)? `<th><span class="tv-addcol" onclick="addColumnModal('${id}')">＋ Column</span></th>`:'<th></th>'):''}
   </tr>`;
@@ -6010,7 +6010,7 @@ function tvRowHTML(t, flds, gc){
     ${canEdit()?`<td class="tv-check">${canEditTask(t)?`<input type="checkbox" ${tvSel.has(t.id)?'checked':''} onchange="tvSelToggle('${t.id}',this.checked)">`:''}</td>`:''}
     <td class="tv-name"><span class="tv-dots" title="Task options" onclick="event.stopPropagation();rowMenu(this,'${t.id}')">⋯</span><div class="tv-open" draggable="${canEditTask(t)&&!arch}" ondragstart="tvDragStart(event,'${t.id}')" ondragend="tvDragEnd(event)" onclick="openTask('${t.id}')">${dep}${tvHasTicketCol()? '' : ticketTag(t)}${esc(t.title)}${sc&&sc.total? `<span class="subchip">${sc.done}/${sc.total}</span>`:''}</div>${arch&&canEdit()?`<span class="tv-restore" onclick="event.stopPropagation();tvUnarchive('${t.id}')">Restore</span>`:''}</td>
     ${tvHasTicketCol()? `<td class="tv-ticket">${ticketTag(t)}</td>`:''}
-    <td>${tvPickHTML('status', t.id, 'status', false, t.status, t)}</td>
+    ${coreHidden(t.project_id,'status')?'':`<td>${tvPickHTML('status', t.id, 'status', false, t.status, t)}</td>`}
     ${coreHidden(t.project_id,'assignee')?'':`<td>${tvPickHTML('assignees', t.id, 'assignee_ids', false, taskAssignees(t), t)}</td>`}
     ${coreHidden(t.project_id,'due_date')?'':`<td>${tvPickHTML('due', t.id, 'due_date', false, t.due_date, t)}</td>`}
     ${coreHidden(t.project_id,'priority')?'':`<td>${tvPickHTML('priority', t.id, 'priority', false, t.priority, t)}</td>`}
@@ -6037,7 +6037,7 @@ function renderProjectTableView(id, rowSet, host){
   const SRC = rowSet || S._tasks || [];
   const flds = (S._fields||[]).filter(f=>!fieldHidden(f)), groups = S._groups||[];
   tvBuildOpts(flds);
-  const cols = 2+(tvHasTicketCol()?1:0)+['assignee','due_date','priority'].filter(k=>!coreHidden(id,k)).length+(canEdit()?1:0)+flds.length+(isStaff()?1:0);
+  const cols = 1+(tvHasTicketCol()?1:0)+['status','assignee','due_date','priority'].filter(k=>!coreHidden(id,k)).length+(canEdit()?1:0)+flds.length+(isStaff()?1:0);
   const byPos = tvSortFn(id, (a,b)=> (a.position||0)-(b.position||0));
   const srt = tvSortLoad(id);
   const sortBar = srt? `<div class="tv-sortbar">Sorted by <b>${esc(tvSortLabel(id,srt.key))}</b> ${srt.dir==='desc'?'▼':'▲'} · <span class="clr" onclick="tvSortSet('${id}',null)">Clear</span></div>` : '';
