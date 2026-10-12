@@ -300,6 +300,12 @@ table.tv{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%
 .tv-addcol{padding:4px 10px;font-weight:700;color:var(--ink3);cursor:pointer;white-space:nowrap;border:1px dashed var(--line);border-radius:7px;font-size:11px;letter-spacing:.4px}
 .tv-addcol:hover{color:var(--accent);border-color:var(--accent)}
 
+.ep-sts{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.ep-st{display:flex;align-items:center;gap:8px}
+.ep-st .ep-st-col{width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:50%;background:none;cursor:pointer}
+.ep-st .ep-st-label{flex:1;min-width:0}
+.ep-st-mv{display:inline-flex;gap:2px}.ep-st-mv button,.ep-st-x{color:var(--ink3);padding:4px 6px;border-radius:6px;font-size:11px}
+.ep-st-mv button:hover,.ep-st-x:hover{background:var(--gray-soft);color:var(--ink)}
 /* board summary strip — the numbers before the rows */
 .bstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .bstat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 14px 9px;display:flex;flex-direction:column;gap:2px;min-width:0;cursor:pointer}
@@ -1228,13 +1234,42 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
    were the two that failed. */
 /* `color` is the fill and the dot; `ink` is the label when the chip is a 10% tint of its own
    hue, where using `color` for both lands around 4:1. */
-const STATUSES = [
-  {k:'todo', label:'To Do', color:'var(--st-todo)', ink:'var(--st-todo-ink)'},
-  {k:'in_progress', label:'In Progress', color:'var(--st-prog)', ink:'var(--st-prog-ink)'},
-  {k:'review', label:'Review', color:'var(--st-review)', ink:'var(--st-review-ink)'},
-  {k:'blocked', label:'Blocked', color:'var(--st-blocked)', ink:'var(--st-blocked-ink)'},
-  {k:'done', label:'Done', color:'var(--st-done)', ink:'var(--st-done-ink)'},
+const DEFAULT_STATUSES = [
+  {k:'todo', label:'To Do', color:'var(--st-todo)', ink:'var(--st-todo-ink)', soft:'var(--st-todo-soft)', hex:'#6F7384'},
+  {k:'in_progress', label:'In Progress', color:'var(--st-prog)', ink:'var(--st-prog-ink)', soft:'var(--st-prog-soft)', hex:'#2273C9'},
+  {k:'review', label:'Review', color:'var(--st-review)', ink:'var(--st-review-ink)', soft:'var(--st-review-soft)', hex:'#9F6907'},
+  {k:'blocked', label:'Blocked', color:'var(--st-blocked)', ink:'var(--st-blocked-ink)', soft:'var(--st-blocked-soft)', hex:'#D04358'},
+  {k:'done', label:'Done', color:'var(--st-done)', ink:'var(--st-done-ink)', soft:'var(--st-done-soft)', hex:'#108456', done:true},
 ];
+/* Statuses are per board now (projects.field_config.statuses). STATUSES is whatever the open
+   board uses — setStatusScope() swaps it when a board or a task is opened; off a board it is
+   the union of every board's list so labels and colours still resolve on Home and dashboards.
+   A stored status is {k, label, color?, done?}: the five built-in keys keep their theme colours
+   unless recoloured; extra ones are s_<slug> with a hex colour. */
+let STATUSES = DEFAULT_STATUSES;
+const ST_PALETTE = ['#6F7384','#2273C9','#9F6907','#D04358','#108456','#6E56B8','#C2410C','#BE185D','#0F766E','#4D7C0F'];
+function statusDef(x){
+  const built = DEFAULT_STATUSES.find(s=>s.k===x.k);
+  const done = x.done!=null? !!x.done : !!(built && built.done);
+  if(built && (!x.color || x.color.toLowerCase()===built.hex.toLowerCase())) return {...built, label:(x.label||'').trim()||built.label, done};
+  const c = x.color || ST_PALETTE[5];
+  return {k:x.k, label:(x.label||'').trim()||x.k, color:c, ink:c, soft:c+'22', hex:c, done, custom:!built};
+}
+function boardStatuses(pid){
+  const l = pid? fieldConf(pid,'statuses') : null;
+  return (Array.isArray(l) && l.length)? l.map(statusDef) : DEFAULT_STATUSES;
+}
+function allStatuses(){
+  const seen = new Map(DEFAULT_STATUSES.map(s=>[s.k,s]));
+  (S.projects||[]).forEach(p=>{ const l=(p.field_config||{}).statuses; if(Array.isArray(l)) l.forEach(x=>{ const d=statusDef(x); if(!seen.has(d.k) || d.done!==seen.get(d.k).done) seen.set(d.k, seen.has(d.k)? {...seen.get(d.k), done: seen.get(d.k).done||d.done} : d); }); });
+  return [...seen.values()];
+}
+function setStatusScope(pid){ STATUSES = pid? boardStatuses(pid) : allStatuses(); }
+function isDoneK(k){ const s = STATUSES.find(x=>x.k===k) || allStatuses().find(x=>x.k===k); return s? !!s.done : k==='done'; }
+const isOpenK = k => !isDoneK(k);
+/* every key that counts as finished on any board — for server-side "open work" queries */
+function doneKeys(){ return allStatuses().filter(s=>s.done).map(s=>s.k); }
+const doneKeyList = () => '(' + doneKeys().map(k=>'"'+k+'"').join(',') + ')';
 /* Priority reads by weight, not just hue: Urgent and High are saturated fills, Normal and
    Low are neutral. Normal used to be the loudest colour on the board (saturated blue, on
    most rows), which put the visual emphasis on the value that needs the least attention.
@@ -2282,6 +2317,7 @@ function navigate(hash){
   if(view==='b'){ const p = boardFromSlug(parts[1]); if(!p){ toast('Board not found', true); location.hash='#/home'; return; } view='project'; parts[1]=p.id; }
   else if(view==='t'){ view='task'; parts[1]=decodeURIComponent(parts[1]||''); }
   S.route = {view, id:parts[1], tab:parts[2]};
+  setStatusScope(view==='project'? parts[1] : null);
   /* Every navigation bumps this. An async renderer captures it on entry and refuses to paint
      #content once it has changed, so a slow view cannot land on top of the one you clicked.
      18 Sep: Campaigns showed the Operations Dashboard because renderDashboard's widget query
@@ -3209,7 +3245,7 @@ async function renderHome(){
   const C=$('#content');
   C.innerHTML = '<div class="empty">Loading…</div>';
   const [tks, reqs, apprs, cal] = await Promise.all([
-    allRows(()=>db.from('tasks').select('*').or(`assignee_id.eq.${S.me.id},assignee_ids.cs.{${S.me.id}}`).neq('status','done').order('due_date',{ascending:true,nullsFirst:false}).order('id')),
+    allRows(()=>db.from('tasks').select('*').or(`assignee_id.eq.${S.me.id},assignee_ids.cs.{${S.me.id}}`).not('status','in',doneKeyList()).order('due_date',{ascending:true,nullsFirst:false}).order('id')),
     db.from('requests').select('*').eq('submitted_by',S.me.id).not('status','in',"(done,cancelled)").order('created_at',{ascending:false}),
     db.from('approvals').select('*').eq('approver_id',S.me.id).eq('status','pending'),
     // My calendar: everything assigned to me that has a date, done included - a
@@ -3230,8 +3266,8 @@ async function renderHome(){
     const openSet = ['submitted','in_review','approved','in_progress','pending_info'];
     const todayISO = new Date().toISOString().slice(0,10);
     const [a,b,c,d] = await Promise.all([
-      db.from('tasks').select('id',{count:'exact',head:true}).neq('status','done').is('archived_at',null),
-      db.from('tasks').select('id',{count:'exact',head:true}).neq('status','done').is('archived_at',null).lt('due_date', todayISO),
+      db.from('tasks').select('id',{count:'exact',head:true}).not('status','in',doneKeyList()).is('archived_at',null),
+      db.from('tasks').select('id',{count:'exact',head:true}).not('status','in',doneKeyList()).is('archived_at',null).lt('due_date', todayISO),
       db.from('requests').select('id',{count:'exact',head:true}).in('status', openSet),
       db.from('requests').select('id',{count:'exact',head:true}).in('status', openSet).lt('sla_due_at', new Date().toISOString()).is('sla_paused_at',null),
     ]);
@@ -3294,7 +3330,7 @@ function taskTable(tasks){
         <td style="font-weight:600">${esc(t.title)}</td>
         <td style="color:var(--ink2)">${esc(p?p.name:'—')}</td>
         <td>${statusChip(t.status)}</td><td>${prioChip(t.priority)}</td>
-        <td>${dueBadge(t.due_date, t.status==='done')||'<span style="color:var(--ink3)">—</span>'}</td>
+        <td>${dueBadge(t.due_date, isDoneK(t.status))||'<span style="color:var(--ink3)">—</span>'}</td>
         <td>${assigneeAvatars(t)}</td></tr>`;
     }).join('')}</tbody></table>`;
 }
@@ -3351,7 +3387,7 @@ async function renderWorkspace(id, tab){
   let counts = {};
   if(ids.length){
     const {data} = await allRows(()=>db.from('tasks').select('project_id,status').in('project_id', ids).order('id'));
-    (data||[]).forEach(t=>{ counts[t.project_id]=counts[t.project_id]||{open:0,done:0}; t.status==='done'?counts[t.project_id].done++:counts[t.project_id].open++; });
+    (data||[]).forEach(t=>{ counts[t.project_id]=counts[t.project_id]||{open:0,done:0}; isDoneK(t.status)?counts[t.project_id].done++:counts[t.project_id].open++; });
   }
   if(navStale(_nav)) return;
   C.innerHTML = `
@@ -3549,7 +3585,7 @@ async function recurringModal(pid){
           <select id="rc-mode" onchange="document.getElementById('rc-parent-wrap').style.display=this.value==='sub'?'':'none';document.getElementById('rc-group-wrap').style.display=this.value==='sub'?'none':''">
             <option value="task">A new task</option><option value="sub">A subtask on an existing task</option></select></div>
         <div id="rc-parent-wrap" style="display:none"><label>Parent task</label>
-          <input id="rc-parent" list="rc-parent-list" placeholder="Type to find the task…"><datalist id="rc-parent-list">${(S._tasksAll||[]).filter(t=>!t.archived_at && t.status!=='done').slice(0,400).map(t=>`<option value="${esc(t.title)}"></option>`).join('')}</datalist></div>
+          <input id="rc-parent" list="rc-parent-list" placeholder="Type to find the task…"><datalist id="rc-parent-list">${(S._tasksAll||[]).filter(t=>!t.archived_at && !isDoneK(t.status)).slice(0,400).map(t=>`<option value="${esc(t.title)}"></option>`).join('')}</datalist></div>
         <div id="rc-group-wrap"><label>Group</label><select id="rc-group"><option value="">No group</option>${(groups||[]).map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('')}</select></div>
         <div><label>Priority</label><select id="rc-prio">${PRIORITIES.map(x=>`<option value="${x.k}" ${x.k==='normal'?'selected':''}>${x.label}</option>`).join('')}</select></div>
         <div><label>Assignee</label><select id="rc-assignee"><option value="">Unassigned</option>${people.map(u=>`<option value="${u.id}">${esc(u.full_name)}</option>`).join('')}</select></div>
@@ -3589,6 +3625,37 @@ async function rcDelete(id, pid){
   // awaited so a caller (or test) that continues right after never races the re-opened dialog
   toast('Rule deleted'); closeModals(); await recurringModal(pid);
 }
+/* One row of the status editor in Edit board */
+function epStatusRow(st){
+  const built = DEFAULT_STATUSES.some(d=>d.k===st.k);
+  return `<div class="ep-st" data-k="${esc(st.k)}" data-builtin="${built?1:0}">
+    <input type="color" class="ep-st-col" value="${esc(st.hex||'#6E56B8')}" title="Colour" aria-label="Colour">
+    <input class="ep-st-label" value="${esc(st.label)}" maxlength="28" placeholder="Status name" aria-label="Status name">
+    <label class="chk" style="margin:0" title="Tasks in this status count as finished"><input type="checkbox" class="ep-st-done" ${st.done?'checked':''}><span>Done</span></label>
+    <span class="ep-st-mv"><button type="button" aria-label="Move up" onclick="epStMove(this,-1)">▲</button><button type="button" aria-label="Move down" onclick="epStMove(this,1)">▼</button></span>
+    ${built? '<span class="ep-st-x" style="visibility:hidden">✕</span>' : `<button type="button" class="ep-st-x" aria-label="Remove status" title="Remove — tasks in it keep the name until you move them" onclick="this.closest('.ep-st').remove()">✕</button>`}
+  </div>`;
+}
+function epStMove(btn, d){ const row=btn.closest('.ep-st'); const sib = d<0? row.previousElementSibling : row.nextElementSibling; if(!sib) return; d<0? sib.before(row) : sib.after(row); }
+function epStatusesRead(m){
+  const rows = [...m.querySelectorAll('.ep-st')];
+  const used = new Set();
+  const out = rows.map(r=>{
+    let k = r.dataset.k; const label = r.querySelector('.ep-st-label').value.trim(); if(!label) return null;
+    if(!k){ k = 's_'+slugify(label).replace(/-/g,'_').slice(0,24) || 's_'+Date.now(); let i=2; const base=k; while(used.has(k) || DEFAULT_STATUSES.some(d=>d.k===k)) k = base+'_'+(i++); }
+    used.add(k);
+    const built = DEFAULT_STATUSES.find(d=>d.k===k);
+    const color = r.querySelector('.ep-st-col').value.toLowerCase();
+    const o = {k, label};
+    if(!built || color!==built.hex.toLowerCase()) o.color = color;
+    const done = r.querySelector('.ep-st-done').checked; if(done !== !!(built && built.done)) o.done = done;
+    return o;
+  }).filter(Boolean);
+  // identical to the defaults → store nothing
+  const dflt = DEFAULT_STATUSES.map(d=>({k:d.k,label:d.label}));
+  const same = out.length===dflt.length && out.every((o,i)=> o.k===dflt[i].k && o.label===dflt[i].label && !o.color && o.done==null);
+  return same? null : out;
+}
 function editProjectModal(pid){
   const p = (S.projects||[]).find(x=>x.id===pid); if(!p) return;
   const gate = p.approval_gate||{};
@@ -3626,6 +3693,9 @@ function editProjectModal(pid){
       ${canManageBoard(pid)? `<label style="margin-top:14px">Who can change tasks</label>
       <select id="ep-preset">${BOARD_PRESETS.map(o=>`<option value="${o.k}" ${o.k===(p.edit_preset||'everything')?'selected':''}>${o.label}</option>`).join('')}</select>
       <span id="ep-preset-blurb">${helpIcon(BOARD_PRESETS.find(o=>o.k===(p.edit_preset||'everything')).blurb + ' Owners, admins and management are never restricted.')}</span>`:''}
+      <label style="margin-top:14px">Statuses on this board ${helpIcon('Rename, recolour and reorder the statuses, add your own, and tick which ones count as finished. The kanban columns, filters and reports follow this list.')}</label>
+      <div class="ep-sts" id="ep-sts">${boardStatuses(pid).map(st=>epStatusRow(st)).join('')}</div>
+      <button type="button" class="btn btn-ghost btn-sm" id="ep-st-add" style="margin-top:6px">＋ Add status</button>
       <label style="margin-top:14px">Standard fields on this board ${helpIcon('Rename them to match the work, and untick whatever this board doesn\'t use.')}</label>
       <div class="ep-fields">
         ${CORE_FIELDS.map(f=>`<div class="ep-field">
@@ -3658,6 +3728,8 @@ function editProjectModal(pid){
     colour = s.dataset.c;
     m.querySelectorAll('#ep-cols span').forEach(x=> x.style.boxShadow = x.dataset.c===colour? '0 0 0 3px var(--panel),0 0 0 5px '+colour : 'none');
   });
+  const stAdd = m.querySelector('#ep-st-add');
+  if(stAdd) stAdd.onclick = ()=>{ const host=m.querySelector('#ep-sts'); const n=host.children.length; host.insertAdjacentHTML('beforeend', epStatusRow({k:'', label:'', hex:ST_PALETTE[n % ST_PALETTE.length], done:false})); host.lastElementChild.querySelector('.ep-st-label').focus(); };
   m.querySelector('#ep-save').onclick = async ()=>{
     const name = m.querySelector('#ep-name').value.trim(); if(!name) return toast('Name required', true);
     const vis = m.querySelector('#ep-vis').dataset.sel || 'collaborate';
@@ -3687,6 +3759,8 @@ function editProjectModal(pid){
       if(el && !el.checked) secs[x.k] = false;
     });
     if(Object.keys(secs).length) fc.sections = secs;
+    const sts = epStatusesRead(m); if(sts) fc.statuses = sts;
+    if(sts && !sts.some(o=> o.done===true || (DEFAULT_STATUSES.find(d=>d.k===o.k)||{}).done && o.done!==false)) return toast('Tick at least one status as Done', true);
     upd.field_config = fc;
     if(canGate) upd.approval_gate = {on: gateOn.checked,
       status: m.querySelector('#ep-gate-status').value,
@@ -3930,19 +4004,19 @@ let boardMode = 'table';
 const boardFilters = {};
 /* Quick filters: one-click views a CS or ops person reaches for all day. The chosen chip is
    remembered per board in localStorage so "My open" is still on tomorrow morning. */
-const OPEN_STATES = new Set(['todo','in_progress','review','blocked']);
+/* OPEN_STATES used to be a fixed set; a board can now mark any status as "done", so open = not done. */
 const daysAgoISO = n => { const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString(); };
 const BF_QUICK = [
-  {k:'mine',       label:'My open',        test:t=> OPEN_STATES.has(t.status) && isAssignee(t,(S.me||{}).id)},
-  {k:'unassigned', label:'Unassigned',     test:t=> OPEN_STATES.has(t.status) && !taskAssignees(t).length},
-  {k:'urgent',     label:'Urgent open',    test:t=> OPEN_STATES.has(t.status) && t.priority==='urgent'},
-  {k:'overdue',    label:'Overdue',        test:t=> OPEN_STATES.has(t.status) && t.due_date && daysDiff(t.due_date)<0},
+  {k:'mine',       label:'My open',        test:t=> isOpenK(t.status) && isAssignee(t,(S.me||{}).id)},
+  {k:'unassigned', label:'Unassigned',     test:t=> isOpenK(t.status) && !taskAssignees(t).length},
+  {k:'urgent',     label:'Urgent open',    test:t=> isOpenK(t.status) && t.priority==='urgent'},
+  {k:'overdue',    label:'Overdue',        test:t=> isOpenK(t.status) && t.due_date && daysDiff(t.due_date)<0},
   {k:'new7',       label:'New this week',  test:t=> (t.created_at||'') >= daysAgoISO(7)},
-  {k:'done7',      label:'Done this week', test:t=> t.status==='done' && (t.completed_at||'') >= daysAgoISO(7)},
+  {k:'done7',      label:'Done this week', test:t=> isDoneK(t.status) && (t.completed_at||'') >= daysAgoISO(7)},
   // the summary tiles above the board set these; they are not offered as chips
-  {k:'open',       label:'Open',           tile:true, test:t=> OPEN_STATES.has(t.status)},
-  {k:'week',       label:'Due this week',  tile:true, test:t=> OPEN_STATES.has(t.status) && t.due_date && daysDiff(t.due_date)>=0 && daysDiff(t.due_date)<=7},
-  {k:'donemonth',  label:'Done this month',tile:true, test:t=> t.status==='done' && (t.completed_at||t.updated_at||'').slice(0,7)===new Date().toISOString().slice(0,7)},
+  {k:'open',       label:'Open',           tile:true, test:t=> isOpenK(t.status)},
+  {k:'week',       label:'Due this week',  tile:true, test:t=> isOpenK(t.status) && t.due_date && daysDiff(t.due_date)>=0 && daysDiff(t.due_date)<=7},
+  {k:'donemonth',  label:'Done this month',tile:true, test:t=> isDoneK(t.status) && (t.completed_at||t.updated_at||'').slice(0,7)===new Date().toISOString().slice(0,7)},
 ];
 /* The Overdue chip is a due-date idea; a board that has switched Due date off does not get it. */
 const bfQuickOffered = (pid, x) => !(x.k==='overdue' && coreHidden(pid,'due_date'));
@@ -4205,13 +4279,13 @@ function boardStatsHTML(pid){
   if(!all.length) return '';
   const me = (S.me||{}).id, today = new Date(); today.setHours(0,0,0,0);
   const day = d=>{ const x=new Date(d+'T00:00:00'); return Math.round((x-today)/86400000); };
-  const open = all.filter(t=>OPEN_STATES.has(t.status));
+  const open = all.filter(t=>isOpenK(t.status));
   const mine = open.filter(t=>isAssignee(t,me)).length;
   const over = open.filter(t=>t.due_date && day(t.due_date)<0);
   const oldest = over.length? Math.max(...over.map(t=>-day(t.due_date))) : 0;
   const week = open.filter(t=>t.due_date && day(t.due_date)>=0 && day(t.due_date)<=7);
   const ym = today.toISOString().slice(0,7);
-  const done = all.filter(t=>t.status==='done' && ((t.completed_at||t.updated_at||'').slice(0,7)===ym)).length;
+  const done = all.filter(t=>isDoneK(t.status) && ((t.completed_at||t.updated_at||'').slice(0,7)===ym)).length;
   const f = bfGet(pid).quick||'';
   const tile = (k,l,n,t,col)=>`<div class="bstat ${f===k?'on':''}" role="button" tabindex="0" onclick="bfQuick('${pid}','${k}')" onkeydown="kbActivate(event)"><span class="l">${l}</span><b ${col?`style="color:${col}"`:''}>${n}</b><span class="t" ${col?`style="color:${col}"`:''}>${t}</span></div>`;
   return `<div class="bstats">
@@ -4349,6 +4423,7 @@ async function shareSend(pid){
 }
 async function renderProject(id){
   const _nav = S.nav;
+  setStatusScope(id);
   if(S._viewPid!==id){ boardMode = viewLoad(id) || 'table'; S._viewPid = id; }   // land on the view last used here
   const p = projById(id);
   if(!p){ // maybe not in cache (partner) — try fetch, but never loop on it
@@ -4537,7 +4612,7 @@ function calBuckets(rows, basis){
     (by.get(k) || by.set(k, []).get(k)).push(t);
   });
   by.forEach(list=> list.sort((a,b)=>
-    (a.status==='done') - (b.status==='done')
+    (isDoneK(a.status)?1:0) - (isDoneK(b.status)?1:0)
     || PRIORITIES.findIndex(p=>p.k===a.priority) - PRIORITIES.findIndex(p=>p.k===b.priority)
     || (a.title||'').localeCompare(b.title||'')));
   return {by, undated};
@@ -4555,7 +4630,7 @@ function calToggleDay(id, key){
 }
 function calPill(t, basis){
   const st = STATUSES.find(s=>s.k===t.status) || STATUSES[0];
-  const overdue = (basis||'due')==='due' && t.status!=='done' && daysDiff(t.due_date) < 0;
+  const overdue = (basis||'due')==='due' && !isDoneK(t.status) && daysDiff(t.due_date) < 0;
   const board = t._pname? ` · ${esc(t._pname)}` : '';
   const bdot = t._pname? `<span class="cal-bdot" style="background:${t._pcolor||'var(--ink3)'}" title="${esc(t._pname)}"></span>` : '';
   return `<button class="cal-pill${overdue?' over':''}" style="--pc:${st.color}" title="${esc(t.title)} · ${esc(st.label)}${overdue?' · overdue':''}${board}"
@@ -4730,7 +4805,7 @@ function kbFieldText(t, f){
   return esc(String(v));
 }
 function taskCard(t){
-  const done = t.status==='done';
+  const done = isDoneK(t.status);
   const cfg = kbFieldsLoad(t.project_id) || kbDefault(t.project_id);
   const flds = S._fields||[];
   const sc = (S._subs||{})[t.id];
@@ -4892,10 +4967,10 @@ function tvDisplay(kind, val, t){
     if(kind==='status'||kind==='priority') return `<span class="tv-fill tv-fill-empty">—</span>`;
     return `<span class="tv-empty">—</span>`;
   }
-  if(kind==='status'){ const s=STATUSES.find(x=>x.k===val); return s? `<span class="tv-fill" style="background:${s.color.replace(/\)$/,'-soft)')};color:${s.color.replace(/\)$/,'-ink)')}"><i class="cdot" style="background:${s.color}"></i>${esc(s.label)}</span>` : esc(val); }
+  if(kind==='status'){ const s=STATUSES.find(x=>x.k===val); return s? `<span class="tv-fill" style="background:${s.soft||s.color+'22'};color:${s.ink||s.color}"><i class="cdot" style="background:${s.color}"></i>${esc(s.label)}</span>` : labelChip(val); }
   if(kind==='priority'){ const p=PRIORITIES.find(x=>x.k===val); return p? `<span class="tv-fill" style="background:${p.soft};color:${p.color}"><i class="cdot" style="background:${p.color}"></i>${esc(p.label)}</span>` : esc(val); }
   if(kind==='people'){ const p=prof(val); return p? `${avatar(p,true)}<span>${esc(p.full_name)}</span>` : `<span class="tv-empty">—</span>`; }
-  if(kind==='due') return dueBadge(val, t?.status==='done') || esc(tvFmtDate(val));
+  if(kind==='due') return dueBadge(val, isDoneK(t?.status)) || esc(tvFmtDate(val));
   if(kind==='date') return esc(tvFmtDate(val));
   if(kind==='number') return `<span class="tv-num">${esc(val)}</span>`;
   if(kind==='text' && /^https?:\/\//.test(val)){
@@ -5998,7 +6073,7 @@ function taskHasOpenDeps(tid){
   return (S._deps||[]).some(d=>{
     if(d.task_id!==tid) return false;
     const dt = (S._tasksAll||S._tasks||[]).find(x=>x.id===d.depends_on);
-    return !dt || dt.status!=='done';
+    return !dt || !isDoneK(dt.status);
   });
 }
 const depIconHTML = ()=> `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ink3);vertical-align:-1px;margin-right:4px"><title>Waiting on another task</title><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
@@ -6689,6 +6764,7 @@ async function openTask(id){
   S._taskHist = hist||[]; S._histEntity = id; S._histType = 'task';
   if(!t) return toast('Task not found', true);
   await boardPeopleLoad(t.project_id);     // pickers in the popup offer only people on this board
+  setStatusScope(t.project_id);
   S._taskDeps = depsOn||[];
   // Titles/statuses for what this task waits on — the board cache usually has them.
   let depTasks = [];
@@ -7246,7 +7322,7 @@ function depsSectionHTML(t, depsOn, depsBy, depTasks){
    picker can never disagree. */
 function depCandidates(taskId){
   const linked = new Set((S._taskDeps||[]).map(d=>d.depends_on));
-  return (S._tasks||[]).filter(x=>x.id!==taskId && x.status!=='done' && !x.archived_at && !linked.has(x.id));
+  return (S._tasks||[]).filter(x=>x.id!==taskId && !isDoneK(x.status) && !x.archived_at && !linked.has(x.id));
 }
 function addDepModal(taskId){
   const pool = depCandidates(taskId);
