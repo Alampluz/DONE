@@ -1172,6 +1172,7 @@ async function renderProject(id){
     db.from('project_fields').select('*').eq('project_id',id).order('position').order('created_at'),
     db.from('project_groups').select('*').eq('project_id',id).order('position').order('created_at'),
     db.from('board_views').select('*').eq('project_id',id).order('position').order('created_at'),
+    boardPeopleLoad(id),
   ]);
   S._views = (S._views||[]).filter(v=>v.project_id!==id).concat(Array.isArray(views)? views : []);
   if(navStale(_nav)) return;
@@ -1587,8 +1588,23 @@ function renderProjectFromCache(id){
    is another one. These look in the open board first, then at what the popup loaded. */
 function tvTaskById(tid){ return (S._tasks||[]).find(x=>x.id===tid) || (S._popTask && S._popTask.id===tid? S._popTask : null); }
 function tvFieldById(fid){ return (S._fields||[]).find(x=>x.id===fid) || (S._popFields||[]).find(x=>x.id===fid) || null; }
-function tvPeople(){
-  return S.profiles.filter(p=> p.active!==false && !(p.email||'').startsWith('forms+'));
+/* People offered in assignee pickers. When a board's access list is loaded (board_people RPC —
+   the same rules as the projects RLS: admins/management, workspace members, board members and
+   owners) only those people are offered; anyone else on the company list is not. */
+function tvPeople(pid){
+  const base = S.profiles.filter(p=> p.active!==false && !(p.email||'').startsWith('forms+'));
+  const bp = S._boardPeople; const id = pid || tvPid;
+  if(bp && bp.pid===id && bp.ids && bp.ids.size) return base.filter(p=>bp.ids.has(p.id));
+  return base;
+}
+async function boardPeopleLoad(pid){
+  if(!pid || (S._boardPeople && S._boardPeople.pid===pid)) return;
+  if(typeof db.rpc!=='function') return;
+  try{
+    const {data, error} = await db.rpc('board_people', {p:pid});
+    if(error || !Array.isArray(data)) return;
+    S._boardPeople = {pid, ids:new Set(data.map(x=> typeof x==='string'? x : (x.board_people||x.id||x)))};
+  }catch(e){}
 }
 /* Option registries for click-to-edit dropdown cells (rendering a <select> with all
    options in every cell made large projects extremely slow — cells are now plain text
@@ -1747,10 +1763,11 @@ function tvShowMenu(anchor, opts, renderOpt, onPick, withSearch, includeClear){
 }
 /* People multi-picker: checkbox rows, stays open while you tick, saves on every change.
    `ids` is the current list; onChange gets the new list in tick order. */
-function tvPeopleMulti(anchor, ids, onChange){
+function tvPeopleMulti(anchor, ids, onChange, pid){
   tvCloseMenu();
   let cur = [...ids];
-  const people = tvPeople().map(p=>({v:p.id,l:p.full_name}));
+  const people = tvPeople(pid).map(p=>({v:p.id,l:p.full_name}));
+  cur.forEach(id=>{ if(!people.some(o=>o.v===id)){ const p=prof(id); if(p) people.push({v:id,l:p.full_name}); } });   // already on the task, even without board access now
   // people already on the task float to the top so a long list still shows who is on it
   people.sort((a,b)=> (cur.includes(b.v)?1:0)-(cur.includes(a.v)?1:0));
   const m = document.createElement('div'); m.id='tvmenu';
@@ -2012,7 +2029,7 @@ async function tvMirrorEdit(el, tid, fid){
   if(show==='priority')
     return tvShowMenu(el, PRIORITIES.map(p=>({v:p.k,l:p.label})), o=>tvDotOpt(o, PRIORITIES, lt.priority), v=>v&&save({priority:v}));
   if(show==='assignee')
-    return tvPeopleMulti(el, taskAssignees(lt), ids=>save({assignee_ids:ids, assignee_id:ids[0]||null}));
+    return tvPeopleMulti(el, taskAssignees(lt), ids=>save({assignee_ids:ids, assignee_id:ids[0]||null}), lt.project_id);
   if(show==='due_date')
     return miniInputModal(f.label, 'date', lt.due_date||'', v=>save({due_date:v||null}), 'Editing here updates the linked task on the other board.');
   const rf = (S._linkedFields||{})[show]; if(!rf) return;
