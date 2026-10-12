@@ -36,12 +36,29 @@ function assigneeOptions(projectId, selected){
   return S.profiles.filter(p=>p.active).map(p=>
     `<option value="${p.id}" ${p.id===selected?'selected':''}>${esc(p.full_name)}</option>`).join('');
 }
+/* Assignees in the task popup: the avatar stack opens the multi-picker (or, read-only, the list). */
+function tvAsgPopup(el, tid){
+  const t = tvTaskById(tid) || S._popTask; if(!t) return;
+  if(el.classList.contains('ro')) return tvPeoplePeek(el, t);
+  tvPeopleMulti(el, taskAssignees(t), async ids=>{
+    const old = {ids:t.assignee_ids, id:t.assignee_id};
+    t.assignee_ids = ids; t.assignee_id = ids[0]||null;
+    const {error} = await db.from('tasks').update({assignee_ids:ids}).eq('id',tid);
+    if(error){ t.assignee_ids=old.ids; t.assignee_id=old.id; return toast(error.message, true); }
+    document.querySelectorAll(`[data-asg="${tid}"]`).forEach(x=>{
+      x.dataset.ids = ids.join(',');
+      x.innerHTML = assigneeAvatars(t, +x.dataset.cap||3) + (x.classList.contains('asg-edit')? '<span class="asg-add" aria-hidden="true">＋</span>':'');
+    });
+  });
+}
 /* #/task/<id> — a shareable link straight to one task */
 async function openTaskRoute(id){
-  const {data:t} = await db.from('tasks').select('id,project_id').eq('id',id).single();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id||'');
+  const q = db.from('tasks').select('id,project_id');
+  const {data:t} = await (isUuid? q.eq('id',id) : q.ilike('ticket_no', id||'')).limit(1).maybeSingle();
   if(!t){ toast('Task not found — it may have been deleted or you may not have access', true); location.hash='#/home'; return; }
-  location.hash = '#/project/' + t.project_id;
-  setTimeout(()=>openTask(id), 450);
+  location.hash = boardHash(t.project_id);
+  setTimeout(()=>openTask(t.id), 450);
 }
 async function openTask(id){
   const [{data:t}, {data:chk}, {data:comments}, {data:atts}, {data:subs}, {data:hist}, {data:apprs}, {data:depsOn}, {data:depsBy}] = await Promise.all([
@@ -83,7 +100,6 @@ async function openTask(id){
   const nComments = (comments||[]).filter(c=>!c.deleted_at).length;
   const showComments = sectionOn(t.project_id,'comments'), showActivity = !isExternal();
   const chkDone = (chk||[]).filter(c=>c.done).length;
-  const owner = prof(t.assignee_id);
   const tabOn = {fields: flds.length>0, subtasks: cfg.tabs.includes('subtasks') && sectionOn(t.project_id,'subtasks'),
     files: cfg.tabs.includes('files'), comments: showComments, activity: showActivity};
   const tabDefs = icTabDefs(cfg, k=> k==='details' || tabOn[k]);
@@ -110,8 +126,7 @@ async function openTask(id){
       </div>
       <div class="tv-prop" ${coreHidden(t.project_id,'assignee')?'hidden':''}>
         <label for="tv-assignee">${esc(coreLabel(t.project_id,'assignee'))}</label>
-        <div class="tv-prop-val"><span id="tv-owner-av">${owner? avatar(owner,true):''}</span>
-          <select id="tv-assignee" class="tv-bare" ${edit?'':'disabled'}><option value="">Unassigned</option>${assigneeOptions(t.project_id, t.assignee_id)}</select></div>
+        <div class="tv-prop-val"><span id="tv-assignee" class="tv-pickv asg-edit${edit?'':' ro'}" role="button" tabindex="0" data-asg="${t.id}" data-cap="6" data-ids="${taskAssignees(t).join(',')}" title="${edit?'Assign people':'Assigned people'}" onclick="tvAsgPopup(this,'${t.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();tvAsgPopup(this,'${t.id}')}">${assigneeAvatars(t,6)}${edit?'<span class="asg-add" aria-hidden="true">＋</span>':''}</span></div>
       </div>
       <div class="tv-prop" ${coreHidden(t.project_id,'due_date')?'hidden':''}>
         <label for="tv-due">${esc(coreLabel(t.project_id,'due_date'))}</label>
@@ -163,7 +178,7 @@ async function openTask(id){
       title:m.querySelector('#tv-title').value.trim()||t.title,
       ...(desc? {description:desc.value} : {}),      // Description may be switched off on this board
       status:m.querySelector('#tv-status').value, priority:m.querySelector('#tv-prio').value,
-      assignee_id:m.querySelector('#tv-assignee').value||null, due_date:m.querySelector('#tv-due').value||null,
+      due_date:m.querySelector('#tv-due').value||null,      // assignees save on each tick in the picker
     };
     const {error} = await db.from('tasks').update(upd).eq('id',t.id);
     if(error) return toast(error.message, true);
@@ -229,8 +244,7 @@ function wireTaskView(m, t){
   if(side && !side.children.length){ side.remove(); m.querySelector('#tv-pane-details').classList.add('solo'); }
   setTimeout(()=>{ const box=m.querySelector('.modal'); if(box && box.contains(document.activeElement) && document.activeElement.id==='tv-title-view') box.focus({preventScroll:true}); }, 0);
   ['#tv-status','#tv-prio'].forEach(sel=>{ const el=m.querySelector(sel); if(el) el.addEventListener('change', ()=>tvPaintPills(m)); });
-  const asg = m.querySelector('#tv-assignee'), av = m.querySelector('#tv-owner-av');
-  if(asg && av) asg.addEventListener('change', ()=>{ const p = prof(asg.value); av.innerHTML = p? avatar(p,true) : ''; });
+
   // Tabs: click, and ←/→/Home/End between them (WAI-ARIA tabs pattern)
   const tabs = [...m.querySelectorAll('.tv-tab')];
   tabs.forEach((b,i)=>{
@@ -320,7 +334,7 @@ async function icLoadFields(t){
       const ids = links.map(f=>(t.custom||{})[f.id]).filter(v=>typeof v==='string' && LINK_ID_RE.test(v));
       const targets = [...new Set(links.map(f=>(f.options||{}).project_id).filter(Boolean))];
       const [lt, lf] = await Promise.all([
-        ids.length? db.from('tasks').select('id,title,status,priority,assignee_id,due_date,group_id,project_id,custom').in('id',ids) : Promise.resolve({data:[]}),
+        ids.length? db.from('tasks').select('id,title,status,priority,assignee_id,assignee_ids,due_date,group_id,project_id,custom').in('id',ids) : Promise.resolve({data:[]}),
         targets.length? db.from('project_fields').select('id,label,ftype,options').in('project_id',targets) : Promise.resolve({data:[]}),
       ]);
       S._linkedTasks = S._linkedTasks||{}; S._linkedFields = S._linkedFields||{};
