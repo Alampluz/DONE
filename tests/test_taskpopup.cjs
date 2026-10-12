@@ -41,7 +41,7 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  r.meta=$('.tv-meta').textContent.replace(/\s+/g,' ').trim();
  r.labelled=m.getAttribute('aria-labelledby')===$('.tv-h2').id;
  r.statusPainted=!!$('#tv-status').style.background && $('#tv-status').value==='in_progress';
- r.owner=$('#tv-assignee').value; r.ownerAv=!!$('#tv-owner-av').innerHTML.trim();
+ r.owner=$('#tv-assignee').dataset.ids; r.ownerAv=!!$('#tv-assignee').querySelector('.asg-stack .avatar');
  r.due=$('#tv-due').value;
  r.tabs=[...m.querySelectorAll('.tv-tab')].map(b=>b.textContent.replace(/\s+/g,' ').trim()+':'+b.getAttribute('aria-selected')).join('|');
  r.panes=['fields','details','comments','activity'].map(k=>k+':'+($('#tv-pane-'+k).hidden?'hidden':'shown')).join(',');
@@ -74,7 +74,13 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  // status change repaints, owner change swaps the avatar
  const bg1=$('#tv-status').style.background; $('#tv-status').value='done'; $('#tv-status').dispatchEvent(new Event('change'));
  r.repainted=$('#tv-status').style.background!==bg1;
- $('#tv-assignee').value=''; $('#tv-assignee').dispatchEvent(new Event('change')); r.avCleared=$('#tv-owner-av').innerHTML==='';
+ // assignees are a multi-picker now: open it, untick the current person — the stack empties and the save is immediate
+ tvAsgPopup($('#tv-assignee'),'t1'); const pm=document.getElementById('tvmenu');
+ r.pickerOpen=!!pm && !!pm.querySelector('.opt.multi.on[data-v="u2"]');
+ window.__upd=null; pm.querySelector('.opt.multi[data-v="u2"]').onmousedown({preventDefault(){}}); await new Promise(r=>setTimeout(r,0));
+ r.asgSaved=window.__upd&&window.__upd.t==='tasks'? window.__upd.p : null;
+ r.avCleared=!$('#tv-assignee').querySelector('.asg-stack .avatar') && $('#tv-assignee').dataset.ids==='';
+ tvCloseMenu();
  // Save sends the heading rename and the other edits
  await $('#tv-save').onclick();
  r.saved=window.__upd&&window.__upd.t==='tasks'? window.__upd.p : null;
@@ -104,7 +110,8 @@ check('unsaved edits survive switching tabs', r.descKept);
 check('clicking the title opens the rename input', r.inputOpen);
 check('Escape in the rename restores the title and does not close the popup', r.escapeKeptModal && r.escapeRestored);
 check('Enter/blur keeps the new title in the heading', r.viewUpdated==='October flash sale pricing v2' && r.inputClosed);
-check('status change repaints the pill; clearing owner clears the avatar', r.repainted && r.avCleared);
-check('Save sends the rename and the edits', !!r.saved && r.saved.title==='October flash sale pricing v2' && r.saved.status==='done' && r.saved.assignee_id===null && r.saved.description==='Changed while on Details');
+check('status change repaints the pill; unticking the owner in the picker clears the stack', r.repainted && r.pickerOpen && r.avCleared);
+check('unticking saves assignee_ids straight away', !!r.asgSaved && Array.isArray(r.asgSaved.assignee_ids) && r.asgSaved.assignee_ids.length===0);
+check('Save sends the rename and the edits', !!r.saved && r.saved.title==='October flash sale pricing v2' && r.saved.status==='done' && !('assignee_id' in r.saved) && r.saved.description==='Changed while on Details');
 check('partners get Fields, Details and Comments, no Activity', r.partnerTabs==='tv-tab-fields,tv-tab-details,tv-tab-comments');
 if(!ok) process.exit(1); });
