@@ -174,7 +174,7 @@ check('empty values sort last in both directions', r.dueAsc==='bac' && r.dueDesc
 check('priority follows its own order', r.prioOrder==='low,normal,high,urgent' ? r.prioAsc==='bca' : r.prioAsc==='acb');
 check('remembered in localStorage, never written to the database, bar shown', r.saved==='priority' && r.noDbWrite && r.bar);
 check('clearing restores drag order and forgets', r.cleared==='abc' && r.barGone && r.forgot===null);
-check('menu labels fit the column; members get no Rename', /Rename\|-\|Oldest first\|Newest first/.test(r.menuDue) && /Lowest first\|Highest first/.test(r.menuNum) && !/Rename/.test(r.menuTitle) && !/Rename/.test(r.menuMember));
+check('menu labels fit the column; members get no Rename', /Rename\|Hide column\|-\|Oldest first\|Newest first/.test(r.menuDue) && /Lowest first\|Highest first/.test(r.menuNum) && !/Rename/.test(r.menuTitle) && !/Rename/.test(r.menuMember));
 check('rename writes the custom column label and the standard-field label', r.renamedField==='Spend' && /Spend/.test(r.fieldWrite||'') && r.renamedCore==='Owner' && /Owner/.test(r.coreWrite||''));
 check('Task, Ticket and Due date are not value-filtered; the rest are', r.filterable==='false,false,false,true,true');
 check('the menu lists the values on the board, counted, Empty last', r.selOpts==='Damaged:1|Late:1|__none__:1');   // equal counts fall back to A-Z
