@@ -2477,7 +2477,9 @@ function tvColMenu(btn, pid, key){
   const [up, down] = dateish? ['Oldest first','Newest first'] : numish? ['Lowest first','Highest first']
                    : (key==='status'||key==='priority')? ['In order','Reverse order'] : ['Sort A → Z','Sort Z → A'];
   const items = [];
+  const hideable = isField || (CORE_FIELDS.find(f=>f.k===key)||{}).hideable;
   if(canManageBoard(pid) && (isField || core)) items.push({label:'Rename', fn:()=>tvRenameColumn(pid, key)});
+  if(canManageBoard(pid) && hideable) items.push({label:'Hide column', fn:()=>tvSetColHidden(pid, key, true)});
   if(items.length) items.push('-');
   items.push({label:(on&&srt.dir==='asc'? '✓ ':'')+up,   fn:()=>tvSortSet(pid,key,'asc')});
   items.push({label:(on&&srt.dir==='desc'? '✓ ':'')+down, fn:()=>tvSortSet(pid,key,'desc')});
@@ -2486,7 +2488,37 @@ function tvColMenu(btn, pid, key){
     items.push('-');
     items.push({label: tvColFiltered(pid,key)? 'Filter: '+tvColFilterLabel(pid,key) : 'Filter…', fn:()=>tvColFilterPick(btn, pid, key)});
   }
+  const hid = canManageBoard(pid)? tvHiddenCols(pid) : [];
+  if(hid.length){ items.push('-'); hid.forEach(h=> items.push({label:'Show '+h.label, fn:()=>tvSetColHidden(pid, h.key, false)})); }
   ctxMenu(btn, items);
+}
+/* Hide / show a column from its ⋯ menu (board owners). Standard columns use the board's
+   field_config.hidden (same flag as Edit board); custom columns keep options.hidden on the
+   field, so the data stays and the column comes back from the same menu. */
+function tvHiddenCols(pid){
+  const out = [];
+  CORE_FIELDS.forEach(f=>{ if(f.hideable && coreHidden(pid,f.k)) out.push({key:f.k, label:coreLabel(pid,f.k)}); });
+  (S._fields||[]).forEach(f=>{ if((f.options||{}).hidden) out.push({key:'f:'+f.id, label:f.label}); });
+  return out;
+}
+const fieldHidden = f => !!((f && f.options)||{}).hidden;
+async function tvSetColHidden(pid, key, hidden){
+  let error;
+  if(key.startsWith('f:')){
+    const f = (S._fields||[]).find(x=>x.id===key.slice(2)); if(!f) return;
+    const opts = {...(f.options||{})}; if(hidden) opts.hidden = true; else delete opts.hidden;
+    ({error} = await db.from('project_fields').update({options:opts}).eq('id', f.id));
+    if(!error) f.options = opts;
+  } else {
+    const p = projById(pid); const fc = {...((p&&p.field_config)||{})};
+    fc[key] = {...(fc[key]||{})}; if(hidden) fc[key].hidden = true; else delete fc[key].hidden;
+    if(!Object.keys(fc[key]).length) delete fc[key];
+    ({error} = await db.from('projects').update({field_config:fc}).eq('id', pid));
+    if(!error && p) p.field_config = fc;
+  }
+  if(error) return toast(error.message, true);
+  toast(hidden? 'Column hidden — the ⋯ on any column header shows it again' : 'Column shown');
+  renderBoardChrome(pid);
 }
 /* ---- filter from a column header ----
    April asked for this next to Rename and Sort. Status, Priority, Assignee and Group reuse
@@ -2716,7 +2748,7 @@ function renderProjectTableView(id, rowSet, host){
   const C = host || $('#board-body') || $('#content');
   tvPid = id;
   const SRC = rowSet || S._tasks || [];
-  const flds = S._fields||[], groups = S._groups||[];
+  const flds = (S._fields||[]).filter(f=>!fieldHidden(f)), groups = S._groups||[];
   tvBuildOpts(flds);
   const cols = 2+(tvHasTicketCol()?1:0)+['assignee','due_date','priority'].filter(k=>!coreHidden(id,k)).length+(canEdit()?1:0)+flds.length+(isStaff()?1:0);
   const byPos = tvSortFn(id, (a,b)=> (a.position||0)-(b.position||0));
