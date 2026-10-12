@@ -5787,15 +5787,20 @@ function rowMenu(anchor, tid){
     {label:'Copy task link', fn:()=>copyTaskLink(tid)},
   ];
   if(canEditTask(t) && !t.archived_at){
+    /* Several rows ticked and this row is one of them → the move actions act on ALL ticked rows. */
+    const bulk = tvBulkTargets(tid);
+    const n = bulk.length, many = n>1, tag = many? ' '+n+' tasks':'';
     items.push('-');
-    items.push({label:'Move to top of group', fn:()=>taskMoveTop(tid)});
-    if((S._groups||[]).length) items.push({label:'Move to group…', fn:()=>taskMoveGroup(anchor, tid)});
-    items.push({label:'Move to another board…', fn:()=>taskMoveBoard(anchor, tid)});
-    items.push({label:'Duplicate', fn:()=>taskDuplicate(tid)});
-    items.push({label:'New task below', fn:()=>newTaskModal(t.project_id, t.status, t.group_id)});
+    items.push({label: many? 'Move'+tag+' to top of group':'Move to top of group', fn:()=>many? taskBulkMoveTop(bulk):taskMoveTop(tid)});
+    if((S._groups||[]).length) items.push({label: many? 'Move'+tag+' to group…':'Move to group…', fn:()=>many? taskBulkMoveGroup(anchor, bulk):taskMoveGroup(anchor, tid)});
+    items.push({label: many? 'Move'+tag+' to another board…':'Move to another board…', fn:()=>many? taskBulkMoveBoard(anchor, bulk):taskMoveBoard(anchor, tid)});
+    if(!many){
+      items.push({label:'Duplicate', fn:()=>taskDuplicate(tid)});
+      items.push({label:'New task below', fn:()=>newTaskModal(t.project_id, t.status, t.group_id)});
+    }
     items.push('-');
-    items.push({label:'Archive', fn:()=>taskArchiveOne(tid)});
-    if(isAdmin()) items.push({label:'Delete', danger:true, fn:()=>rowDelete(tid)});
+    items.push({label: many? 'Archive'+tag:'Archive', fn:()=>many? taskBulkArchive(bulk):taskArchiveOne(tid)});
+    if(isAdmin()) items.push({label: many? 'Delete'+tag:'Delete', danger:true, fn:()=>many? taskBulkDelete(bulk):rowDelete(tid)});
   }
   ctxMenu(anchor, items);
 }
@@ -5805,6 +5810,50 @@ function copyTaskLink(tid){
   if(navigator.clipboard?.writeText) navigator.clipboard.writeText(url).then(done, ()=>prompt('Copy this link:', url));
   else prompt('Copy this link:', url);
 }
+/* ---- bulk versions of the row-menu actions (every ticked row, not just the one clicked) ---- */
+function tvBulkTargets(tid){
+  if(!tvSel.has(tid) || tvSel.size<2) return [tid];
+  return (S._tasksAll||[]).filter(t=>tvSel.has(t.id) && !t.archived_at && canEditTask(t)).map(t=>t.id);
+}
+function tvBulkDone(){ tvSel.clear(); tvBulkBar(); tvApplyArch(); const y=scrollY; renderBoardBody(tvPid); scrollTo(0,y); }
+async function taskBulkMoveTop(ids){
+  const set=new Set(ids), all=S._tasksAll||[], upd=[];
+  const byGroup=new Map();
+  ids.forEach(id=>{ const t=all.find(x=>x.id===id); if(t){ const g=t.group_id||null; if(!byGroup.has(g)) byGroup.set(g,[]); byGroup.get(g).push(t); } });
+  byGroup.forEach((rows,g)=>{
+    rows.sort((a,b)=>(a.position||0)-(b.position||0));            /* keep their current relative order */
+    const peers=all.filter(x=>(x.group_id||null)===g && !set.has(x.id));
+    const base=Math.min(0, ...peers.map(x=>x.position||0)) - rows.length;
+    rows.forEach((t,i)=>upd.push({t, pos:base+i}));
+  });
+  const results=await Promise.all(upd.map(u=>db.from('tasks').update({position:u.pos}).eq('id',u.t.id)));
+  const bad=results.find(r=>r.error); if(bad) return toast(bad.error.message, true);
+  upd.forEach(u=>{ u.t.position=u.pos; });
+  tvBulkDone(); toast(ids.length+' tasks moved to top of their groups');
+}
+function taskBulkMoveGroup(anchor, ids){
+  tvShowMenu(anchor, (S._groups||[]).map(g=>({v:g.id,l:g.name})), o=>esc(o.l),
+    async v=>{ if(!v) return;
+      const error=await forIdChunks(ids, part=> db.from('tasks').update({group_id:v}).in('id',part));
+      if(error) return toast(error.message, true);
+      const set=new Set(ids); (S._tasksAll||[]).forEach(t=>{ if(set.has(t.id)) t.group_id=v; });
+      tvBulkDone(); toast(ids.length+' tasks moved to '+esc((S._groups.find(g=>g.id===v)||{}).name||'group'));
+    }, (S._groups||[]).length>5, false);
+}
+function taskBulkMoveBoard(anchor, ids){
+  const first=(S._tasksAll||[]).find(x=>x.id===ids[0]);
+  const boards=S.projects.filter(p=>p.id!==(first&&first.project_id) && p.status==='active');
+  if(!boards.length) return toast('No other board to move to', true);
+  tvShowMenu(anchor, boards.map(p=>({v:p.id,l:p.name})), o=>esc(o.l),
+    async v=>{ if(!v) return;
+      const error=await forIdChunks(ids, part=> db.from('tasks').update({project_id:v, group_id:null}).in('id',part));
+      if(error) return toast(error.message, true);
+      const set=new Set(ids); S._tasksAll=(S._tasksAll||[]).filter(x=>!set.has(x.id));
+      tvBulkDone(); toast(ids.length+' tasks moved to '+esc((projById(v)||{}).name||'board'));
+    }, boards.length>5, false);
+}
+function taskBulkArchive(ids){ tvSel.clear(); ids.forEach(i=>tvSel.add(i)); tvBulkArchive(); }
+function taskBulkDelete(ids){ tvSel.clear(); ids.forEach(i=>tvSel.add(i)); tvBulkDelete(); }
 async function taskMoveTop(tid){
   const t=(S._tasksAll||[]).find(x=>x.id===tid); if(!t) return;
   const peers=(S._tasksAll||[]).filter(x=>x.group_id===t.group_id && x.id!==tid);
