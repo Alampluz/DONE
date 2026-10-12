@@ -1439,13 +1439,41 @@ function calWsToggle(wsId, pid){
   if(calWsHidden.has(pid)) calWsHidden.delete(pid); else calWsHidden.add(pid);
   renderWorkspaceCalendarBody(wsId);
 }
+/* One "Boards" pill opens a tick-list of every board; the chips beside it are only the boards
+   that actually have dated tasks (a 27-board workspace used to show 27 chips, most of them 0). */
 function calWsLegendHTML(wsId, projects, counts){
   if(!projects.length) return '';
-  return `<div class="cal-legend">${projects.map(p=>{
-    const off = calWsHidden.has(p.id);
-    return `<button class="cal-lg${off?' off':''}" onclick="calWsToggle('${wsId}','${p.id}')" title="${off?'Show':'Hide'} ${esc(p.name)}">
-      <span class="cal-bdot" style="background:${p.color||'var(--ink3)'}"></span>${esc(p.name)}<span class="cal-lgn">${counts[p.id]||0}</span></button>`;
-  }).join('')}</div>`;
+  const withWork = projects.filter(p=>(counts[p.id]||0)>0).sort((a,b)=>(counts[b.id]||0)-(counts[a.id]||0));
+  const shownN = projects.filter(p=>!calWsHidden.has(p.id)).length;
+  const label = shownN===projects.length? 'All boards' : `${shownN} of ${projects.length} boards`;
+  return `<div class="cal-legend">
+    <button class="cal-lg cal-pick" onclick="calWsPick(this,'${wsId}')" aria-haspopup="menu">${label} <span class="cal-chev">▾</span></button>
+    ${withWork.map(p=>{
+      const off = calWsHidden.has(p.id);
+      return `<button class="cal-lg${off?' off':''}" onclick="calWsToggle('${wsId}','${p.id}')" title="${off?'Show':'Hide'} ${esc(p.name)}">
+        <span class="cal-bdot" style="background:${p.color||'var(--ink3)'}"></span>${esc(p.name)}<span class="cal-lgn">${counts[p.id]||0}</span></button>`;
+    }).join('')}
+    ${projects.length-withWork.length>0? `<span class="cal-lgmore">${projects.length-withWork.length} board${projects.length-withWork.length===1?'':'s'} with no dated tasks</span>`:''}
+  </div>`;
+}
+function calWsPick(btn, wsId){
+  const projects = S.projects.filter(p=>p.workspace_id===wsId && p.status!=='archived');
+  const counts = {}; (S._wsCalRows||[]).forEach(t=>{ counts[t.project_id]=(counts[t.project_id]||0)+1; });
+  tvCloseMenu();
+  const m = document.createElement('div'); m.id='tvmenu';
+  const row = p=>`<div class="opt multi ${calWsHidden.has(p.id)?'':'on'}" data-v="${p.id}"><span class="mbox">${calWsHidden.has(p.id)?'':'✓'}</span><span class="cal-bdot" style="background:${p.color||'var(--ink3)'}"></span><span>${esc(p.name)}</span><span class="mcount">${counts[p.id]||0}</span></div>`;
+  m.innerHTML = `<div class="search"><input placeholder="Search boards…" aria-label="Search boards"></div><div class="opts">${projects.map(row).join('')}</div>
+    <div class="mfoot"><span class="clr" data-act="all">Show all</span><span class="clr" data-act="none">Hide all</span></div>`;
+  document.body.appendChild(m);
+  const r = btn.getBoundingClientRect(), mh = m.offsetHeight;
+  m.style.left = Math.max(8, Math.min(r.left, window.innerWidth-m.offsetWidth-12))+'px';
+  m.style.top = ((r.bottom+mh+12 > window.innerHeight && r.top-mh-6 > 0)? r.top-mh-6 : r.bottom+4)+'px';
+  const paint = ()=>{ m.querySelectorAll('.opt').forEach(o=>{ const on=!calWsHidden.has(o.dataset.v); o.classList.toggle('on',on); o.querySelector('.mbox').textContent=on?'✓':''; }); renderWorkspaceCalendarBody(wsId); };
+  m.querySelectorAll('.opt').forEach(o=>o.onmousedown=e=>{ e.preventDefault(); const v=o.dataset.v; calWsHidden.has(v)? calWsHidden.delete(v) : calWsHidden.add(v); paint(); });
+  m.querySelectorAll('.mfoot .clr').forEach(c=>c.onmousedown=e=>{ e.preventDefault(); if(c.dataset.act==='all') calWsHidden.clear(); else projects.forEach(p=>calWsHidden.add(p.id)); paint(); });
+  const si=m.querySelector('.search input'); si.focus();
+  si.oninput=()=>{ const q=si.value.toLowerCase(); m.querySelectorAll('.opt').forEach(o=>{ o.style.display = o.textContent.toLowerCase().includes(q)?'flex':'none'; }); };
+  setTimeout(()=>document.addEventListener('mousedown', tvMenuOutside),0);
 }
 function renderWorkspaceCalendarBody(wsId){
   const host = $('#ws-cal-body'); if(!host) return;
