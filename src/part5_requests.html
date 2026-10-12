@@ -229,7 +229,7 @@ async function convertToTask(reqId){
     if(error) return toast(error.message, true);
     await db.from('requests').update({project_id, status: r.status==='submitted'||r.status==='in_review'?'in_progress':r.status}).eq('id',r.id);
     closeModals(); toast('Task created from request'); logActivity('request', r.id, 'converted_to_task', {task:task.id});
-    location.hash = '#/project/'+project_id;
+    location.hash = boardHash(project_id);
   };
 }
 
