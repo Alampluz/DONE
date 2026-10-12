@@ -51,7 +51,7 @@ w.eval('window.__run()').then(r=>{ let ok=true;
  check('no runtime error', !r.error);
  check('two sections only: board link + send to colleagues', /^Board link\b/.test(r.sections) && /\|Send to colleagues\b/.test(r.sections) && r.sections.split('|').length===2);
  check('no public/no-login link anywhere in the app', r.noPublic);
- check('board link is the normal in-app link', /#\/project\/p1$/.test(r.boardLink));
+ check('board link is the readable in-app link (board name slug)', /#\/b\/creative-queue$/.test(r.boardLink));
  check('people list shows the position, never the DONE role; self and inactive excluded',
    /Vee ThitiphongCreative lead/.test(r.people) && /Prim V/.test(r.people) && !/internal|admin|management|partner/.test(r.people) && !/April/.test(r.people) && !/Gone/.test(r.people));
  check('send is disabled until someone is ticked, then enabled with a count', r.sendDisabled && r.sendEnabled);
