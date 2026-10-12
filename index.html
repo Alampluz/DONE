@@ -6371,9 +6371,8 @@ async function openTask(id){
   const owner = prof(t.assignee_id);
   const tabOn = {fields: flds.length>0, subtasks: cfg.tabs.includes('subtasks') && sectionOn(t.project_id,'subtasks'),
     files: cfg.tabs.includes('files'), comments: showComments, activity: showActivity};
-  const first = tabOn.fields? 'fields' : 'details';
-  const tabDefs = [['fields','Fields'],['details','Details'],['subtasks','Subtasks'],['files','Files'],['comments','Comments'],['activity','Activity']]
-    .filter(([k])=> k==='details' || tabOn[k]);
+  const tabDefs = icTabDefs(cfg, k=> k==='details' || tabOn[k]);
+  const first = (tabDefs.find(([k])=>k==='fields'||k==='details')||['details'])[0];   // opens on whichever of the two comes first
   const subsHTML = sectionOn(t.project_id,'subtasks')? `<section class="tv-sec"><label>Subtasks</label>
             <div id="tv-subprog">${subProgressBar(subs||[])}</div>
             <div id="tv-subs">${(subs||[]).map(stRow).join('')}</div>
@@ -6406,9 +6405,9 @@ async function openTask(id){
     </div>
     <div class="tv-tabbar"><div class="tv-tabs" role="tablist" aria-label="Task sections">${tabDefs.map(([k,l])=>
         `<button role="tab" class="tv-tab${k===first?' on':''}" id="tv-tab-${k}" aria-controls="tv-pane-${k}" aria-selected="${k===first}" ${k===first?'':'tabindex="-1"'}>${l}${k==='comments'? ` <span class="tv-count" id="tv-comment-count">${nComments||''}</span>`:''}</button>`).join('')}</div>
-      ${canManageBoard(t.project_id)? `<button class="tv-tab-add" aria-label="Add or remove tabs" title="Add or remove tabs" onclick="icTabMenu(this,'${t.id}','${t.project_id}')">＋</button>`:''}</div>
+      ${canManageBoard(t.project_id)? `<button class="tv-tab-add" aria-label="Add, remove, rename or reorder tabs" title="Add, remove, rename or reorder tabs" onclick="icTabMenu(this,'${t.id}','${t.project_id}')">＋</button>`:''}</div>
     <div class="modal-body">
-      ${tabOn.fields? `<div role="tabpanel" id="tv-pane-fields" aria-labelledby="tv-tab-fields">
+      ${tabOn.fields? `<div role="tabpanel" id="tv-pane-fields" aria-labelledby="tv-tab-fields" ${first==='fields'?'':'hidden'}>
         ${canManageBoard(t.project_id)? `<div class="ic-bar"><button class="btn btn-ghost btn-sm" onclick="icLayoutModal('${t.id}')">Edit layout</button></div>`:''}
         <div id="ic-cards" class="ic-grid">${icCardsHTML(S._popTask, flds, cfg)}</div></div>`:''}
       <div role="tabpanel" id="tv-pane-details" aria-labelledby="tv-tab-details" class="tv-grid" ${first==='details'?'':'hidden'}>
@@ -6557,6 +6556,11 @@ const IC_TABS = [{k:'subtasks', label:'Subtasks'}, {k:'files', label:'Files'}];
 const IC_FTYPE = {text:'Text', number:'Number', date:'Date', select:'Dropdown', checkbox:'Checkbox', person:'Person',
   brand:'Brand', platform:'Platform', file:'File', formula:'Formula', link:'Link to board', mirror:'Mirror'};
 const icTabs = v => Array.isArray(v)? IC_TABS.map(x=>x.k).filter(k=>v.includes(k)) : [];
+/* Every tab the popup can have, in its default order. A board can reorder them and rename them
+   (item_card.tabOrder / item_card.tabNames); what is stored is read defensively. */
+const IC_ALL_TABS = [['fields','Fields'],['details','Details'],['subtasks','Subtasks'],['files','Files'],['comments','Comments'],['activity','Activity']];
+const icTabOrder = v => Array.isArray(v)? [...new Set(v.filter(k=>IC_ALL_TABS.some(x=>x[0]===k)))] : [];
+const icTabNames = v => { const o={}; if(v && typeof v==='object' && !Array.isArray(v)) IC_ALL_TABS.forEach(([k])=>{ const n=String(v[k]==null?'':v[k]).trim().slice(0,24); if(n) o[k]=n; }); return o; };
 function icDefaultCards(flds){
   const dp = new Set(['date','person','file']);
   const a = flds.filter(f=>!dp.has(f.ftype)).map(f=>f.id), b = flds.filter(f=>dp.has(f.ftype)).map(f=>f.id);
@@ -6573,8 +6577,9 @@ function icConfig(pid, flds){
   const raw = ((projById(pid)||{}).field_config||{}).item_card;
   const ok = raw && typeof raw==='object' && !Array.isArray(raw);
   const tabs = icTabs(ok? raw.tabs : null);
+  const tabOrder = icTabOrder(ok? raw.tabOrder : null), tabNames = icTabNames(ok? raw.tabNames : null);
   if(!(ok && Array.isArray(raw.cards) && raw.cards.length))
-    return {cards:icDefaultCards(flds), hidden:[], tabs, custom:false};
+    return {cards:icDefaultCards(flds), hidden:[], tabs, tabOrder, tabNames, custom:false};
   const ids = new Set(flds.map(f=>f.id));
   const hidden = [...new Set((Array.isArray(raw.hidden)? raw.hidden : []).filter(id=>ids.has(id)))];
   const seen = new Set(hidden);
@@ -6583,9 +6588,9 @@ function icConfig(pid, flds){
     title: String(c.title==null? 'Information' : c.title).slice(0,60),
     fields: (Array.isArray(c.fields)? c.fields : []).filter(id=>{ if(!ids.has(id) || seen.has(id)) return false; seen.add(id); return true; }),
   }));
-  if(!cards.length) return {cards:icDefaultCards(flds), hidden:[], tabs, custom:false};
+  if(!cards.length) return {cards:icDefaultCards(flds), hidden:[], tabs, tabOrder, tabNames, custom:false};
   flds.forEach(f=>{ if(!seen.has(f.id)) cards[cards.length-1].fields.push(f.id); });
-  return {cards, hidden, tabs, custom:true};
+  return {cards, hidden, tabs, tabOrder, tabNames, custom:true};
 }
 /* The popup can open a task from Home, the calendar or search, where the board behind it is a
    different one (or none). Load this task's own columns then; add to the option lists and the
@@ -6658,6 +6663,36 @@ async function icSaveItemCard(pid, patch){
   if(error){ toast(error.message, true); return false; }
   p.field_config = fc; return true;
 }
+/* The tabs this board shows, in its order and under its names. Unlisted tabs keep their default slot after the listed ones. */
+function icTabDefs(cfg, keep){
+  const ord = cfg.tabOrder||[], names = cfg.tabNames||{};
+  const base = IC_ALL_TABS.filter(([k])=>keep(k));
+  const idx = k => { const i=ord.indexOf(k); return i<0? 999 : i; };
+  return base.map(([k,l],n)=>({k,l,n})).sort((a,b)=> idx(a.k)-idx(b.k) || a.n-b.n).map(x=>[x.k, names[x.k]||x.l]);
+}
+function icTabsModal(taskId, pid){
+  if(!canManageBoard(pid)) return;
+  const cfg = icConfig(pid, S._popFields||[]);
+  const live = new Set(['details','comments','activity'].concat(cfg.tabs.filter(k=>true)).concat((S._popFields||[]).length? ['fields']:[]));
+  const defs = icTabDefs(cfg, k=>live.has(k));
+  let order = defs.map(d=>d[0]); const names = Object.assign({}, cfg.tabNames);
+  const dflt = k => (IC_ALL_TABS.find(x=>x[0]===k)||[])[1];
+  const m = modal(`<div class="modal-head"><h2>Rename or reorder tabs</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body"><div class="kb-hint">Applies to every task on this board. Leave a name empty to keep its original name.</div><div id="tbm-list"></div></div>
+    <div class="modal-foot"><button class="btn btn-ghost" id="tbm-reset">Reset to default</button><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="tbm-save">Save</button></div>`);
+  const draw = ()=>{
+    m.querySelector('#tbm-list').innerHTML = order.map((k,i)=>`<div class="kbf-row">
+      <input class="tbm-name" data-k="${k}" value="${esc(names[k]||'')}" placeholder="${esc(dflt(k))}" maxlength="24" aria-label="Name for the ${esc(dflt(k))} tab">
+      <span class="kbf-mv"><button class="btn btn-ghost btn-sm" data-up="${i}" ${i===0?'disabled':''} aria-label="Move left">▲</button><button class="btn btn-ghost btn-sm" data-dn="${i}" ${i===order.length-1?'disabled':''} aria-label="Move right">▼</button></span></div>`).join('');
+    m.querySelectorAll('.tbm-name').forEach(inp=>inp.oninput=()=>{ names[inp.dataset.k]=inp.value; });
+    m.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.up; [order[i-1],order[i]]=[order[i],order[i-1]]; draw(); });
+    m.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.dn; [order[i+1],order[i]]=[order[i],order[i+1]]; draw(); });
+  };
+  draw();
+  const done = async patch=>{ if(!await icSaveItemCard(pid, patch)) return; toast('Tabs updated for every task on this board'); closeModals(); openTask(taskId); };
+  m.querySelector('#tbm-save').onclick = ()=>{ const nm={}; order.forEach(k=>{ const v=(names[k]||'').trim(); if(v) nm[k]=v.slice(0,24); }); done({tabOrder:order, tabNames:Object.keys(nm).length? nm : null}); };
+  m.querySelector('#tbm-reset').onclick = ()=> done({tabOrder:null, tabNames:null});
+}
 function icTabMenu(btn, taskId, pid){
   const cur = icConfig(pid, S._popFields||[]).tabs;
   ctxMenu(btn, IC_TABS.map(x=>({
@@ -6669,7 +6704,7 @@ function icTabMenu(btn, taskId, pid){
       toast('Tabs updated for every task on this board');
       closeModals(); openTask(taskId);
     },
-  })));
+  })).concat(['-', {label:'Rename or reorder tabs…', fn:()=>icTabsModal(taskId, pid)}]));
 }
 /* ---- Edit layout: cards, their columns and order, hidden columns, extra tabs ---- */
 function icLayListHTML(d, byId){
