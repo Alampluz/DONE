@@ -550,6 +550,7 @@ td.tv-name .tv-open{padding-left:20px}
 .asg-add{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:99px;border:1.5px dashed var(--line-strong);color:var(--ink3);font-size:13px;line-height:1}
 .asg-edit:hover .asg-add{border-color:var(--accent);color:var(--accent)}
 #tvmenu .opt.multi .mbox{margin-right:2px}
+#tvmenu .opt.morebtn{color:var(--accent-ink);font-weight:600;font-size:12px;border-top:1px solid var(--line-2);margin-top:4px;padding-top:8px}
 .tv-fill.mini{max-width:none}
 .tv td.tv-check,.tv th.tv-check{min-width:38px;width:38px;text-align:center}
 /* Freeze the checkbox + Task columns. The board is ~1000px wider than the viewport on a
@@ -4830,6 +4831,8 @@ async function boardPeopleLoad(pid){
     const {data, error} = await db.rpc('board_people', {p:pid});
     if(error || !Array.isArray(data)) return;
     S._boardPeople = {pid, ids:new Set(data.map(x=> typeof x==='string'? x : (x.board_people||x.id||x)))};
+    const {data:pm} = await db.from('project_members').select('user_id').eq('project_id', pid);
+    S._boardMembers = Object.assign(S._boardMembers||{}, {[pid]: (pm||[]).map(x=>x.user_id)});
   }catch(e){}
 }
 /* Option registries for click-to-edit dropdown cells (rendering a <select> with all
@@ -5007,27 +5010,39 @@ function tvPeopleMulti(anchor, ids, onChange, pid){
   cur.forEach(id=>{ if(!people.some(o=>o.v===id)){ const p=prof(id); if(p) people.push({v:id,l:p.full_name}); } });   // already on the task, even without board access now
   // people already on the task float to the top so a long list still shows who is on it
   people.sort((a,b)=> (cur.includes(b.v)?1:0)-(cur.includes(a.v)?1:0));
+  /* A workspace with 90+ members makes a long list. The people who actually work this board —
+     its owners, its partners, and anyone already assigned on it — come first; the rest of the
+     workspace sits behind one "More…" row (search always looks through everyone). */
+  const bid = pid || tvPid;
+  const onBoard = new Set([...cur, ...boardOwnerIds(bid), ...((S._boardMembers||{})[bid]||[])]);
+  if(bid===tvPid) (S._tasksAll||[]).forEach(t=> taskAssignees(t).forEach(id=>onBoard.add(id)));
+  const fold = people.length > 14 && people.some(o=>!onBoard.has(o.v)) && people.some(o=>onBoard.has(o.v));
   const m = document.createElement('div'); m.id='tvmenu';
-  const row = o=>`<div class="opt multi ${cur.includes(o.v)?'on':''}" data-v="${esc(o.v)}"><span class="mbox">${cur.includes(o.v)?'✓':''}</span>${avatar(prof(o.v),true)}<span>${esc(o.l)}</span></div>`;
-  m.innerHTML = `<div class="search"><input placeholder="Search people…" aria-label="Search people"></div><div class="opts">${people.map(row).join('')}</div>
+  const row = o=>`<div class="opt multi ${cur.includes(o.v)?'on':''}${fold && !onBoard.has(o.v)?' more':''}" data-v="${esc(o.v)}"><span class="mbox">${cur.includes(o.v)?'✓':''}</span>${avatar(prof(o.v),true)}<span>${esc(o.l)}</span></div>`;
+  const nMore = people.filter(o=>!onBoard.has(o.v)).length;
+  m.innerHTML = `<div class="search"><input placeholder="Search people…" aria-label="Search people"></div><div class="opts">${people.map(row).join('')}
+    ${fold? `<div class="opt morebtn" role="button">Show ${nMore} more in this workspace…</div>`:''}</div>
     <div class="mfoot"><span class="mcnt">${cur.length} assigned</span><span class="clr">Clear all</span></div>`;
+  if(fold){ m.querySelectorAll('.opt.more').forEach(o=>o.style.display='none');
+    m.querySelector('.morebtn').onmousedown = e=>{ e.preventDefault(); m.querySelectorAll('.opt.more').forEach(o=>o.style.display='flex'); e.currentTarget.remove(); }; }
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
   const x = Math.min(r.left, window.innerWidth-mw-12);
   const y = (r.bottom+mh+12 > window.innerHeight && r.top-mh-6 > 0)? r.top-mh-6 : r.bottom+4;
   m.style.left=Math.max(8,x)+'px'; m.style.top=Math.max(8,y)+'px';
   const paint = ()=>{
-    m.querySelectorAll('.opt').forEach(o=>{ const on=cur.includes(o.dataset.v); o.classList.toggle('on',on); o.querySelector('.mbox').textContent = on?'✓':''; });
+    m.querySelectorAll('.opt[data-v]').forEach(o=>{ const on=cur.includes(o.dataset.v); o.classList.toggle('on',on); o.querySelector('.mbox').textContent = on?'✓':''; });
     m.querySelector('.mcnt').textContent = cur.length+' assigned';
   };
-  m.querySelectorAll('.opt').forEach(o=>o.onmousedown=async e=>{
+  m.querySelectorAll('.opt[data-v]').forEach(o=>o.onmousedown=async e=>{
     e.preventDefault(); const v=o.dataset.v;
     cur = cur.includes(v)? cur.filter(x=>x!==v) : [...cur, v];
     paint(); await onChange([...cur]);
   });
   m.querySelector('.clr').onmousedown = async e=>{ e.preventDefault(); if(!cur.length) return; cur=[]; paint(); await onChange([]); };
   const si=m.querySelector('.search input'); si.focus();
-  si.oninput=()=>{ const q=si.value.toLowerCase(); m.querySelectorAll('.opt').forEach(o=>{ o.style.display = o.textContent.toLowerCase().includes(q)?'flex':'none'; }); };
+  si.oninput=()=>{ const q=si.value.toLowerCase(); const mb=m.querySelector('.morebtn'); if(mb) mb.style.display = q? 'none':'';
+    m.querySelectorAll('.opt[data-v]').forEach(o=>{ const hit=o.textContent.toLowerCase().includes(q); o.style.display = (hit && (q || !o.classList.contains('more') || !mb))?'flex':'none'; }); };
   setTimeout(()=>document.addEventListener('mousedown', tvMenuOutside),0);
 }
 /* Read-only stack: clicking lists who is on the task. */
