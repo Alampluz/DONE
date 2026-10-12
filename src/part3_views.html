@@ -736,6 +736,10 @@ const BF_QUICK = [
   {k:'overdue',    label:'Overdue',        test:t=> OPEN_STATES.has(t.status) && t.due_date && daysDiff(t.due_date)<0},
   {k:'new7',       label:'New this week',  test:t=> (t.created_at||'') >= daysAgoISO(7)},
   {k:'done7',      label:'Done this week', test:t=> t.status==='done' && (t.completed_at||'') >= daysAgoISO(7)},
+  // the summary tiles above the board set these; they are not offered as chips
+  {k:'open',       label:'Open',           tile:true, test:t=> OPEN_STATES.has(t.status)},
+  {k:'week',       label:'Due this week',  tile:true, test:t=> OPEN_STATES.has(t.status) && t.due_date && daysDiff(t.due_date)>=0 && daysDiff(t.due_date)<=7},
+  {k:'donemonth',  label:'Done this month',tile:true, test:t=> t.status==='done' && (t.completed_at||t.updated_at||'').slice(0,7)===new Date().toISOString().slice(0,7)},
 ];
 /* The Overdue chip is a due-date idea; a board that has switched Due date off does not get it. */
 const bfQuickOffered = (pid, x) => !(x.k==='overdue' && coreHidden(pid,'due_date'));
@@ -745,6 +749,7 @@ const bfGet = pid => (boardFilters[pid] || (boardFilters[pid] = {q:'', status:''
 function bfActiveCount(pid){ const f=bfGet(pid); return ['q','status','priority','assignee','group','quick'].filter(k=>f[k]).length + Object.keys(f.cols||{}).length; }
 function bfSet(pid, key, val){ bfGet(pid)[key] = val; renderBoardBody(pid); }
 function bfQuick(pid, k){ const f=bfGet(pid); f.quick = (f.quick===k)? '' : k; bfQuickSave(pid, f.quick); renderProject(pid); }
+function boardStatsRepaint(pid){ const old=document.querySelector('.bstats'); if(!old) return; const t=document.createElement('template'); t.innerHTML=boardStatsHTML(pid).trim(); if(t.content.firstChild) old.replaceWith(t.content.firstChild); else old.remove(); }
 function bfClear(pid){ boardFilters[pid] = {q:'', status:'', priority:'', assignee:'', group:'', quick:'', cols:{}}; bfQuickSave(pid,''); renderProject(pid); }
 function bfApply(pid, rows){
   const f = bfGet(pid);
@@ -987,8 +992,31 @@ function renderBoardChrome(pid){
   const C=$('#content'); if(!C) return;
   if(boardMode==='report'){ C.innerHTML = viewTabsHTML(pid) + '<div id="board-body"></div>'; renderBoardReport(pid); return; }
   widgetProjScope = null;
-  C.innerHTML = viewTabsHTML(pid) + presetNoticeHTML(pid) + filterBarHTML(pid) + '<div id="board-body"></div>';
+  C.innerHTML = viewTabsHTML(pid) + presetNoticeHTML(pid) + boardStatsHTML(pid) + filterBarHTML(pid) + '<div id="board-body"></div>';
   renderBoardBody(pid);
+}
+/* Open / Overdue / Due this week / Done this month — the numbers before the rows. Each tile is a
+   quick filter: clicking one sets the matching chip (and clicking it again clears it). */
+function boardStatsHTML(pid){
+  const all = (S._tasksAll||S._tasks||[]).filter(t=>!t.archived_at);
+  if(!all.length) return '';
+  const me = (S.me||{}).id, today = new Date(); today.setHours(0,0,0,0);
+  const day = d=>{ const x=new Date(d+'T00:00:00'); return Math.round((x-today)/86400000); };
+  const open = all.filter(t=>OPEN_STATES.has(t.status));
+  const mine = open.filter(t=>isAssignee(t,me)).length;
+  const over = open.filter(t=>t.due_date && day(t.due_date)<0);
+  const oldest = over.length? Math.max(...over.map(t=>-day(t.due_date))) : 0;
+  const week = open.filter(t=>t.due_date && day(t.due_date)>=0 && day(t.due_date)<=7);
+  const ym = today.toISOString().slice(0,7);
+  const done = all.filter(t=>t.status==='done' && ((t.completed_at||t.updated_at||'').slice(0,7)===ym)).length;
+  const f = bfGet(pid).quick||'';
+  const tile = (k,l,n,t,col)=>`<div class="bstat ${f===k?'on':''}" role="button" tabindex="0" onclick="bfQuick('${pid}','${k}')" onkeydown="kbActivate(event)"><span class="l">${l}</span><b ${col?`style="color:${col}"`:''}>${n}</b><span class="t" ${col?`style="color:${col}"`:''}>${t}</span></div>`;
+  return `<div class="bstats">
+    ${tile('open','Open',open.length, mine? mine+' mine':'none mine')}
+    ${tile('overdue','Overdue',over.length, over.length? 'oldest '+oldest+' day'+(oldest===1?'':'s'):'nothing late', over.length? 'var(--st-blocked-ink)':'')}
+    ${tile('week','Due this week',week.length, week.filter(t=>t.status==='review').length+' in review', week.length? 'var(--st-review-ink)':'')}
+    ${tile('donemonth','Done this month',done,'', 'var(--st-done-ink)')}
+  </div>`;
 }
 function filterBarHTML(pid){
   const f = bfGet(pid), n = bfActiveCount(pid);
@@ -996,7 +1024,7 @@ function filterBarHTML(pid){
   const sel = (key, label, opts) => `<select class="bf-sel ${f[key]?'on':''}" onchange="bfSet('${pid}','${key}',this.value)">
       <option value="">${label}</option>
       ${opts.map(o=>`<option value="${o.v}" ${f[key]===o.v?'selected':''}>${esc(o.l)}</option>`).join('')}</select>`;
-  const quick = BF_QUICK.filter(x=>bfQuickOffered(pid,x)).map(x=>`<button class="bf-chip ${f.quick===x.k?'on':''}" onclick="bfQuick('${pid}','${x.k}')">${x.label}</button>`).join('');
+  const quick = BF_QUICK.filter(x=>!x.tile && bfQuickOffered(pid,x)).map(x=>`<button class="bf-chip ${f.quick===x.k?'on':''}" onclick="bfQuick('${pid}','${x.k}')">${x.label}</button>`).join('');
   return `<div class="bfbar bf-quickbar">${quick}</div><div class="bfbar">
     <input class="bf-q ${f.q?'on':''}" placeholder="Search tasks…" value="${esc(f.q)}" oninput="bfSet('${pid}','q',this.value)">
     ${sel('status','Status', STATUSES.map(s=>({v:s.k,l:s.label})))}
@@ -1182,6 +1210,7 @@ function renderBoardBody(id){
   S._lastRowSet = rows;               // what the view is actually showing — exports read this
   const cnt = $('#bf-count');
   if(cnt) cnt.textContent = bfActiveCount(id)? `${rows.length} of ${(S._tasks||[]).length} tasks` : '';
+  boardStatsRepaint(id);
   // keep the select/search states in sync without rebuilding the bar
   if(boardMode==='table'){ renderProjectTableView(id, rows, host); return; }
   if(boardMode==='workload'){ renderWorkload(id, rows, host); return; }
@@ -1590,8 +1619,8 @@ function tvDisplay(kind, val, t){
     if(kind==='status'||kind==='priority') return `<span class="tv-fill tv-fill-empty">—</span>`;
     return `<span class="tv-empty">—</span>`;
   }
-  if(kind==='status'){ const s=STATUSES.find(x=>x.k===val); return s? `<span class="tv-fill" style="background:${s.color}">${esc(s.label)}</span>` : esc(val); }
-  if(kind==='priority'){ const p=PRIORITIES.find(x=>x.k===val); return p? `<span class="tv-fill" style="background:${p.fill||p.color};color:${p.fillInk||'#fff'}">${esc(p.label)}</span>` : esc(val); }
+  if(kind==='status'){ const s=STATUSES.find(x=>x.k===val); return s? `<span class="tv-fill" style="background:${s.color.replace(/\)$/,'-soft)')};color:${s.color.replace(/\)$/,'-ink)')}"><i class="cdot" style="background:${s.color}"></i>${esc(s.label)}</span>` : esc(val); }
+  if(kind==='priority'){ const p=PRIORITIES.find(x=>x.k===val); return p? `<span class="tv-fill" style="background:${p.soft};color:${p.color}"><i class="cdot" style="background:${p.color}"></i>${esc(p.label)}</span>` : esc(val); }
   if(kind==='people'){ const p=prof(val); return p? `${avatar(p,true)}<span>${esc(p.full_name)}</span>` : `<span class="tv-empty">—</span>`; }
   if(kind==='due') return dueBadge(val, t?.status==='done') || esc(tvFmtDate(val));
   if(kind==='date') return esc(tvFmtDate(val));
@@ -2716,7 +2745,7 @@ function renderProjectTableView(id, rowSet, host){
   C.innerHTML = sortBar + groups.map((g,i)=>{
     const rows = SRC.filter(t=>t.group_id===g.id).sort(byPos);
     const closed = tvCollapsed.has(g.id);
-    return `<div class="tv-group ${closed?'collapsed':''}" id="tvg-${g.id}">
+    return `<div class="tv-group ${closed?'collapsed':''}" id="tvg-${g.id}" style="--gc:${g.color}">
       <div class="tv-group-head"><span class="caret" onclick="tvToggleGroup('${g.id}')">${closed?'▸':'▾'}</span><span class="bar" style="background:${g.color}"></span>
         <h3 style="color:${g.color}" onclick="tvToggleGroup('${g.id}')">${esc(g.name)}</h3><span class="cnt">${rows.length} task${rows.length===1?'':'s'}</span>
         ${canManageBoard(id)? `<span class="g-edit" onclick="editGroupModal('${g.id}','${id}')">Edit</span>`:''}
