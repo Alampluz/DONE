@@ -17,7 +17,8 @@ cat "$root"/src/part1_head.html \
     "$root"/src/part4_task.html \
     "$root"/src/part5_requests.html \
     "$root"/src/part6_dash_admin.html \
-    "$root"/src/part7_campaigns.html > "$out.tmp"
+    "$root"/src/part7_campaigns.html \
+    "$root"/src/part8_onboarding.html > "$out.tmp"
 
 SUPABASE_URL="$SUPABASE_URL" SUPABASE_ANON="$SUPABASE_ANON" python3 - "$out.tmp" <<'PY'
 import os, sys
