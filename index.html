@@ -2325,7 +2325,7 @@ function navigate(hash){
   S.nav = (S.nav || 0) + 1;
   renderSidebar();
   const C = $('#content'); C.scrollTop=0;
-  const map = {home:renderHome, ws:renderWorkspace, project:renderProject, task:openTaskRoute, requests:renderRequests, approvals:renderApprovals, campaigns:renderCampaigns, dashboard:renderDashboard, admin:renderAdmin, platform:renderPlatform};
+  const map = {home:renderHome, ws:renderWorkspace, project:renderProject, task:openTaskRoute, requests:renderRequests, approvals:renderApprovals, campaigns:renderCampaigns, onboarding:renderOnboarding, dashboard:renderDashboard, admin:renderAdmin, platform:renderPlatform};
   (map[view]||renderHome)(parts[1], parts[2]);
 }
 
@@ -2454,6 +2454,7 @@ function navItems(){
     {key:'menu:requests',  h:'#/requests',  label:'Requests',  show:true},
     {key:'menu:approvals', h:'#/approvals', label:'Approvals', show:true, badge:'appr'},
     {key:'menu:campaigns', h:'#/campaigns', label:'Campaigns', show:isStaff()},
+    {key:'menu:onboarding', h:'#/onboarding', label:'Onboarding', show:isStaff()},
     {key:'menu:dashboard', h:'#/dashboard', label:'Dashboard', show:isStaff()||isRequester()},
     {key:'menu:admin',     h:'#/admin',     label:'Admin',     show:isAdmin()},
     {key:'menu:platform',  h:'#/platform',  label:'Platform',  show:!!(S.me&&S.me.platform_admin)},
@@ -11158,5 +11159,815 @@ function cpPlanMonth(){
     <div class="modal-foot"><span style="margin-right:auto;color:var(--ink3);font-size:12px">≈ 4,900 steps across 8 teams · planning window 1–20 Oct</span>
       <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
       <button class="btn btn-primary" onclick="closeModals();toast('November plan saved — briefs generate on lock, 20 Oct')">Save plan</button></div>`, true);
+}
+</script>
+<style>
+/* ============================================================================
+   ONBOARDING — BD → Onboarding registry + scheduler (Blueprint stages 1–2, 13 Oct 2026)
+   Brand master = public.brands. Stores and service subscriptions are separate rows.
+   BD confirmation gates every service. Plans are back-scheduled in WORKING days from
+   the go-live date and, on approval, become REAL tasks on the team boards.
+   ============================================================================ */
+.ob-wrap{display:flex;flex-direction:column;gap:14px}
+.ob-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.ob-grid{grid-template-columns:1fr}}
+.ob-sec{padding:14px 16px}
+.ob-sec h3{font-size:13.5px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.ob-sec h3 .sp{flex:1}
+.ob-kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 18px;margin:0 0 12px}
+.ob-kv b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);font-weight:700;margin-bottom:2px}
+.ob-kv div{font-size:13.5px}
+.ob-feas{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:12px;padding:4px 10px;border-radius:20px}
+.ob-feas.feasible{background:var(--green-soft);color:var(--green)}
+.ob-feas.at_risk{background:var(--amber-soft);color:var(--amber)}
+.ob-feas.infeasible{background:var(--red-soft);color:var(--red)}
+.ob-plan .tbl td{padding:8px 12px;font-size:13px}
+.ob-plan .ws{background:var(--gray-soft);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink2)}
+.ob-plan .late td{background:var(--red-soft)}
+.ob-plan .soon td{background:var(--amber-soft)}
+.ob-dep{font-size:11.5px;color:var(--ink3)}
+.ob-bar{height:8px;border-radius:6px;background:var(--gray-soft);overflow:hidden;margin:6px 0 4px}
+.ob-bar i{display:block;height:100%;background:var(--green)}
+.ob-chip-row{display:flex;flex-wrap:wrap;gap:6px}
+.ob-store{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.ob-store h4{margin:0 0 6px;font-size:13px;display:flex;align-items:center;gap:8px}
+.ob-store h4 .sp{flex:1}
+.ob-svc{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:13px}
+.ob-svc:first-of-type{border-top:none}
+.ob-svc .nm{flex:1}
+.ob-muted{color:var(--ink3);font-size:12.5px}
+.ob-search{width:280px;max-width:100%}
+.ob-rowbtn{text-align:right;white-space:nowrap}
+.ob-gate{font-size:11px;font-weight:700;color:var(--purple);border:1px solid currentColor;border-radius:4px;padding:0 4px;margin-left:4px}
+.ob-tt-edit{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.ob-missing{background:var(--amber-soft);color:var(--amber);border-radius:8px;padding:8px 12px;font-size:12.5px;margin-bottom:10px}
+</style>
+<script>
+/* ---------- state ---------- */
+let obTab = 'brands';
+const OB = { loaded:false, types:[], templates:[], ttasks:[], stores:[], services:[], confirms:[], projects:[], links:[], changes:[] };
+window.obTeamBoards = window.obTeamBoards || {};   // team id -> board id chosen this session
+
+const OB_SVC_STATUS = {
+  proposed:  {label:'Proposed',   bg:'var(--amber-soft)', ink:'var(--amber)'},
+  confirmed: {label:'BD confirmed', bg:'var(--accent-soft)', ink:'var(--accent-ink)'},
+  onboarding:{label:'Onboarding', bg:'var(--purple-soft)', ink:'var(--purple)'},
+  live:      {label:'Live',       bg:'var(--green-soft)', ink:'var(--green)'},
+  paused:    {label:'Paused',     bg:'var(--gray-soft)',  ink:'var(--ink2)'},
+  ended:     {label:'Ended',      bg:'var(--gray-soft)',  ink:'var(--ink3)'},
+};
+const OB_PROJ_STATUS = {
+  draft:'Draft', review:'In review', approved:'Approved', in_progress:'In progress', live:'Live', cancelled:'Cancelled'
+};
+const OB_PLATFORMS = ['Shopee','Lazada','TikTok Shop','Brand.com','Other'];
+
+function obSvcChip(st){ const s = OB_SVC_STATUS[st]||{label:st,bg:'var(--gray-soft)',ink:'var(--ink2)'}; return `<span class="chip" style="background:${s.bg};color:${s.ink}">${esc(s.label)}</span>`; }
+function obFeasChip(f){ if(!f) return '<span class="ob-muted">Not calculated</span>'; const l={feasible:'Feasible',at_risk:'At risk',infeasible:'Infeasible'}[f]||f; return `<span class="ob-feas ${f}">${l}</span>`; }
+const obType  = id => OB.types.find(t=>t.id===id);
+const obStore = id => OB.stores.find(s=>s.id===id);
+const obBrand = id => (S.brandsList||[]).find(b=>b.id===id);
+const obTeamName = id => (teamById(id)||{}).name || 'Unassigned team';
+const obIsSuper = () => !!(S.me && ['admin','management'].includes(S.me.role));
+
+/* ---------- working-day calendar (the SLA engine's own: sla_holidays + sla_settings.work_days) ---------- */
+const obD   = s => s instanceof Date ? new Date(s) : new Date(String(s).slice(0,10)+'T00:00:00');
+const obISO = x => { const d=obD(x); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const obAddDays = (x,n) => { const d=obD(x); d.setDate(d.getDate()+n); return d; };
+const obToday = () => { const d=new Date(); d.setHours(0,0,0,0); return d; };
+function obHolidays(){ const h = S.slaHolidays; return Array.isArray(h)? h.map(x=>x.day||x) : []; }
+function obWorkDays(){ const w = S.slaWorkDays; return Array.isArray(w)&&w.length? w : [1,2,3,4,5]; }
+function obIsWorkDay(d){ const iso=((obD(d).getDay()+6)%7)+1; return obWorkDays().includes(iso) && !obHolidays().includes(obISO(d)); }
+/* n working days BEFORE x (n=0 → x itself, moved back onto a working day). */
+function obBack(x, n){ let d=obD(x), left=n, g=0; while(g++<3000){ if(left<=0 && obIsWorkDay(d)) break; d=obAddDays(d,-1); if(obIsWorkDay(d)) left--; if(left<=0 && obIsWorkDay(d)) break; } return obISO(d); }
+/* n working days AFTER x */
+function obFwd(x, n){ let d=obD(x), left=n, g=0; while(g++<3000){ if(left<=0 && obIsWorkDay(d)) break; d=obAddDays(d,1); if(obIsWorkDay(d)) left--; if(left<=0 && obIsWorkDay(d)) break; } return obISO(d); }
+/* Where an anchored task lands. offset = days BEFORE go-live (negative = after).
+   working:  count working days back (or forward).
+   calendar: the checklist's WORKDAY(golive+n+1,-1) — calendar days, then the last working day on or before. */
+function obAnchor(goLive, offset, unit){
+  if(unit==='calendar') return obBack(obAddDays(goLive, -offset), 0);
+  return offset>=0 ? obBack(goLive, offset) : obFwd(goLive, -offset);
+}
+/* working days strictly between a and b (a<b) */
+function obWDBetween(a,b){ let d=obAddDays(a,1), n=0, g=0; const end=obD(b); while(d<end && g++<3000){ if(obIsWorkDay(d)) n++; d=obAddDays(d,1); } return n; }
+let obCalLoading=null;
+function obLoadCalendar(){
+  if(S.slaHolidays!==undefined || obCalLoading || typeof db==='undefined') return Promise.resolve();
+  obCalLoading = Promise.all([
+    db.from('sla_holidays').select('day').order('day'),
+    db.from('sla_settings').select('work_days').limit(1)
+  ]).then(([h,st])=>{
+    S.slaHolidays = (h&&h.data)? h.data.map(r=>r.day) : [];
+    S.slaWorkDays = (st&&st.data&&st.data[0]&&Array.isArray(st.data[0].work_days))? st.data[0].work_days : [1,2,3,4,5];
+  }).catch(()=>{ S.slaHolidays=[]; });
+  return obCalLoading;
+}
+
+/* ---------- data ---------- */
+async function obLoad(force){
+  if(OB.loaded && !force) return;
+  const [ty, tp, tt, st, sv, cf, pj, ln, ch, ops] = await Promise.all([
+    db.from('service_types').select('*').order('position'),
+    db.from('service_templates').select('*').order('version'),
+    db.from('template_tasks').select('*').order('position'),
+    allRows(()=>db.from('brand_stores').select('*').order('name')),
+    allRows(()=>db.from('brand_services').select('*').order('created_at')),
+    allRows(()=>db.from('bd_confirmations').select('*').order('confirmed_at',{ascending:false})),
+    db.from('onboarding_projects').select('*').order('created_at',{ascending:false}),
+    allRows(()=>db.from('onboarding_task_links').select('*').order('created_at')),
+    db.from('go_live_changes').select('*').order('created_at',{ascending:false}),
+    allRows(()=>db.from('onboarding_project_services').select('*').order('project_id')),
+  ]);
+  const err = [ty,tp,tt,st,sv,cf,pj,ln,ch,ops].find(r=>r&&r.error);
+  if(err){ OB.error = err.error.message; }
+  OB.types=ty.data||[]; OB.templates=tp.data||[]; OB.ttasks=tt.data||[]; OB.stores=st.data||[]; OB.services=sv.data||[];
+  OB.confirms=cf.data||[]; OB.projects=pj.data||[]; OB.links=ln.data||[]; OB.changes=ch.data||[];
+  OB.projects.forEach(p=>{ p._svc=[]; p._tpl={}; });
+  (ops.data||[]).forEach(r=>{ const p=OB.projects.find(x=>x.id===r.project_id); if(!p) return; p._svc.push(r.brand_service_id); if(r.template_id) p._tpl[r.brand_service_id]=r.template_id; });
+  OB.loaded = true;
+  await obLoadCalendar();
+}
+const obStoresOf   = bid => OB.stores.filter(s=>s.brand_id===bid);
+const obServicesOf = bid => OB.services.filter(s=>s.brand_id===bid && s.status!=='ended');
+const obProjectsOf = bid => OB.projects.filter(p=>p.brand_id===bid);
+const obConfirmOf  = sid => OB.confirms.find(c=>c.brand_service_id===sid);
+const obPublishedTemplate = typeId => OB.templates.filter(t=>t.service_type_id===(typeId||null) && t.status==='published').sort((a,b)=>b.version-a.version)[0];
+const obTemplateById = id => OB.templates.find(t=>t.id===id);
+
+/* ---------- router entry ---------- */
+async function renderOnboarding(sub, id){
+  const _nav = S.nav;
+  if(!isStaff()){ $('#content').innerHTML='<div class="card empty">Onboarding is for staff.</div>'; return; }
+  setTopbar('Onboarding');
+  const C=$('#content'); if(!OB.loaded) C.innerHTML='<div class="empty">Loading…</div>';
+  await obLoad();
+  if(navStale(_nav)) return;
+  if(OB.error && /does not exist|relation/.test(OB.error)){
+    C.innerHTML=`<div class="card empty" style="padding:30px">Onboarding tables are not applied yet.<br><span class="ob-muted">Run <code>migrations/2026-10-13_onboarding_registry.sql</code> and reload.</span></div>`; return;
+  }
+  if(sub==='brand' && id)   return obRenderBrand(id);
+  if(sub==='project' && id) return obRenderProject(id);
+  if(sub && ['brands','projects','catalogue'].includes(sub)) obTab = sub;
+  C.innerHTML = `
+    <div class="page-head"><h1>Onboarding</h1>
+      <div class="tabs">
+        <button class="tab ${obTab==='brands'?'active':''}" onclick="obTab='brands';renderOnboarding()">Brand registry</button>
+        <button class="tab ${obTab==='projects'?'active':''}" onclick="obTab='projects';renderOnboarding()">Onboarding projects</button>
+        <button class="tab ${obTab==='catalogue'?'active':''}" onclick="obTab='catalogue';renderOnboarding()">Service catalogue</button>
+      </div>
+      <div class="actions">${obTab==='projects'? `<button class="btn btn-primary" onclick="obNewProjectPick()">＋ Start onboarding</button>`:''}</div>
+    </div>
+    <div id="ob-body"></div>`;
+  if(obTab==='brands') obRenderBrandList();
+  else if(obTab==='projects') obRenderProjectList();
+  else obRenderCatalogue();
+}
+
+/* ======================= BRAND REGISTRY ======================= */
+let obBrandQ = '';
+function obRenderBrandList(){
+  const B = $('#ob-body'); if(!B) return;
+  const q = obBrandQ.trim().toLowerCase();
+  const brands = (S.brandsList||[]).filter(b=>b.active!==false).filter(b=>!q || (b.name||'').toLowerCase().includes(q));
+  B.innerHTML = `
+    <div class="card ob-sec">
+      <h3>Brands <span class="ob-muted" style="font-weight:500">${brands.length}</span>${helpIcon('One master record per brand (the same list the boards use). Stores and service subscriptions hang off it — adding a service never creates a second brand.')}
+        <span class="sp"></span>
+        <input class="ob-search" id="ob-q" placeholder="Search brands…" value="${esc(obBrandQ)}" oninput="obBrandQ=this.value;obRenderBrandList();const i=document.getElementById('ob-q');i.focus();i.setSelectionRange(i.value.length,i.value.length)">
+      </h3>
+      <table class="tbl"><thead><tr><th>Brand</th><th>Stores</th><th>Services</th><th>Onboarding</th><th></th></tr></thead><tbody>
+      ${brands.slice(0,300).map(b=>{
+        const st=obStoresOf(b.id), sv=obServicesOf(b.id), pj=obProjectsOf(b.id).filter(p=>!['live','cancelled'].includes(p.status));
+        const counts={}; sv.forEach(s=>counts[s.status]=(counts[s.status]||0)+1);
+        return `<tr class="rowlink" onclick="location.hash='#/onboarding/brand/${b.id}'">
+          <td style="font-weight:600">${esc(b.name)}${b.brand_group? ` <span class="ob-muted">· ${esc(b.brand_group)}</span>`:''}</td>
+          <td>${st.length? st.map(s=>`<span class="chip" style="background:var(--gray-soft);color:var(--ink2)">${esc(s.platform)}</span>`).join(' ') : '<span class="ob-muted">none yet</span>'}</td>
+          <td><div class="ob-chip-row">${Object.keys(counts).map(k=>`<span class="chip" style="background:${OB_SVC_STATUS[k]?.bg};color:${OB_SVC_STATUS[k]?.ink}">${counts[k]} ${OB_SVC_STATUS[k]?.label||k}</span>`).join('')||'<span class="ob-muted">—</span>'}</div></td>
+          <td>${pj.length? pj.map(p=>`<a href="#/onboarding/project/${p.id}" onclick="event.stopPropagation()">${esc(p.name)}</a> ${obFeasChip(p.feasibility)}`).join('<br>') : '<span class="ob-muted">—</span>'}</td>
+          <td class="ob-rowbtn"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();location.hash='#/onboarding/brand/${b.id}'">Open</button></td>
+        </tr>`; }).join('') || `<tr><td colspan="5" class="empty">No brands match</td></tr>`}
+      </tbody></table>
+      ${brands.length>300? `<div class="ob-muted" style="padding:8px 0 0">Showing the first 300 — narrow the search.</div>`:''}
+    </div>`;
+}
+
+async function obRenderBrand(bid){
+  const b = obBrand(bid); const C=$('#content');
+  if(!b){ C.innerHTML='<div class="card empty">Brand not found</div>'; return; }
+  setTopbar(`<a href="#/onboarding">Onboarding</a> › ${esc(b.name)}`);
+  const stores = obStoresOf(bid), services = obServicesOf(bid), projects = obProjectsOf(bid);
+  const brandLevel = services.filter(s=>!s.store_id);
+  const svcRow = s => {
+    const t=obType(s.service_type_id)||{}; const c=obConfirmOf(s.id);
+    return `<div class="ob-svc">
+      <span class="nm"><b>${esc(t.name||'Service')}</b>${s.effective_from? ` <span class="ob-muted">· from ${fmtDate(s.effective_from)}</span>`:''}${c? ` <span class="ob-muted">· confirmed ${fmtDate(c.confirmed_at)}${c.agreed_go_live? ', target '+fmtDate(c.agreed_go_live):''}</span>`:''}</span>
+      ${obSvcChip(s.status)}
+      ${s.status==='proposed'? `<button class="btn btn-primary btn-sm" onclick="obConfirmModal('${s.id}')">BD confirm</button>`:''}
+      ${['confirmed','onboarding','live'].includes(s.status)? `<button class="btn btn-ghost btn-sm" onclick="obServiceStatus('${s.id}','${s.status==='live'?'paused':'ended'}')">${s.status==='live'?'Pause':'End'}</button>`:''}
+      ${s.status==='paused'? `<button class="btn btn-ghost btn-sm" onclick="obServiceStatus('${s.id}','live')">Resume</button>`:''}
+      ${s.status==='proposed'? `<button class="btn btn-ghost btn-sm" onclick="obServiceStatus('${s.id}','ended')">Remove</button>`:''}
+    </div>`; };
+  C.innerHTML = `
+    <div class="page-head"><h1>${esc(b.name)}</h1>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="obStoreModal('${bid}')">＋ Store</button>
+        <button class="btn btn-ghost" onclick="obServiceModal('${bid}')">＋ Service</button>
+        <button class="btn btn-primary" onclick="obNewProjectModal('${bid}')">Start onboarding</button>
+      </div></div>
+    <div class="ob-grid">
+      <div class="card ob-sec">
+        <h3>Stores & services ${helpIcon('Every brand has its own service mix — select any combination per store or platform. BD confirmation is required before Onboarding sees a service; adding a service later only generates the new work.')}</h3>
+        ${brandLevel.length? `<div class="ob-store"><h4>Brand-level services <span class="sp"></span></h4>${brandLevel.map(svcRow).join('')}</div>`:''}
+        ${stores.map(st=>{ const sv=services.filter(s=>s.store_id===st.id); return `<div class="ob-store">
+          <h4><span class="chip" style="background:var(--gray-soft);color:var(--ink2)">${esc(st.platform)}</span> ${esc(st.name)} <span class="ob-muted">${st.platform_store_id? 'ID '+esc(st.platform_store_id):''}</span><span class="sp"></span>
+            <span class="chip" style="background:${st.launch_state==='live'?'var(--green-soft);color:var(--green)':'var(--gray-soft);color:var(--ink2)'}">${esc(st.launch_state)}</span>
+            <button class="btn btn-ghost btn-sm" onclick="obServiceModal('${bid}','${st.id}')">＋ Service</button></h4>
+          ${sv.map(svcRow).join('') || '<div class="ob-muted">No services on this store yet.</div>'}
+        </div>`; }).join('') || (brandLevel.length? '' : '<div class="empty">No stores yet. Add the first store, then its services.</div>')}
+      </div>
+      <div>
+        <div class="card ob-sec">
+          <h3>Onboarding projects</h3>
+          ${projects.length? `<table class="tbl"><thead><tr><th>Project</th><th>Go-live</th><th>Status</th><th></th></tr></thead><tbody>
+            ${projects.map(p=>`<tr class="rowlink" onclick="location.hash='#/onboarding/project/${p.id}'"><td style="font-weight:600">${esc(p.name)}</td><td>${fmtDate(p.baseline_go_live||p.target_go_live)||'—'}</td><td>${esc(OB_PROJ_STATUS[p.status]||p.status)} ${obFeasChip(p.feasibility)}</td><td class="ob-rowbtn"><button class="btn btn-ghost btn-sm">Open</button></td></tr>`).join('')}
+          </tbody></table>` : '<div class="ob-muted">None yet. Confirm the services, then start onboarding.</div>'}
+        </div>
+        <div class="card ob-sec" style="margin-top:14px">
+          <h3>BD confirmations ${helpIcon('The commercial gate. Each confirmation records what was agreed, the promised go-live and the evidence, so Onboarding never starts on an unconfirmed scope.')}</h3>
+          ${OB.confirms.filter(c=>services.some(s=>s.id===c.brand_service_id)).map(c=>{ const s=services.find(x=>x.id===c.brand_service_id); const t=obType(s.service_type_id)||{}; const st=s.store_id? obStore(s.store_id):null;
+            return `<div class="ob-svc"><span class="nm"><b>${esc(t.name||'')}</b>${st? ` · ${esc(st.name)}`:''} <span class="ob-muted">· ${esc(c.kind)} · ${esc((prof(c.confirmed_by)||{}).full_name||'')} · ${fmtDateTime(c.confirmed_at)}</span>${c.evidence? `<br><span class="ob-muted">${esc(c.evidence)}</span>`:''}</span>${c.agreed_go_live? `<span class="chip" style="background:var(--gray-soft);color:var(--ink2)">target ${fmtDate(c.agreed_go_live)}</span>`:''}</div>`; }).join('') || '<div class="ob-muted">No confirmations yet.</div>'}
+        </div>
+      </div>
+    </div>`;
+}
+
+function obStoreModal(bid){
+  const m = modal(`<div class="modal-head"><h2>Add store</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <label>Platform</label><select id="os-platform">${OB_PLATFORMS.map(p=>`<option>${p}</option>`).join('')}</select>
+      <label>Store name</label><input id="os-name" placeholder="e.g. ${esc((obBrand(bid)||{}).name||'Brand')} Official Store">
+      <label>Platform store ID <span class="ob-muted">(stays the same when the name changes)</span></label><input id="os-pid" placeholder="optional">
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="os-save">Add store</button></div>`);
+  m.querySelector('#os-save').onclick = async ()=>{
+    const name=m.querySelector('#os-name').value.trim(); if(!name) return toast('Store name is required', true);
+    const {data, error} = await db.from('brand_stores').insert({brand_id:bid, name, platform:m.querySelector('#os-platform').value, platform_store_id:m.querySelector('#os-pid').value.trim()||null, created_by:S.me.id}).select().single();
+    if(error) return toast(error.message, true);
+    OB.stores.push(data); closeModals(); toast('Store added'); obRenderBrand(bid);
+  };
+}
+function obServiceModal(bid, storeId){
+  const stores = obStoresOf(bid);
+  const m = modal(`<div class="modal-head"><h2>Add service</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <label>Service</label><select id="osv-type">${OB.types.filter(t=>t.active).map(t=>`<option value="${t.id}">${esc(t.name)}${t.category? ' · '+esc(t.category):''}</option>`).join('')}</select>
+      <label>Scope</label><select id="osv-store"><option value="">Brand-level (all stores)</option>${stores.map(s=>`<option value="${s.id}" ${s.id===storeId?'selected':''}>${esc(s.platform)} · ${esc(s.name)}</option>`).join('')}</select>
+      <label>Notes</label><textarea id="osv-notes" rows="2" placeholder="Scope notes from the deal"></textarea>
+      <p class="ob-muted" style="margin-top:10px">The service starts as <b>Proposed</b>. BD confirms it before Onboarding can plan it.</p>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="osv-save">Add service</button></div>`);
+  m.querySelector('#osv-save').onclick = async ()=>{
+    const {data, error} = await db.from('brand_services').insert({brand_id:bid, store_id:m.querySelector('#osv-store').value||null, service_type_id:m.querySelector('#osv-type').value, notes:m.querySelector('#osv-notes').value.trim()||null, created_by:S.me.id}).select().single();
+    if(error) return toast(/duplicate|unique/i.test(error.message)? 'That service is already on this brand/store.' : error.message, true);
+    OB.services.push(data); closeModals(); toast('Service added as Proposed'); obRenderBrand(bid);
+  };
+}
+function obConfirmModal(sid){
+  const s = OB.services.find(x=>x.id===sid); if(!s) return;
+  const t=obType(s.service_type_id)||{}; const hasOther = OB.services.some(x=>x.brand_id===s.brand_id && x.id!==sid && ['confirmed','onboarding','live'].includes(x.status));
+  const m = modal(`<div class="modal-head"><h2>BD confirmation · ${esc(t.name||'')}</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <label>Kind</label><select id="oc-kind"><option value="new">New deal</option><option value="expansion" ${hasOther?'selected':''}>Service expansion on an existing brand</option><option value="change">Scope change</option></select>
+      <label>Agreed go-live (commercial promise)</label><input id="oc-date" type="date">
+      <label>Evidence <span class="req">*</span> ${helpIcon('Link or reference to the signed scope, contract variation or approval email. Required — the gate is only as good as its evidence.')}</label><input id="oc-ev" placeholder="e.g. Contract v2 §3, signed 10 Oct">
+      <label>Note</label><textarea id="oc-note" rows="2"></textarea>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="oc-save">Confirm service</button></div>`);
+  m.querySelector('#oc-save').onclick = async ()=>{
+    const evidence=m.querySelector('#oc-ev').value.trim(); if(!evidence) return toast('Evidence is required for a BD confirmation', true);
+    const {data:c, error} = await db.from('bd_confirmations').insert({brand_service_id:sid, kind:m.querySelector('#oc-kind').value, agreed_go_live:m.querySelector('#oc-date').value||null, evidence, note:m.querySelector('#oc-note').value.trim()||null, confirmed_by:S.me.id}).select().single();
+    if(error) return toast(error.message, true);
+    const {data:u, error:e2} = await db.from('brand_services').update({status:'confirmed'}).eq('id',sid).select().single();
+    if(e2) return toast(e2.message, true);
+    OB.confirms.unshift(c); Object.assign(s, u);
+    logActivity('brand_service', sid, 'bd_confirmed', {kind:c.kind, evidence});
+    closeModals(); toast('Service confirmed — Onboarding can plan it now'); obRenderBrand(s.brand_id);
+  };
+}
+async function obServiceStatus(sid, status){
+  const s = OB.services.find(x=>x.id===sid); if(!s) return;
+  if(status==='ended' && !confirm('End this service? Its live tasks are left as they are.')) return;
+  const upd = {status}; if(status==='ended') upd.effective_to = obISO(obToday());
+  const {data, error} = await db.from('brand_services').update(upd).eq('id',sid).select().single();
+  if(error) return toast(error.message, true);
+  Object.assign(s, data); toast('Service '+OB_SVC_STATUS[status].label.toLowerCase()); obRenderBrand(s.brand_id);
+}
+
+/* ======================= PROJECTS ======================= */
+function obRenderProjectList(){
+  const B=$('#ob-body'); if(!B) return;
+  const rows = OB.projects;
+  B.innerHTML = `<div class="card">
+    ${rows.length? `<table class="tbl"><thead><tr><th>Project</th><th>Brand</th><th>Services</th><th>Target</th><th>Baseline</th><th>Feasibility</th><th>Status</th><th>Readiness</th></tr></thead><tbody>
+    ${rows.map(p=>{ const b=obBrand(p.brand_id)||{}; const links=OB.links.filter(l=>l.project_id===p.id);
+      const svcs = OB.services.filter(s=>(p._svc||[]).includes(s.id));
+      return `<tr class="rowlink" onclick="location.hash='#/onboarding/project/${p.id}'">
+        <td style="font-weight:600">${esc(p.name)}</td><td>${esc(b.name||'')}</td>
+        <td>${(p.plan||[]).length? `<span class="ob-muted">${(p.plan||[]).length} tasks planned</span>`:'<span class="ob-muted">not planned</span>'}</td>
+        <td>${fmtDate(p.target_go_live)||'—'}</td><td>${fmtDate(p.baseline_go_live)||'—'}</td>
+        <td>${obFeasChip(p.feasibility)}</td><td>${esc(OB_PROJ_STATUS[p.status]||p.status)}</td>
+        <td>${links.length? `<span class="ob-muted">${links.filter(l=>l.gate).length} gates · ${links.length} tasks</span>`:'<span class="ob-muted">—</span>'}</td></tr>`; }).join('')}
+    </tbody></table>` : '<div class="empty">No onboarding projects yet. Confirm a brand\'s services, then Start onboarding.</div>'}
+  </div>`;
+}
+function obNewProjectPick(){
+  const cands = (S.brandsList||[]).filter(b=>b.active!==false && OB.services.some(s=>s.brand_id===b.id && ['confirmed','onboarding'].includes(s.status)));
+  const m = modal(`<div class="modal-head"><h2>Start onboarding</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      ${cands.length? `<label>Brand with confirmed services</label><select id="onp-brand">${cands.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')}</select>`
+        : `<p class="ob-muted">No brand has a BD-confirmed service yet. Open a brand in the registry, add its stores and services, and confirm them first.</p>`}
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button>${cands.length? `<button class="btn btn-primary" onclick="const b=document.getElementById('onp-brand').value;closeModals();obNewProjectModal(b)">Next</button>`:''}</div>`);
+}
+function obNewProjectModal(bid){
+  const b=obBrand(bid)||{};
+  const inProj = new Set(OB.projects.filter(p=>!['live','cancelled'].includes(p.status)).flatMap(p=>p._svc||[]));
+  const svcs = obServicesOf(bid).filter(s=>['confirmed','onboarding'].includes(s.status) && !inProj.has(s.id));
+  const latestTarget = OB.confirms.filter(c=>svcs.some(s=>s.id===c.brand_service_id) && c.agreed_go_live).map(c=>c.agreed_go_live).sort().pop() || '';
+  const m = modal(`<div class="modal-head"><h2>Start onboarding · ${esc(b.name||'')}</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      ${svcs.length? `<label>Services in this plan ${helpIcon('Only BD-confirmed services can enter a plan. Services already live stay untouched — an expansion generates just the new work.')}</label>
+        ${svcs.map(s=>{ const t=obType(s.service_type_id)||{}; const st=s.store_id? obStore(s.store_id):null; return `<label style="display:flex;align-items:center;gap:8px;margin:4px 0;font-weight:500;color:var(--ink)"><input type="checkbox" class="onp-svc" value="${s.id}" checked style="width:15px;height:15px;accent-color:var(--accent)">${esc(t.name||'')}${st? ` <span class="ob-muted">· ${esc(st.platform)} · ${esc(st.name)}</span>`:' <span class="ob-muted">· brand-level</span>'} ${obSvcChip(s.status)}</label>`; }).join('')}`
+        : `<p class="ob-muted">This brand has no BD-confirmed service waiting for onboarding.</p>`}
+      <label>Project name</label><input id="onp-name" value="${esc(b.name||'')} onboarding">
+      <label>Target go-live (BD's promise) <span class="req">*</span></label><input id="onp-date" type="date" value="${esc(latestTarget)}">
+      <label>Onboarding lead</label><select id="onp-owner"><option value="">—</option>${S.profiles.filter(p=>p.active&&['admin','internal','management'].includes(p.role)).map(p=>`<option value="${p.id}" ${p.id===S.me.id?'selected':''}>${esc(p.full_name)}</option>`).join('')}</select>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button>${svcs.length? `<button class="btn btn-primary" id="onp-save">Create draft plan</button>`:''}</div>`, true);
+  const sv=m.querySelector('#onp-save'); if(!sv) return;
+  sv.onclick = async ()=>{
+    const ids=[...m.querySelectorAll('.onp-svc:checked')].map(i=>i.value); if(!ids.length) return toast('Pick at least one service', true);
+    const date=m.querySelector('#onp-date').value; if(!date) return toast('Target go-live is required', true);
+    const name=m.querySelector('#onp-name').value.trim()||((b.name||'Brand')+' onboarding');
+    const {data:p, error} = await db.from('onboarding_projects').insert({brand_id:bid, name, target_go_live:date, owner_id:m.querySelector('#onp-owner').value||null, created_by:S.me.id}).select().single();
+    if(error) return toast(error.message, true);
+    const {error:e2} = await db.from('onboarding_project_services').insert(ids.map(id=>({project_id:p.id, brand_service_id:id, template_id:(obPublishedTemplate((OB.services.find(s=>s.id===id)||{}).service_type_id)||{}).id||null})));
+    if(e2) return toast(e2.message, true);
+    await db.from('brand_services').update({status:'onboarding'}).in('id', ids).eq('status','confirmed');
+    OB.services.forEach(s=>{ if(ids.includes(s.id) && s.status==='confirmed') s.status='onboarding'; });
+    p._svc = ids; OB.projects.unshift(p);
+    logActivity('onboarding_project', p.id, 'created', {services:ids.length, target:date});
+    closeModals(); toast('Draft plan created'); location.hash='#/onboarding/project/'+p.id;
+  };
+}
+
+/* ---------- plan composition + working-day backward scheduler ---------- */
+/* Returns {items:[{key, template_task_id, code, title, scope_key, scope_label, team_id, board_id, duration, offset, gate, input_wait, deps:[keys], start, due, required_input, evidence_rule}], feasibility, missingBoards:[team ids], warnings:[]} */
+function obComposePlan(project, services, goLive){
+  const items = []; const byKey = {};
+  const storeIds = [...new Set(services.filter(s=>s.store_id).map(s=>s.store_id))];
+  const scopeLabel = k => k==='brand'? 'Brand' : k.startsWith('store:')? ((obStore(k.slice(6))||{}).name||'Store') : (()=>{ const s=services.find(x=>'service:'+x.id===k); const st=s&&s.store_id? obStore(s.store_id):null; return st? st.name : 'Brand'; })();
+  const add = (tt, scope_key, svc, tpl) => {
+    const key = (tt.dedup_key||tt.code)+'@'+scope_key;
+    if(byKey[key]){ byKey[key]._src.push(tt); return byKey[key]; }
+    const it = {key, template_task_id:tt.id, code:tt.code, dedup_key:tt.dedup_key, title:tt.title, scope_key, scope_label:scopeLabel(scope_key),
+      store_id: scope_key.startsWith('store:')? scope_key.slice(6) : (svc&&svc.store_id)||null,
+      team_id:tt.team_id||null, board_id:tt.board_project_id||null, duration:Math.max(1,tt.duration_wd||1), offset:tt.offset_wd,
+      gate:!!tt.gate, input_wait:!!tt.input_wait, required_input:tt.required_input||'', evidence_rule:tt.evidence_rule||'',
+      phase:tt.phase||'', responsibility:tt.responsibility||'', offset_unit:(tpl&&tpl.offset_unit)||'working',
+      depends_on_code:tt.depends_on_code||null, deps:[], _src:[tt], service_name:svc? ((obType(svc.service_type_id)||{}).name||'') : ''};
+    byKey[key]=it; items.push(it); return it;
+  };
+  const instantiate = (tt, svc, tpl) => {
+    if(tt.scope_level==='brand') add(tt, 'brand', svc, tpl);
+    else if(tt.scope_level==='store'){ if(svc){ add(tt, svc.store_id? 'store:'+svc.store_id : 'brand', svc, tpl); } else if(storeIds.length) storeIds.forEach(id=>add(tt,'store:'+id, null, tpl)); else add(tt,'brand', null, tpl); }
+    else add(tt, svc? 'service:'+svc.id : 'brand', svc, tpl);
+  };
+  const base = obPublishedTemplate(null);
+  if(base) OB.ttasks.filter(t=>t.template_id===base.id).forEach(tt=>instantiate(tt, null, base));
+  services.forEach(svc=>{
+    const pinned = (project._tpl||{})[svc.id]; const tpl = (pinned && obTemplateById(pinned)) || obPublishedTemplate(svc.service_type_id);
+    if(!tpl) return;
+    OB.ttasks.filter(t=>t.template_id===tpl.id).forEach(tt=>instantiate(tt, svc, tpl));
+  });
+  // dependencies: predecessor = same code/dedup, closest matching scope (same key → same store → brand)
+  items.forEach(it=>{
+    if(!it.depends_on_code) return;
+    const cands = items.filter(p=>p!==it && (p.code===it.depends_on_code || p.dedup_key===it.depends_on_code));
+    const pick = cands.find(p=>p.scope_key===it.scope_key) || cands.find(p=>it.store_id && p.scope_key==='store:'+it.store_id) || cands.find(p=>p.scope_key==='brand') || cands[0];
+    if(pick) it.deps.push(pick.key);
+  });
+  // tasks with no successor and no anchor finish before the anchored gate (go-live readiness / QA)
+  const succ = {}; items.forEach(it=>it.deps.forEach(d=>{ (succ[d]=succ[d]||[]).push(it.key); }));
+  const anchorGate = items.filter(it=>it.gate && it.offset!=null && it.offset>=0).sort((a,b)=>a.offset-b.offset)[0];
+  items.forEach(it=>{ if(it.offset==null && !(succ[it.key]||[]).length && anchorGate && it!==anchorGate){ anchorGate.deps.push(it.key); (succ[it.key]=succ[it.key]||[]).push(anchorGate.key); } });
+  // backward schedule
+  const dueMemo = {}; const visiting = {};
+  const dueOf = it => {
+    if(dueMemo[it.key]) return dueMemo[it.key];
+    if(visiting[it.key]){ return dueMemo[it.key] = obBack(goLive, 1); }   // cycle guard
+    visiting[it.key]=true;
+    let due = null;
+    if(it.offset!=null) due = obAnchor(goLive, it.offset, it.offset_unit);
+    const succs = (succ[it.key]||[]).map(k=>byKey[k]).filter(Boolean);
+    succs.forEach(s=>{ const sd = dueOf(s); const sStart = obBack(sd, s.duration-1); const d = obBack(sStart, 1); if(!due || d<due) due=d; });
+    if(!due) due = obBack(goLive, 1);
+    visiting[it.key]=false;
+    return dueMemo[it.key]=due;
+  };
+  items.forEach(it=>{ it.due = dueOf(it); it.start = obBack(it.due, it.duration-1); });
+  // feasibility against today
+  const today = obToday(); let feas='feasible';
+  items.forEach(it=>{
+    const linked = (project._links||{})[it.key];
+    if(linked && linked.status==='done') { it.state='done'; return; }
+    if(obD(it.start) < today) { it.state='late'; feas='infeasible'; }
+    else if(obWDBetween(today, obD(it.start)) < 2){ it.state='soon'; if(feas==='feasible') feas='at_risk'; }
+  });
+  // boards
+  items.forEach(it=>{ const k=it.team_id||'none'; if(obTeamBoards[k]) it.board_id = obTeamBoards[k]; });
+  const missingBoards = [...new Set(items.filter(it=>!it.board_id).map(it=>it.team_id||'none'))];
+  items.sort((a,b)=> (obTeamName(a.team_id)).localeCompare(obTeamName(b.team_id)) || a.start.localeCompare(b.start));
+  return {items, feasibility:feas, missingBoards};
+}
+
+async function obHydrateProject(p){
+  if(!p._svc){ p._svc=[]; p._tpl={}; }
+  const links = OB.links.filter(l=>l.project_id===p.id);
+  p._links = {};
+  if(links.length){
+    const ids = links.map(l=>l.task_id);
+    const {data:tasks} = await allRows(()=>db.from('tasks').select('id,title,status,assignee_id,due_date,start_date,project_id,ticket_no').in('id', ids.slice(0,900)).order('id'));
+    const tm = {}; (tasks||[]).forEach(t=>tm[t.id]=t);
+    links.forEach(l=>{ p._links[l.plan_key] = tm[l.task_id]||{status:'?', missing:true}; });
+  }
+}
+
+async function obRenderProject(pid){
+  const _nav = S.nav;
+  const p = OB.projects.find(x=>x.id===pid); const C=$('#content');
+  if(!p){ C.innerHTML='<div class="card empty">Project not found</div>'; return; }
+  const b = obBrand(p.brand_id)||{};
+  setTopbar(`<a href="#/onboarding">Onboarding</a> › <a href="#/onboarding/brand/${p.brand_id}">${esc(b.name||'')}</a> › ${esc(p.name)}`);
+  C.innerHTML='<div class="empty">Loading…</div>';
+  await obHydrateProject(p);
+  if(navStale(_nav)) return;
+  const services = OB.services.filter(s=>(p._svc||[]).includes(s.id));
+  const goLive = p.baseline_go_live || p.target_go_live;
+  const plan = goLive? obComposePlan(p, services, goLive) : {items:[], feasibility:null, missingBoards:[]};
+  p._plan = plan;
+  if(plan.feasibility && plan.feasibility!==p.feasibility){ p.feasibility=plan.feasibility; db.from('onboarding_projects').update({feasibility:plan.feasibility}).eq('id',pid).then(()=>{}); }
+  const links = OB.links.filter(l=>l.project_id===pid); const generated = links.length>0;
+  const pending = OB.changes.filter(c=>c.project_id===pid && c.status==='pending');
+  let readiness=null; if(generated){ const {data} = await db.rpc('ob_readiness',{p_project:pid}); readiness=data; }
+  if(navStale(_nav)) return;
+  const teamsIn = [...new Set(plan.items.map(i=>i.team_id||'none'))];
+  const boards = S.projects.filter(x=>x.status==='active' && !x.archived_at);
+  const boardSel = (teamId, cur) => `<select data-team="${teamId}" onchange="obTeamBoards['${teamId}']=this.value;obRenderProject('${pid}')" style="width:auto;max-width:260px"><option value="">— pick a board —</option>${boards.map(x=>{ const w=wsById(x.workspace_id); return `<option value="${x.id}" ${x.id===cur?'selected':''}>${w? esc(w.name)+' · ':''}${esc(x.name)}</option>`; }).join('')}</select>`;
+  const statusChip = t => { if(!t) return ''; const s=STATUSES.find(x=>x.k===t.status); return s? `<span class="chip" style="background:${s.color};color:${s.ink}">${s.label}</span>` : `<span class="chip" style="background:var(--gray-soft)">${esc(t.status)}</span>`; };
+  let lastTeam=null;
+  C.innerHTML = `
+    <div class="page-head"><h1>${esc(p.name)}</h1>
+      <div class="actions">
+        ${p.status!=='live'&&p.status!=='cancelled'? `<button class="btn btn-ghost" onclick="obChangeModal('${pid}')">Change go-live</button>`:''}
+        ${generated && p.status!=='live'? `<button class="btn btn-ghost" onclick="obGenerate('${pid}')">Update tasks from plan</button>`:''}
+        ${!generated && p.status!=='cancelled'? `<button class="btn btn-primary" onclick="obGenerate('${pid}')">Approve plan & create tasks</button>`:''}
+        ${generated && p.status!=='live'? `<button class="btn btn-green" onclick="obGoLiveModal('${pid}')">Go live</button>`:''}
+      </div></div>
+    <div class="ob-wrap">
+      <div class="card ob-sec">
+        <div class="ob-kv">
+          <div><b>Brand</b><a href="#/onboarding/brand/${p.brand_id}">${esc(b.name||'')}</a></div>
+          <div><b>Target go-live (BD promise)</b>${fmtDate(p.target_go_live)||'—'}</div>
+          <div><b>Baseline go-live (approved plan)</b>${fmtDate(p.baseline_go_live)||'<span class="ob-muted">not approved yet</span>'}</div>
+          <div><b>Feasibility</b>${obFeasChip(plan.feasibility)} ${helpIcon('Infeasible: a task would already have had to start. At risk: a task must start within two working days. Based on lead times and dependencies, not on checklist percentage.')}</div>
+          <div><b>Status</b>${esc(OB_PROJ_STATUS[p.status]||p.status)}</div>
+          <div><b>Lead</b>${esc((prof(p.owner_id)||{}).full_name||'—')}</div>
+        </div>
+        <div class="ob-chip-row">${services.map(s=>{ const t=obType(s.service_type_id)||{}; const st=s.store_id? obStore(s.store_id):null; return `<span class="chip" style="background:var(--gray-soft);color:var(--ink)">${esc(t.name||'')}${st? ' · '+esc(st.platform):''}</span> ${obSvcChip(s.status)}`; }).join(' ')}</div>
+        ${readiness? `<div style="margin-top:12px"><b style="font-size:12px">Readiness</b> <span class="ob-muted">${readiness.gates_done}/${readiness.gates} gates · ${readiness.open} open · ${readiness.blocked} blocked · ${readiness.overdue} overdue</span>
+          <div class="ob-bar"><i style="width:${readiness.total? Math.round((readiness.total-readiness.open)/readiness.total*100):0}%"></i></div></div>`:''}
+        ${pending.length? pending.map(c=>`<div class="ob-missing" style="margin-top:12px"><b>Go-live change pending:</b> ${fmtDate(c.old_date)||'—'} → <b>${fmtDate(c.new_date)}</b> · ${esc(c.reason||'')} · brand agreed: ${c.brand_agreed?'yes':'no'} · by ${esc((prof(c.requested_by)||{}).full_name||'')}
+          <span style="float:right"><button class="btn btn-green btn-sm" onclick="obDecideChange('${c.id}','approved')">Approve</button> <button class="btn btn-ghost btn-sm" onclick="obDecideChange('${c.id}','rejected')">Reject</button></span></div>`).join(''):''}
+      </div>
+      ${plan.missingBoards.length && !generated? `<div class="ob-missing">Pick the board where each team's tasks will be created: ${plan.missingBoards.map(t=>`<span style="display:inline-flex;align-items:center;gap:6px;margin:4px 8px 0 0"><b>${esc(obTeamName(t==='none'?null:t))}</b> ${boardSel(t, obTeamBoards[t]||'')}</span>`).join('')}</div>`:''}
+      <div class="card ob-sec ob-plan">
+        <h3>Plan — back-scheduled from ${goLive? fmtDate(goLive):'(no go-live date)'} in working days ${helpIcon('Anchored tasks sit N working days before go-live. Dependent tasks finish the working day before their successor starts. Weekends and the approved holiday calendar (Admin → SLA) are skipped. Durations come from the template — replace the illustrative ones with your approved Excel lead times.')}
+          <span class="sp"></span><span class="ob-muted">${plan.items.length} tasks · ${teamsIn.length} teams</span></h3>
+        ${plan.items.length? `<table class="tbl"><thead><tr><th>Task</th><th>Scope</th><th>Lead (WD)</th><th>Start</th><th>Due</th><th>Waits for</th><th>${generated?'Board task':'Board'}</th></tr></thead><tbody>
+        ${plan.items.map(it=>{ const team=obTeamName(it.team_id); let head=''; if(team!==lastTeam){ lastTeam=team; head=`<tr class="ws"><td colspan="7">${esc(team)}${generated?'':` · ${boardSel(it.team_id||'none', it.board_id||'')}`}</td></tr>`; }
+          const t=(p._links||{})[it.key];
+          return head+`<tr class="${it.state||''}">
+            <td><b>${esc(it.title)}</b>${it.gate?'<span class="ob-gate">GATE</span>':''}${it.input_wait? ' <span class="chip" style="background:var(--amber-soft);color:var(--amber)">waits on brand</span>':''}${it.phase? `<br><span class="ob-muted">${esc(it.phase)}</span>`:''}${it.required_input&&it.required_input!=='-'? `<br><span class="ob-muted">Brand: ${esc(it.required_input)}</span>`:''}</td>
+            <td>${esc(it.scope_label)}${it.service_name? `<br><span class="ob-muted">${esc(it.service_name)}</span>`:''}</td>
+            <td>${it.duration}${it.offset!=null? `<br><span class="ob-muted">${it.offset>=0? 'D-'+it.offset : 'D+'+(-it.offset)}${it.offset_unit==='calendar'?' cal':''}</span>`:''}</td>
+            <td>${fmtDate(it.start)}</td><td style="font-weight:600">${fmtDate(it.due)}</td>
+            <td class="ob-dep">${it.deps.map(k=>esc((plan.items.find(x=>x.key===k)||{}).title||k)).join(', ')||'—'}</td>
+            <td>${generated? (t? (t.missing? '<span class="ob-muted">task removed</span>' : `<a href="#/task/${t.id}">${t.ticket_no? esc(t.ticket_no):'open'}</a> ${statusChip(t)}${t.due_date && t.due_date!==it.due? ` <span class="chip" style="background:var(--amber-soft);color:var(--amber)" title="Board due date differs from the plan">board ${fmtDate(t.due_date)}</span>`:''}`) : '<span class="chip" style="background:var(--accent-soft);color:var(--accent-ink)">new</span>') : esc((projById(it.board_id)||{}).name||'—')}</td>
+          </tr>`; }).join('')}
+        </tbody></table>` : '<div class="empty">Nothing to plan — add a go-live date and make sure the services have a published template.</div>'}
+      </div>
+    </div>`;
+}
+
+async function obGenerate(pid){
+  const p = OB.projects.find(x=>x.id===pid); if(!p || !p._plan) return;
+  const plan = p._plan;
+  if(plan.missingBoards.length) return toast('Pick a board for every team first', true);
+  if(!p.baseline_go_live && plan.feasibility==='infeasible' && !confirm('The plan is infeasible against today\'s date — some work would already have had to start. Create the tasks anyway?')) return;
+  const goLive = p.baseline_go_live || p.target_go_live;
+  const payload = plan.items.map(it=>({key:it.key, template_task_id:it.template_task_id, scope_key:it.scope_key, title:it.title,
+    description:`Onboarding · ${p.name}\nScope: ${it.scope_label}${it.service_name? ' · '+it.service_name:''}\nRequired input: ${it.required_input||'—'}\nEvidence to complete: ${it.evidence_rule||'—'}\nGo-live: ${goLive}`,
+    board_id:it.board_id, team_id:it.team_id, start:it.start, due:it.due, gate:it.gate, deps:it.deps}));
+  const {data, error} = await db.rpc('ob_generate_tasks', {p_project:pid, p_plan:payload});
+  if(error) return toast(error.message, true);
+  const first = !p.baseline_go_live;
+  const upd = {feasibility:plan.feasibility, status:'in_progress'}; if(first){ upd.baseline_go_live=goLive; upd.approved_by=S.me.id; upd.approved_at=new Date().toISOString(); }
+  await db.from('onboarding_projects').update(upd).eq('id',pid);
+  Object.assign(p, upd);
+  // remember team → board defaults for the catalogue when allowed
+  if(obIsSuper()){ const byTeam={}; plan.items.forEach(it=>{ if(it.team_id && it.board_id) byTeam[it.team_id]=it.board_id; });
+    for(const [team, board] of Object.entries(byTeam)){ await db.from('template_tasks').update({board_project_id:board}).eq('team_id',team).is('board_project_id',null); OB.ttasks.forEach(t=>{ if(t.team_id===team && !t.board_project_id) t.board_project_id=board; }); } }
+  const {data:links} = await db.from('onboarding_task_links').select('*').eq('project_id',pid);
+  OB.links = OB.links.filter(l=>l.project_id!==pid).concat(links||[]);
+  logActivity('onboarding_project', pid, first? 'plan_approved':'plan_updated', data||{});
+  toast(`${data.inserted} task${data.inserted===1?'':'s'} created · ${data.redated} re-dated · ${data.deps} dependencies`);
+  obRenderProject(pid);
+}
+
+function obChangeModal(pid){
+  const p = OB.projects.find(x=>x.id===pid); if(!p) return;
+  const cur = p.baseline_go_live || p.target_go_live;
+  const m = modal(`<div class="modal-head"><h2>Change go-live date</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <p class="ob-muted" style="margin:0 0 6px">Current: <b>${fmtDate(cur)||'—'}</b>. A change needs the brand's agreement and BD confirmation, and Onboarding reviews the impact before the baseline moves.</p>
+      <label>New go-live <span class="req">*</span></label><input id="ogc-date" type="date" onchange="obChangePreview('${pid}')">
+      <label>Reason</label><input id="ogc-reason" placeholder="Brand asked to move launch / stock delay / …">
+      <label style="display:flex;align-items:center;gap:8px;font-weight:500;color:var(--ink)"><input type="checkbox" id="ogc-brand" style="width:15px;height:15px;accent-color:var(--accent)">Brand has agreed to the new date</label>
+      <div id="ogc-preview" class="ob-muted" style="margin-top:10px"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="ogc-save">Request change</button></div>`);
+  m.querySelector('#ogc-save').onclick = async ()=>{
+    const nd=m.querySelector('#ogc-date').value; if(!nd) return toast('Pick the new date', true);
+    const impact = m.querySelector('#ogc-preview').textContent;
+    const {data, error} = await db.from('go_live_changes').insert({project_id:pid, old_date:cur||null, new_date:nd, reason:m.querySelector('#ogc-reason').value.trim()||null, impact, brand_agreed:m.querySelector('#ogc-brand').checked, requested_by:S.me.id}).select().single();
+    if(error) return toast(error.message, true);
+    OB.changes.unshift(data); logActivity('onboarding_project', pid, 'golive_change_requested', {from:cur, to:nd});
+    closeModals(); toast('Change requested — pending approval'); obRenderProject(pid);
+  };
+}
+function obChangePreview(pid){
+  const p = OB.projects.find(x=>x.id===pid); const nd=document.getElementById('ogc-date').value; const out=document.getElementById('ogc-preview'); if(!p||!nd||!out) return;
+  const services = OB.services.filter(s=>(p._svc||[]).includes(s.id));
+  const np = obComposePlan(p, services, nd);
+  const open = np.items.filter(it=>it.state!=='done');
+  const late = np.items.filter(it=>it.state==='late').length;
+  out.textContent = `Impact: ${open.length} open tasks re-dated · feasibility ${np.feasibility.replace('_',' ')}${late? ` · ${late} would already be late`:''} · earliest start ${fmtDate(open.map(i=>i.start).sort()[0]||nd)}`;
+}
+async function obDecideChange(cid, status){
+  const c = OB.changes.find(x=>x.id===cid); if(!c) return;
+  const p = OB.projects.find(x=>x.id===c.project_id);
+  if(status==='approved' && !c.brand_agreed && !confirm('The brand has not agreed to this date yet. Approve anyway?')) return;
+  const {error} = await db.from('go_live_changes').update({status, decided_by:S.me.id, decided_at:new Date().toISOString(), bd_confirmed_by: status==='approved'? S.me.id : null}).eq('id',cid);
+  if(error) return toast(error.message, true);
+  c.status=status;
+  if(status==='approved' && p){
+    const upd = {baseline_go_live:c.new_date}; if(!p.baseline_go_live) upd.target_go_live = p.target_go_live||c.new_date;
+    await db.from('onboarding_projects').update(upd).eq('id',p.id); Object.assign(p, upd);
+    logActivity('onboarding_project', p.id, 'golive_changed', {to:c.new_date});
+    toast('Baseline moved to '+fmtDate(c.new_date)+(OB.links.some(l=>l.project_id===p.id)? ' — use "Update tasks from plan" to re-date the open tasks':''));
+  } else toast('Change '+status);
+  if(p) obRenderProject(p.id);
+}
+function obGoLiveModal(pid){
+  const m = modal(`<div class="modal-head"><h2>Go live</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <p class="ob-muted" style="margin:0 0 6px">Every readiness gate must be Done. If one is still open, an authorised exception has to be recorded here — it is kept in the activity log.</p>
+      <label>Exception (leave empty if all gates are done)</label><input id="ogl-exc" placeholder="Approved by … because …">
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-green" id="ogl-go">Mark live</button></div>`);
+  m.querySelector('#ogl-go').onclick = async ()=>{
+    const {error} = await db.rpc('ob_go_live', {p_project:pid, p_exception:m.querySelector('#ogl-exc').value.trim()||null});
+    if(error) return toast(error.message, true);
+    closeModals(); toast('Live — services and stores updated'); await obLoad(true); obRenderProject(pid);
+  };
+}
+
+/* ======================= SERVICE CATALOGUE ======================= */
+function obRenderCatalogue(){
+  const B=$('#ob-body'); if(!B) return; const sup=obIsSuper();
+  const tplBlock = (tpl) => { const tasks=OB.ttasks.filter(t=>t.template_id===tpl.id); const draft=tpl.status==='draft';
+    return `<div class="ob-store">
+      <h4>${esc(tpl.name)} <span class="chip" style="background:${tpl.status==='published'?'var(--green-soft);color:var(--green)':tpl.status==='draft'?'var(--amber-soft);color:var(--amber)':'var(--gray-soft);color:var(--ink3)'}">v${tpl.version} · ${tpl.status}</span>
+        ${sup&&draft? `<select style="width:auto;font-size:12px" onchange="obSetUnit('${tpl.id}',this.value)"><option value="working" ${tpl.offset_unit!=='calendar'?'selected':''}>lead in working days</option><option value="calendar" ${tpl.offset_unit==='calendar'?'selected':''}>lead in calendar days</option></select>` : `<span class="chip" style="background:var(--gray-soft);color:var(--ink2)">${tpl.offset_unit==='calendar'?'calendar days → working day':'working days'}</span>`}
+        ${tpl.source? helpIcon('Imported from '+esc(tpl.source)):''}<span class="sp"></span>
+        ${sup&&draft? `<button class="btn btn-ghost btn-sm" onclick="obTaskModal('${tpl.id}')">＋ Task</button> <button class="btn btn-primary btn-sm" onclick="obPublishTemplate('${tpl.id}')">Publish</button>`:''}
+        ${sup&&tpl.status==='published'? `<button class="btn btn-ghost btn-sm" onclick="obNewVersion('${tpl.id}')">New version</button>`:''}</h4>
+      ${tasks.length? `<table class="tbl"><thead><tr><th>Code</th><th>Task</th><th>Phase</th><th>Scope</th><th>Lead (WD)</th><th>Anchor</th><th>After</th><th>Team</th><th>Board</th><th></th></tr></thead><tbody>
+        ${tasks.map(t=>`<tr><td class="ob-muted">${esc(t.code)}</td><td><b>${esc(t.title)}</b>${t.gate?'<span class="ob-gate">GATE</span>':''}${t.input_wait?' <span class="chip" style="background:var(--amber-soft);color:var(--amber)">brand input</span>':''}${t.responsibility? ` <span class="ob-muted">· ${esc(t.responsibility)}</span>`:''}<br><span class="ob-muted">${esc(t.required_input||'')}</span></td>
+          <td class="ob-muted">${esc(t.phase||'')}</td><td>${esc(t.scope_level)}</td><td>${t.duration_wd}</td><td>${t.offset_wd!=null? (t.offset_wd>=0? 'D-'+t.offset_wd : 'D+'+(-t.offset_wd)):'—'}</td><td class="ob-dep">${esc(t.depends_on_code||'—')}</td><td>${esc(obTeamName(t.team_id))}</td><td>${esc((projById(t.board_project_id)||{}).name||'—')}</td>
+          <td class="ob-rowbtn">${sup&&draft? `<button class="btn btn-ghost btn-sm" onclick="obTaskModal('${tpl.id}','${t.id}')">Edit</button>`: sup? `<button class="btn btn-ghost btn-sm" onclick="obTaskModal('${tpl.id}','${t.id}',true)">Team/board</button>`:''}</td></tr>`).join('')}
+      </tbody></table>` : '<div class="ob-muted">No tasks in this version yet.</div>'}
+    </div>`; };
+  B.innerHTML = `<div class="ob-wrap">
+    <div class="card ob-sec"><h3>Base template — every confirmed service ${helpIcon('Shared prerequisites (scope check, platform access, go-live QA). They are added once per brand or store and deduplicated across services by their key.')}<span class="sp"></span>${sup? `<button class="btn btn-ghost btn-sm" onclick="obNewTemplate(null)">＋ Version</button>`:''}</h3>
+      ${OB.templates.filter(t=>!t.service_type_id).map(tplBlock).join('')||'<div class="ob-muted">No base template.</div>'}</div>
+    ${OB.types.map(ty=>`<div class="card ob-sec"><h3>${esc(ty.name)} <span class="ob-muted" style="font-weight:500">${esc(ty.code)} · ${esc(ty.category||'')} · ${esc(ty.scope_level)}-level · ${(ty.channels||[]).join(', ')||'any channel'} · ${esc(obTeamName(ty.team_id))}</span><span class="sp"></span>${sup? `<button class="btn btn-ghost btn-sm" onclick="obTypeModal('${ty.id}')">Edit</button> <button class="btn btn-ghost btn-sm" onclick="obNewTemplate('${ty.id}')">＋ Version</button>`:''}</h3>
+      ${OB.templates.filter(t=>t.service_type_id===ty.id).map(tplBlock).join('')||'<div class="ob-muted">No template yet — a service without a published template adds no tasks to a plan.</div>'}</div>`).join('')}
+    ${sup? `<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost" onclick="obTypeModal()">＋ Service type</button><button class="btn btn-primary" onclick="obImportPick()">Import checklist (.xlsx)</button>${helpIcon('Reads an Onboarding Checklist tracker (the Store Live Tracker sheet: Phase · # · Activity · What CREA delivers · What Brand provides · Responsibility · CREA team · Days vs Go-Live). Each service section becomes a draft template version you review and publish.')}</div>`:'<div class="ob-muted">Only admins and management edit the catalogue.</div>'}
+  </div>`;
+}
+function obTypeModal(id){
+  const t = id? obType(id) : {channels:[], scope_level:'store', active:true};
+  const m = modal(`<div class="modal-head"><h2>${id?'Edit':'New'} service type</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <label>Code</label><input id="ot-code" value="${esc(t.code||'')}" placeholder="LIVE">
+      <label>Name</label><input id="ot-name" value="${esc(t.name||'')}">
+      <label>Category</label><input id="ot-cat" value="${esc(t.category||'')}">
+      <label>Scope</label><select id="ot-scope"><option value="store" ${t.scope_level==='store'?'selected':''}>Per store / platform</option><option value="brand" ${t.scope_level==='brand'?'selected':''}>Brand-level</option></select>
+      <label>Eligible channels</label><div style="display:flex;flex-wrap:wrap;gap:4px 16px">${OB_PLATFORMS.map(p=>`<label style="display:inline-flex;align-items:center;gap:6px;margin:0;font-weight:500;color:var(--ink)"><input type="checkbox" class="ot-ch" value="${p}" ${(t.channels||[]).includes(p)?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)">${p}</label>`).join('')}</div>
+      <label>Default team</label><select id="ot-team"><option value="">—</option>${(S.teams||[]).map(x=>`<option value="${x.id}" ${x.id===t.team_id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:500;color:var(--ink)"><input type="checkbox" id="ot-active" ${t.active!==false?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)">Active (offered when adding a service)</label>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="ot-save">Save</button></div>`);
+  m.querySelector('#ot-save').onclick = async ()=>{
+    const row = {code:m.querySelector('#ot-code').value.trim().toUpperCase(), name:m.querySelector('#ot-name').value.trim(), category:m.querySelector('#ot-cat').value.trim()||null, scope_level:m.querySelector('#ot-scope').value, channels:[...m.querySelectorAll('.ot-ch:checked')].map(i=>i.value), team_id:m.querySelector('#ot-team').value||null, active:m.querySelector('#ot-active').checked};
+    if(!row.code||!row.name) return toast('Code and name are required', true);
+    const q = id? db.from('service_types').update(row).eq('id',id) : db.from('service_types').insert({...row, position:OB.types.length+1});
+    const {data, error} = await q.select().single(); if(error) return toast(error.message, true);
+    if(id) Object.assign(t, data); else OB.types.push(data);
+    closeModals(); toast('Saved'); obRenderCatalogue();
+  };
+}
+async function obNewTemplate(typeId){
+  const existing = OB.templates.filter(t=>t.service_type_id===(typeId||null)); const v = (Math.max(0,...existing.map(t=>t.version)))+1;
+  const name = typeId? ((obType(typeId)||{}).code||'')+' v'+v : 'Base v'+v;
+  const {data, error} = await db.from('service_templates').insert({service_type_id:typeId||null, version:v, name, status:'draft', created_by:S.me.id}).select().single();
+  if(error) return toast(error.message, true);
+  OB.templates.push(data); toast('Draft '+name+' created — add tasks, then publish'); obRenderCatalogue();
+}
+async function obNewVersion(tplId){
+  const src = obTemplateById(tplId); if(!src) return;
+  const existing = OB.templates.filter(t=>t.service_type_id===src.service_type_id); const v=(Math.max(0,...existing.map(t=>t.version)))+1;
+  const {data, error} = await db.from('service_templates').insert({service_type_id:src.service_type_id, version:v, name:src.name.replace(/v\d+.*$/,'').trim()+' v'+v, status:'draft', offset_unit:src.offset_unit||'working', source:src.source||null, created_by:S.me.id}).select().single();
+  if(error) return toast(error.message, true);
+  const copies = OB.ttasks.filter(t=>t.template_id===tplId).map(t=>({template_id:data.id, code:t.code, title:t.title, scope_level:t.scope_level, duration_wd:t.duration_wd, offset_wd:t.offset_wd, depends_on_code:t.depends_on_code, dedup_key:t.dedup_key, team_id:t.team_id, board_project_id:t.board_project_id, required_input:t.required_input, evidence_rule:t.evidence_rule, gate:t.gate, input_wait:t.input_wait, phase:t.phase, responsibility:t.responsibility, position:t.position}));
+  if(copies.length){ const {data:tt, error:e2} = await db.from('template_tasks').insert(copies).select(); if(e2) return toast(e2.message, true); OB.ttasks.push(...(tt||[])); }
+  OB.templates.push(data); toast('Version '+v+' drafted from v'+src.version+' — running projects keep v'+src.version); obRenderCatalogue();
+}
+async function obPublishTemplate(tplId){
+  const tpl = obTemplateById(tplId); if(!tpl) return;
+  if(!OB.ttasks.some(t=>t.template_id===tplId)) return toast('Add at least one task before publishing', true);
+  const {error} = await db.from('service_templates').update({status:'published', published_at:new Date().toISOString()}).eq('id',tplId);
+  if(error) return toast(error.message, true);
+  OB.templates.forEach(t=>{ if(t.id!==tplId && t.service_type_id===tpl.service_type_id && t.status==='published'){ t.status='retired'; db.from('service_templates').update({status:'retired'}).eq('id',t.id).then(()=>{}); } });
+  tpl.status='published'; toast('Published — new plans use v'+tpl.version); obRenderCatalogue();
+}
+function obTaskModal(tplId, taskId, teamOnly){
+  const t = taskId? OB.ttasks.find(x=>x.id===taskId) : {scope_level:'service', duration_wd:1, gate:false, input_wait:false};
+  const boards = S.projects.filter(x=>x.status==='active' && !x.archived_at);
+  const m = modal(`<div class="modal-head"><h2>${taskId? (teamOnly?'Team & board':'Edit task') : 'New template task'}</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <div class="ob-tt-edit">
+        <div><label>Code</label><input id="tt-code" value="${esc(t.code||'')}" ${teamOnly?'disabled':''} placeholder="LIST-02"></div>
+        <div><label>Scope</label><select id="tt-scope" ${teamOnly?'disabled':''}><option value="brand" ${t.scope_level==='brand'?'selected':''}>Once per brand</option><option value="store" ${t.scope_level==='store'?'selected':''}>Once per store</option><option value="service" ${t.scope_level==='service'?'selected':''}>Once per service</option></select></div>
+      </div>
+      <label>Title</label><input id="tt-title" value="${esc(t.title||'')}" ${teamOnly?'disabled':''}>
+      <div class="ob-tt-edit">
+        <div><label>Phase</label><input id="tt-phase" value="${esc(t.phase||'')}" ${teamOnly?'disabled':''} placeholder="3. Shop & Tool Setup"></div>
+        <div><label>Responsibility</label><select id="tt-resp" ${teamOnly?'disabled':''}><option value="">—</option>${['CREA','Brand','Brand x CREA'].map(r=>`<option ${t.responsibility===r?'selected':''}>${r}</option>`).join('')}</select></div>
+      </div>
+      <div class="ob-tt-edit">
+        <div><label>Lead time (working days)</label><input id="tt-dur" type="number" min="1" value="${t.duration_wd||1}" ${teamOnly?'disabled':''}></div>
+        <div><label>Anchor: due D-N before go-live ${helpIcon('Days before go-live, in the unit set on the template. Negative = after go-live (hypercare, first LIVE). Leave empty for a task that is positioned before its successor instead.')}</label><input id="tt-off" type="number" value="${t.offset_wd!=null?t.offset_wd:''}" ${teamOnly?'disabled':''}></div>
+        <div><label>Must finish before this starts (code) ${helpIcon('The predecessor’s code or dedup key, e.g. LIST-01. Codes from the base template (BASE-02) work too.')}</label><input id="tt-dep" value="${esc(t.depends_on_code||'')}" ${teamOnly?'disabled':''}></div>
+        <div><label>Dedup key ${helpIcon('Tasks from different service templates that share a key and a scope merge into one task — only for truly shared work with the same owner.')}</label><input id="tt-dedup" value="${esc(t.dedup_key||'')}" ${teamOnly?'disabled':''}></div>
+        <div><label>Team</label><select id="tt-team"><option value="">—</option>${(S.teams||[]).map(x=>`<option value="${x.id}" ${x.id===t.team_id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
+        <div><label>Board the task lands on</label><select id="tt-board"><option value="">— ask when planning —</option>${boards.map(x=>{ const w=wsById(x.workspace_id); return `<option value="${x.id}" ${x.id===t.board_project_id?'selected':''}>${w? esc(w.name)+' · ':''}${esc(x.name)}</option>`; }).join('')}</select></div>
+      </div>
+      <label>Required brand / internal input</label><input id="tt-input" value="${esc(t.required_input||'')}" ${teamOnly?'disabled':''}>
+      <label>Evidence to mark complete</label><input id="tt-ev" value="${esc(t.evidence_rule||'')}" ${teamOnly?'disabled':''}>
+      <div style="display:flex;gap:18px;margin-top:12px">
+        <label style="display:flex;align-items:center;gap:8px;margin:0;font-weight:500;color:var(--ink)"><input type="checkbox" id="tt-gate" ${t.gate?'checked':''} ${teamOnly?'disabled':''} style="width:15px;height:15px;accent-color:var(--accent)">Readiness gate</label>
+        <label style="display:flex;align-items:center;gap:8px;margin:0;font-weight:500;color:var(--ink)"><input type="checkbox" id="tt-wait" ${t.input_wait?'checked':''} ${teamOnly?'disabled':''} style="width:15px;height:15px;accent-color:var(--accent)">Waits on brand input</label>
+      </div>
+    </div>
+    <div class="modal-foot">${taskId&&!teamOnly? `<button class="btn btn-danger" id="tt-del">Remove</button>`:''}<button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="tt-save">Save</button></div>`, true);
+  m.querySelector('#tt-save').onclick = async ()=>{
+    let row;
+    if(teamOnly) row = {team_id:m.querySelector('#tt-team').value||null, board_project_id:m.querySelector('#tt-board').value||null};
+    else {
+      row = {template_id:tplId, code:m.querySelector('#tt-code').value.trim().toUpperCase(), title:m.querySelector('#tt-title').value.trim(), scope_level:m.querySelector('#tt-scope').value,
+        phase:m.querySelector('#tt-phase').value.trim()||null, responsibility:m.querySelector('#tt-resp').value||null,
+        duration_wd:Math.max(1,parseInt(m.querySelector('#tt-dur').value)||1), offset_wd: m.querySelector('#tt-off').value===''? null : (parseInt(m.querySelector('#tt-off').value)||0),
+        depends_on_code:m.querySelector('#tt-dep').value.trim().toUpperCase()||null, dedup_key:m.querySelector('#tt-dedup').value.trim().toUpperCase()||null,
+        team_id:m.querySelector('#tt-team').value||null, board_project_id:m.querySelector('#tt-board').value||null,
+        required_input:m.querySelector('#tt-input').value.trim()||null, evidence_rule:m.querySelector('#tt-ev').value.trim()||null,
+        gate:m.querySelector('#tt-gate').checked, input_wait:m.querySelector('#tt-wait').checked};
+      if(!row.code||!row.title) return toast('Code and title are required', true);
+      if(!taskId) row.position = OB.ttasks.filter(x=>x.template_id===tplId).length+1;
+    }
+    const q = taskId? db.from('template_tasks').update(row).eq('id',taskId) : db.from('template_tasks').insert(row);
+    const {data, error} = await q.select().single(); if(error) return toast(/unique/i.test(error.message)? 'That code already exists in this template':error.message, true);
+    if(taskId) Object.assign(t, data); else OB.ttasks.push(data);
+    closeModals(); toast('Saved'); obRenderCatalogue();
+  };
+  m.querySelector('#tt-del')?.addEventListener('click', async ()=>{
+    if(!confirm('Remove this task from the draft template?')) return;
+    const {error} = await db.from('template_tasks').delete().eq('id',taskId); if(error) return toast(error.message, true);
+    OB.ttasks = OB.ttasks.filter(x=>x.id!==taskId); closeModals(); toast('Removed'); obRenderCatalogue();
+  });
+}
+async function obSetUnit(tplId, unit){
+  const tpl=obTemplateById(tplId); if(!tpl) return;
+  const {error} = await db.from('service_templates').update({offset_unit:unit}).eq('id',tplId); if(error) return toast(error.message, true);
+  tpl.offset_unit=unit; toast('Lead time unit: '+unit+' days');
+}
+
+/* ======================= CHECKLIST IMPORT ======================= */
+/* Parses the "Store Live Tracker" sheet of an Onboarding Checklist (Decathlon format, Oct 2026).
+   Returns {sections:[{title, name, channel, tasks:[{code,title,phase,deliverable,brand_input,responsibility,teams:[codes],offset}]}], teamCodes:[…]} */
+const OB_TEAM_CODE_HINTS = {BD:'Business Dev', OB:'Onboarding', KAM:'Commercial', GRAPHIC:'Creative', DATA:'Tech', TECH:'Tech', CS:'Customer Service', MKT:'Marketing', LIVE:'Livestream', WAREHOUSE:'Warehouse', SUPPLY:'Supply', FINANCE:'Finance', HR:'HR'};
+function obParseChecklist(aoa){
+  const norm = v => (v==null? '' : String(v)).replace(/\s+/g,' ').trim();
+  let hi=-1, col={};
+  for(let i=0;i<aoa.length && i<60;i++){
+    const row=(aoa[i]||[]).map(norm); const li=row.map(x=>x.toLowerCase());
+    const a=li.findIndex(x=>x==='activity'), d=li.findIndex(x=>/days vs go-?live/.test(x));
+    if(a>=0 && d>=0){ hi=i; col={phase:li.findIndex(x=>x==='phase'), code:li.findIndex(x=>x==='#'), activity:a, deliver:li.findIndex(x=>/what crea delivers/.test(x)), brand:li.findIndex(x=>/what brand provides/.test(x)), resp:li.findIndex(x=>/^responsib/.test(x)), team:li.findIndex(x=>/crea team/.test(x)), days:d}; break; }
+  }
+  if(hi<0) return {error:'No header row with "Activity" and "Days vs Go-Live" found. Is this the Store Live Tracker sheet?'};
+  const get=(row,k)=> col[k]>=0? norm(row[col[k]]) : '';
+  const sections=[]; let cur=null, phase='';
+  const codes=new Set();
+  for(let i=hi+1;i<aoa.length;i++){
+    const row=aoa[i]||[]; const ph=get(row,'phase'), code=get(row,'code'), act=get(row,'activity');
+    if(/^crea e-?mail|^shop link|^lead:/i.test(ph)) break;
+    if(ph && !code && !act && (/^[A-Z]\.\s/.test(ph) || /\|/.test(ph))){
+      const parts=ph.replace(/^[A-Z]\.\s*/,'').split('|').map(x=>x.trim());
+      const nm=parts[0].toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()).replace(/\s+Service$/,'');
+      cur={title:ph, name:nm+(parts[1]? ' — '+parts[1]:''), channel:parts[1]||'', tasks:[]}; sections.push(cur); phase=''; continue;
+    }
+    if(ph) phase=ph;
+    if(!code || !act) continue;
+    if(!cur){ cur={title:'Checklist', name:'Checklist', channel:'', tasks:[]}; sections.push(cur); }
+    const days=get(row,'days'); let offset=null;
+    if(/go-?live/i.test(days)) offset=0; else { const m=days.match(/([+-]?)\s*(\d+)/); if(m) offset=(m[1]==='+'? -1:1)*parseInt(m[2]); }
+    const teams=get(row,'team').split(/[,/&]+/).map(x=>x.trim().toUpperCase()).filter(Boolean); teams.forEach(t=>codes.add(t));
+    cur.tasks.push({code:code.toUpperCase(), title:act, phase, deliverable:get(row,'deliver'), brand_input:get(row,'brand'), responsibility:get(row,'resp'), teams, offset});
+  }
+  return {sections:sections.filter(s=>s.tasks.length), teamCodes:[...codes]};
+}
+function obGuessTeam(code){
+  const hint=OB_TEAM_CODE_HINTS[code]||code; const t=(S.teams||[]).find(x=>x.name.toLowerCase().startsWith(hint.toLowerCase())) || (S.teams||[]).find(x=>x.name.toLowerCase().includes(hint.toLowerCase()));
+  return t? t.id : '';
+}
+function obImportPick(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.xls';
+  inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return;
+    if(typeof XLSX==='undefined') return toast('Excel reader not loaded — reload and try again', true);
+    const wb=XLSX.read(await f.arrayBuffer(), {cellDates:true});
+    let parsed=null;
+    for(const n of wb.SheetNames){ const aoa=XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:true, defval:''}); const r=obParseChecklist(aoa); if(!r.error){ parsed=r; break; } }
+    if(!parsed) return toast('No Store Live Tracker sheet found in '+f.name, true);
+    obImportPreview(parsed, f.name);
+  };
+  inp.click();
+}
+function obImportPreview(parsed, fileName){
+  const m = modal(`<div class="modal-head"><h2>Import checklist · ${esc(fileName)}</h2><button class="x" onclick="closeModals()">✕</button></div>
+    <div class="modal-body">
+      <p class="ob-muted" style="margin:0 0 6px">${parsed.sections.length} service section${parsed.sections.length===1?'':'s'}, ${parsed.sections.reduce((n,s)=>n+s.tasks.length,0)} activities. Offsets are read as <b>calendar days</b> rolled back to a working day (the sheet's WORKDAY rule) — change it on the template afterwards if you prefer working days. "Responsibility = Brand" becomes <i>waits on brand</i>. Each section becomes a <b>draft</b> version: review, mark the readiness gates, then publish.</p>
+      ${parsed.sections.map((sec,i)=>`<div class="ob-store"><h4>${esc(sec.title)} <span class="ob-muted">· ${sec.tasks.length} tasks · ${[...new Set(sec.tasks.map(t=>t.phase))].filter(Boolean).length} phases</span></h4>
+        <label>Service type</label><select id="imp-type-${i}"><option value="__new">＋ Create "${esc(sec.name)}"</option>${OB.types.map(t=>`<option value="${t.id}" ${t.name===sec.name?'selected':''}>${esc(t.name)}</option>`).join('')}</select>
+        <div class="ob-muted" style="margin-top:6px">${sec.tasks.slice(0,4).map(t=>esc(t.code+' '+t.title)).join(' · ')}${sec.tasks.length>4?' · …':''}</div></div>`).join('')}
+      <label>CREA team codes → DONE teams</label>
+      <div class="ob-tt-edit">${parsed.teamCodes.map(c=>`<div><label style="margin-top:6px">${esc(c)}</label><select id="imp-team-${esc(c)}"><option value="">— unassigned —</option>${(S.teams||[]).map(t=>`<option value="${t.id}" ${t.id===obGuessTeam(c)?'selected':''}>${esc(t.name)}</option>`).join('')}</select></div>`).join('')}</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="imp-go">Create draft templates</button></div>`, true);
+  m.querySelector('#imp-go').onclick = async ()=>{
+    const btn=m.querySelector('#imp-go'); btn.disabled=true; btn.textContent='Importing…';
+    const teamMap={}; parsed.teamCodes.forEach(c=>{ teamMap[c]=m.querySelector('#imp-team-'+CSS.escape(c))?.value||''; });
+    let made=0, lastTpl=null;
+    for(let i=0;i<parsed.sections.length;i++){
+      const sec=parsed.sections[i]; let typeId=m.querySelector('#imp-type-'+i).value;
+      if(typeId==='__new'){
+        const code=(sec.name.replace(/[^A-Za-z0-9 ]/g,' ').trim().split(/\s+/).map(w=>w.slice(0,5)).join('_').toUpperCase().slice(0,30))||('SVC_'+(OB.types.length+1));
+        const {data:st, error} = await db.from('service_types').insert({code, name:sec.name, channels:sec.channel? [sec.channel]:[], scope_level:'store', team_id:teamMap[(sec.tasks[0]||{}).teams?.[0]]||null, position:OB.types.length+10}).select().single();
+        if(error){ btn.disabled=false; btn.textContent='Create draft templates'; return toast(error.message, true); }
+        OB.types.push(st); typeId=st.id;
+      }
+      const existing=OB.templates.filter(t=>t.service_type_id===typeId); const v=(Math.max(0,...existing.map(t=>t.version)))+1;
+      const {data:tpl, error:e2} = await db.from('service_templates').insert({service_type_id:typeId, version:v, name:(obType(typeId)||{}).name+' v'+v, status:'draft', offset_unit:'calendar', source:fileName, created_by:S.me.id}).select().single();
+      if(e2){ btn.disabled=false; btn.textContent='Create draft templates'; return toast(e2.message, true); }
+      const rows=sec.tasks.map((t,j)=>({template_id:tpl.id, code:t.code, title:t.title, phase:t.phase||null, scope_level:(obType(typeId)||{}).scope_level==='brand'? 'brand':'service', duration_wd:1, offset_wd:t.offset,
+        team_id:teamMap[t.teams[0]]||null, responsibility:t.responsibility||null, evidence_rule:t.deliverable||null, required_input:t.brand_input||null, gate:false, input_wait:/^brand$/i.test(t.responsibility), position:j+1}));
+      const {data:tt, error:e3} = await db.from('template_tasks').insert(rows).select();
+      if(e3){ btn.disabled=false; btn.textContent='Create draft templates'; return toast(e3.message, true); }
+      OB.templates.push(tpl); OB.ttasks.push(...(tt||[])); made++; lastTpl=tpl.id;
+    }
+    if(lastTpl) logActivity('service_template', lastTpl, 'imported', {file:fileName, sections:made});
+    closeModals(); toast(made+' draft template'+(made===1?'':'s')+' created — review and publish'); obRenderCatalogue();
+  };
 }
 </script>
