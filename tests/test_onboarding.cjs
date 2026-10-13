@@ -64,10 +64,12 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  obNewModal(); const mod=document.querySelector('#modal-root');
  r.modalOffers=[...mod.querySelectorAll('.on-svc')].map(i=>i.value).join(',');   // the empty checklist is not offered
  mod.querySelector('#on-brand').value='b1'; mod.querySelector('#on-brand').onchange();
- mod.querySelectorAll('.on-svc').forEach(i=>i.checked=true); mod.querySelector('#on-date').value='2027-04-01'; mod.querySelector('#on-platform').value='TikTok Shop';
+ mod.querySelectorAll('.on-svc').forEach(i=>i.checked=true); mod.querySelector('#on-date').value='2027-04-01';
+ r.platBoxes=[...mod.querySelectorAll('.on-plat')].map(i=>i.value).join(',');
+ mod.querySelector('#on-plat-new').value='Shopify'; obAddPlatformBox('on-plat'); r.platAdded=!![...mod.querySelectorAll('.on-plat:checked')].find(i=>i.value==='Shopify'); mod.querySelector('.on-plat[value="Shopify"]').checked=false;
  await mod.querySelector('#on-save').onclick(); await new Promise(x=>setTimeout(x,0));
  const o=OB.onboardings[0]; const acts=OB.acts[o.id];
- r.created = !!o && o.name==='Decathlon — TikTok Shop' && o.go_live==='2027-04-01' && acts.length===7 && o.workspace_id==='ws-ob';
+ r.created = !!o && o.name==='Decathlon — TikTok Shop' && o.go_live==='2027-04-01' && acts.length===7 && o.workspace_id==='ws-ob' && JSON.stringify(o.platforms)==='["TikTok Shop"]';
  const by=c=>acts.find(a=>a.code===c);
  r.deadlines=[by('S1').deadline, by('S3').deadline, by('S30').deadline, by('S32').deadline, by('L15').deadline, by('L16').deadline].join('|');
  r.copied = by('S5').team_id===T_OB && by('S5').assignee_id==='anch' && by('S3').brand_provides==='brand gives S3' && by('S3').responsibility==='Brand' && by('L15').service_name==='Livestreaming — TikTok LIVE';
@@ -131,6 +133,7 @@ check('deadline rule: -70→21 Jan, -3→29 Mar, +3→Fri 2 Apr, +7→8 Apr; hol
 check('no top-level menu item; workspace hook, tracker and brand-page renderers exist', r.navHas && r.routeFn);
 check('empty list invites a new onboarding', r.emptyList);
 check('new-onboarding modal offers only checklists with rows', r.modalOffers==='st-ops,st-live');
+check('platforms are multi-select, no Other, and a new one can be added', r.platBoxes==='TikTok Shop,Shopee,Lazada,Brand.com' && r.platAdded);
 check('tracker created with every activity from both checklists', r.created && r.order==='S1,S3,S5,S30,S32,L15,L16');
 check('deadlines computed from the Shop Live date', r.deadlines==='2027-01-21|2027-02-04|2027-03-29|2027-04-08|2027-04-02|2027-04-05');
 check('team, default PIC, brand input and responsibility copied in', r.copied);
