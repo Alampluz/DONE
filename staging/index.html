@@ -1148,7 +1148,7 @@ body.modal-open{overflow:hidden}
 .kb-more{padding:10px;font-size:12px;color:var(--ink3);text-align:center}
 </style>
 <script>
-/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · b479052</div> so a dark-theme user never sees a flash of the light app. The real
+/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · ae35f7a</div> so a dark-theme user never sees a flash of the light app. The real
    preference lives in profiles.nav_prefs.theme and is applied again at boot; this is only
    the fast local echo of it. 'system' follows the OS. */
 (function(){
@@ -2312,6 +2312,8 @@ function navigate(hash){
   closeModals();
   const parts = hash.replace(/^#\//,'').split('/');
   let view = parts[0]||'home';
+  const pubMount = document.getElementById('ob-pub'); if(pubMount){ if(pubMount.dataset.prevTheme) document.documentElement.setAttribute('data-theme', pubMount.dataset.prevTheme); pubMount.remove(); $('#app').classList.remove('hidden'); }
+  if(view==='share' || (view==='t' && /^[0-9a-f]{36}$/.test(parts[1]||''))){ S.nav=(S.nav||0)+1; renderPublicTracker(parts[1]); return; }   // brand tracker link opened while signed in
   /* Short links: #/b/<board key or name> and #/t/<ticket no>. They resolve to the same
      renderers as #/project/<uuid> and #/task/<uuid>, which still work. */
   if(view==='b'){ const p = boardFromSlug(parts[1]); if(!p){ toast('Board not found', true); location.hash='#/home'; return; } view='project'; parts[1]=p.id; }
@@ -9656,7 +9658,12 @@ async function savePlatformCo(id){
 /* ================= INIT ================= */
 (async ()=>{
   if(location.hash.startsWith('#/f/')){ renderPublicForm(location.hash.slice(4).split('?')[0]); return; }
-  if(location.hash.startsWith('#/t/')){ setTimeout(()=>renderPublicTracker(location.hash.slice(4).split('?')[0]), 0); return; }   // brand's read-only onboarding tracker (part8 loads after this block)
+  /* Brand's read-only onboarding tracker: #/share/<token> (older links: #/t/<36-hex token>; a
+     task short link #/t/BD-… never matches that). Works signed in or not. part8 is a later
+     <script>, so wait until it has been parsed before calling into it. */
+  { const h=location.hash.split('?')[0], m=h.match(/^#\/share\/([^/]+)$/) || h.match(/^#\/t\/([0-9a-f]{36})$/);
+    if(m){ const go=()=> typeof renderPublicTracker==='function'? renderPublicTracker(m[1]) : setTimeout(go, 30);
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', go); else go(); return; } }
   const {data:{session}} = await db.auth.getSession();
   S.session = session;
   if(session) await boot();
@@ -11635,7 +11642,7 @@ async function obShareModal(oid){
     const {error}=await db.from('onboardings').update({share_token:token}).eq('id',oid); if(error) return toast(error.message, true);
     o.share_token=token; logActivity('onboarding', oid, 'shared', {});
   }
-  const url=location.origin+location.pathname+'#/t/'+o.share_token;
+  const url=location.origin+location.pathname+'#/share/'+o.share_token;
   const m = modal(`<div class="modal-head"><h2>Share with brand</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <p class="muted" style="margin:0 0 8px">Anyone with this link sees the activities, deadlines, status and what the brand still owes — read-only, without PICs, teams or internal remarks.</p>
@@ -11645,11 +11652,16 @@ async function obShareModal(oid){
   m.querySelector('#osh-revoke').onclick=async()=>{ if(!confirm('Revoke the brand link? The old link stops working.')) return; const {error}=await db.from('onboardings').update({share_token:null}).eq('id',oid); if(error) return toast(error.message,true); o.share_token=null; closeModals(); toast('Link revoked'); obRenderTracker(oid); };
 }
 
-/* ======================= PUBLIC (brand) VIEW — #/t/<token> ======================= */
+/* ======================= PUBLIC (brand) VIEW — #/share/<token> =======================
+   Anyone with the link sees it, signed in or not. A CREA teammate can jump from it to the
+   editable tracker (that page asks them to sign in if they are not). */
 async function renderPublicTracker(token){
+  const prevTheme = document.getElementById('ob-pub')?.dataset.prevTheme || document.documentElement.getAttribute('data-theme') || '';
   document.documentElement.setAttribute('data-theme','light');
   $('#login-screen').classList.add('hidden'); $('#app').classList.add('hidden');
-  const mount = el('<div style="position:fixed;inset:0;overflow-y:auto;background:radial-gradient(1200px 700px at 18% -10%,#14403A 0%,#101114 58%);z-index:150"><div class="ob-brand-pub" id="pub-root"><div style="color:#9DA1A7">Loading…</div></div></div>');
+  document.getElementById('ob-pub')?.remove();
+  const mount = el('<div id="ob-pub" style="position:fixed;inset:0;overflow-y:auto;background:radial-gradient(1200px 700px at 18% -10%,#14403A 0%,#101114 58%);z-index:150"><div class="ob-brand-pub" id="pub-root"><div style="color:#9DA1A7">Loading…</div></div></div>');
+  mount.dataset.prevTheme = prevTheme;
   document.body.appendChild(mount);
   const root=mount.querySelector('#pub-root');
   const _nav = S.nav;
@@ -11669,7 +11681,8 @@ async function renderPublicTracker(token){
     <div style="color:#B7C0BD;margin-bottom:16px">Shop Live ${data.go_live? fmtDate(data.go_live):'TBC'} · ${done}/${real.length} activities done${owed.length? ` · <b style="color:#FCD34D">${owed.length} waiting on you</b>`:''}</div>
     ${owed.length? `<div class="ob-pub-card" style="padding:14px 18px;margin-bottom:14px"><b>What we need from you</b><ul style="margin:8px 0 0;padding-left:18px">${owed.map(a=>`<li><b>${esc(a.title)}</b> — ${esc(a.brand_provides||'')} <span class="muted">· by ${a.deadline? fmtDate(a.deadline):'TBC'}</span></li>`).join('')}</ul></div>`:''}
     <div class="ob-pub-card"><div style="overflow:auto"><table class="ob-tbl"><thead><tr><th>#</th><th>Activity</th><th>What CREA delivers</th><th>What you provide</th><th>Lead</th><th>Deadline</th><th>Status</th></tr></thead><tbody>${body}</tbody></table></div></div>
-    <div style="color:#9DA1A7;font-size:12px;margin-top:14px">Read-only view, updated live by the CREA onboarding team.</div>`;
+    <div style="color:#9DA1A7;font-size:12px;margin-top:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center"><span>Read-only view, updated live by the CREA onboarding team.</span><span style="flex:1"></span>${data.id? `<a href="#" id="pub-open" style="color:#5EEAD4;font-weight:600">CREA team? Sign in to edit →</a>`:''}</div>`;
+  const op=root.querySelector('#pub-open'); if(op) op.onclick=(e)=>{ e.preventDefault(); location.hash='#/onboarding/'+data.id; location.reload(); };
 }
 
 /* ======================= MY WORK: my onboarding activities ======================= */
