@@ -1,0 +1,79 @@
+name: Staging build
+
+# The `staging` branch is a preview of what will go to main. Every push to it builds
+# src/ and runs the full suite exactly like ci.yml, then publishes the bundle to
+# staging/index.html ON MAIN, which GitHub Pages serves at
+#   https://alampluz.github.io/DONE/staging/
+# It talks to the same Supabase project as production — it is a UI preview, not a data
+# sandbox. The main workflow ignores this bot commit (path filter + actor guard), so
+# publishing a staging build never redeploys production.
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'build.sh'
+      - 'run_tests.sh'
+      - '.github/workflows/staging.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-publish:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build app/index.html from src/
+        run: bash ./build.sh
+
+      - name: Run the regression suites
+        run: bash ./run_tests.sh
+
+      # A visible ribbon so nobody mistakes the preview for production.
+      - name: Stamp the bundle as staging
+        run: |
+          short=${GITHUB_SHA::7}
+          ribbon="<div id=\"staging-ribbon\" style=\"position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none\">STAGING · ${short}</div>"
+          python3 - "$ribbon" <<'PY'
+          import re, sys
+          p='app/index.html'; s=open(p,encoding='utf-8').read()
+          s, n = re.subn(r'(<body[^>]*>)', r'\1'+sys.argv[1].replace('\\','\\\\'), s, count=1)
+          assert n==1, 'no <body> tag found'
+          open(p,'w',encoding='utf-8',newline='').write(s)
+          PY
+
+      - name: Publish to staging/ on main
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp app/index.html /tmp/staging-index.html
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git checkout -B publish origin/main
+            mkdir -p staging
+            cp /tmp/staging-index.html staging/index.html
+            if git diff --quiet -- staging/index.html && [ -z "$(git status --porcelain staging/index.html)" ]; then
+              echo "staging/index.html unchanged - nothing to publish"; exit 0
+            fi
+            git add staging/index.html
+            git commit -m "Staging: build from ${GITHUB_SHA::7}"
+            if git push origin HEAD:main; then
+              echo "published - open https://alampluz.github.io/DONE/staging/?v=${GITHUB_SHA::7}"
+              exit 0
+            fi
+            echo "push rejected (attempt $attempt) - main moved, retrying"
+            sleep $((attempt * 5))
+          done
+          echo "could not push after 4 attempts"; exit 1
