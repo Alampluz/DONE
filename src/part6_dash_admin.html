@@ -1735,6 +1735,12 @@ async function savePlatformCo(id){
 /* ================= INIT ================= */
 (async ()=>{
   if(location.hash.startsWith('#/f/')){ renderPublicForm(location.hash.slice(4).split('?')[0]); return; }
+  /* Brand's read-only onboarding tracker: #/share/<token> (older links: #/t/<36-hex token>; a
+     task short link #/t/BD-… never matches that). Works signed in or not. part8 is a later
+     <script>, so wait until it has been parsed before calling into it. */
+  { const h=location.hash.split('?')[0], m=h.match(/^#\/share\/([^/]+)$/) || h.match(/^#\/t\/([0-9a-f]{36})$/);
+    if(m){ const go=()=> typeof renderPublicTracker==='function'? renderPublicTracker(m[1]) : setTimeout(go, 30);
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', go); else go(); return; } }
   const {data:{session}} = await db.auth.getSession();
   S.session = session;
   if(session) await boot();
