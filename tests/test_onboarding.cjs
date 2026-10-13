@@ -26,7 +26,7 @@ window.supabase={createClient:()=>({from:window.__mkQuery,
  auth:{getSession:async()=>({data:{session:null}}),onAuthStateChange:()=>({data:{subscription:{}}})},
  storage:{from:()=>({})},functions:{},
  rpc:async(name,args)=>{ window.__rpc.push({name,args}); if(name==='ob_public_tracker'){ if(args.p_token!=='tok-123456789012345678') return {data:null,error:null};
-   return {data:{name:'Decathlon — TikTok Shop',brand:'Decathlon',go_live:'2027-04-01',company:'CREA',activities:(window.__tables.onboarding_activities||[]).map(a=>({service:a.service_name,code:a.code,phase:a.phase,title:a.title,crea_delivers:a.crea_delivers,brand_provides:a.brand_provides,responsibility:a.responsibility,deadline:a.deadline,done_date:a.done_date,status:a.status}))},error:null}; }
+   return {data:{id:'ob-1',name:'Decathlon — TikTok Shop',brand:'Decathlon',go_live:'2027-04-01',company:'CREA',activities:(window.__tables.onboarding_activities||[]).map(a=>({service:a.service_name,code:a.code,phase:a.phase,title:a.title,crea_delivers:a.crea_delivers,brand_provides:a.brand_provides,responsibility:a.responsibility,deadline:a.deadline,done_date:a.done_date,status:a.status}))},error:null}; }
    return {data:null,error:null}; }})};`);
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
 const driver=String.raw`window.__run=async function(){const r={};try{
@@ -108,11 +108,13 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  let exported=null; window.downloadXLSX=(n,rows)=>{ exported={n,rows}; }; obExport(o.id);
  r.exportOk = exported && exported.rows.length===8 && exported.rows[0].includes('What brand provides') && exported.rows[1][8]==='' ;
  // 11. share link + brand page hides PIC/team/remark
- await obShareModal(o.id); r.tokenLen = (o.share_token||'').length; closeModals();
+ await obShareModal(o.id); r.tokenLen = (o.share_token||'').length; r.shareUrl=/#\/share\/[0-9a-f]{36}$/.test(document.getElementById('osh-url').value); closeModals();
  o.share_token='tok-123456789012345678';
  await renderPublicTracker('tok-123456789012345678'); const P=document.getElementById('pub-root').innerHTML;
- r.pubOk = /Decathlon — TikTok Shop/.test(P) && /What we need from you/.test(P) && /SKU list with price structure/.test(P) && !/Anchisa/.test(P) && !/Remark/.test(P) && !/PIC/.test(P);
+ r.pubOk = /Sign in to edit/.test(P) && /Decathlon — TikTok Shop/.test(P) && /What we need from you/.test(P) && /SKU list with price structure/.test(P) && !/Anchisa/.test(P) && !/Remark/.test(P) && !/PIC/.test(P);
  document.getElementById('pub-root').parentNode.remove();
+ S.me=S.me||{}; navigate('#/share/tok-123456789012345678'); await new Promise(x=>setTimeout(x,40)); r.navShare = !!document.getElementById('ob-pub') && document.getElementById('app').classList.contains('hidden');
+ document.getElementById('ob-pub').remove(); document.getElementById('app').classList.remove('hidden');
  await renderPublicTracker('bad'); r.pubBad = /Link not found/.test(document.getElementById('pub-root').innerHTML); document.getElementById('pub-root').parentNode.remove();
  // 12. My Work gets a section for my activities
  obSetAct(by('S1').id,{assignee_id:'me',status:'in_progress'},false); await new Promise(x=>setTimeout(x,0));
@@ -146,7 +148,7 @@ check('overdue only for open activities with a past deadline', r.overdue);
 check('tracker listed on its workspace page above the boards, not on others', r.wsSection && r.wsOther);
 check('list shows go-live, overdue and waiting counts', r.listRow);
 check('Excel export has one row per activity', r.exportOk);
-check('share link token generated; brand page hides PIC, team and remarks; bad token refused', r.tokenLen===36 && r.pubOk && r.pubBad);
+check('share link token generated; brand page hides PIC, team and remarks; bad token refused', r.tokenLen===36 && r.shareUrl && r.pubOk && r.pubBad && r.navShare);
 check('My Work shows my open onboarding activities', r.homeSection);
 check('checklist page edits with a default PIC column; add row works', r.checklist && r.addRow);
 check('xlsx parser splits sections, offsets and team codes', r.parse==='Store Operation — TikTok Shop:70/0|Livestreaming — TikTok LIVE:-3 BD+KAM+LIVE+OB');
