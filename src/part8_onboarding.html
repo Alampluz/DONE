@@ -72,7 +72,25 @@ const OB_STATUS = [
   {k:'not_started', label:'Not started'}, {k:'in_progress', label:'In progress'},
   {k:'waiting_brand', label:'Waiting on brand'}, {k:'done', label:'Done'}, {k:'na', label:'N/A'},
 ];
-const OB_PLATFORMS = ['TikTok Shop','Shopee','Lazada','Brand.com','Other'];
+const OB_PLATFORMS = ['TikTok Shop','Shopee','Lazada','Brand.com'];
+/* Known platforms = the defaults + anything already used on a tracker or a checklist. */
+function obPlatformList(){
+  const set=new Set(OB_PLATFORMS);
+  OB.onboardings.forEach(o=>(o.platforms||[]).forEach(p=>set.add(p)));
+  OB.types.forEach(t=>(t.channels||[]).forEach(p=>set.add(p)));
+  return [...set].filter(p=>p && p!=='Other');
+}
+function obPlatformBoxes(cls, selected){
+  return `<div id="${cls}-wrap" style="display:flex;flex-wrap:wrap;gap:6px 16px">${obPlatformList().map(p=>`<label style="display:inline-flex;align-items:center;gap:6px;margin:0;font-weight:500;color:var(--ink)"><input type="checkbox" class="${cls}" value="${esc(p)}" ${(selected||[]).includes(p)?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)">${esc(p)}</label>`).join('')}</div>
+    <div style="display:flex;gap:6px;margin-top:6px"><input id="${cls}-new" placeholder="Add a platform…" style="max-width:220px;padding:6px 9px"><button type="button" class="btn btn-ghost btn-sm" onclick="obAddPlatformBox('${cls}')">Add</button></div>`;
+}
+function obAddPlatformBox(cls){
+  const inp=document.getElementById(cls+'-new'); const v=(inp.value||'').trim(); if(!v) return;
+  const wrap=document.getElementById(cls+'-wrap');
+  if([...wrap.querySelectorAll('input')].some(i=>i.value.toLowerCase()===v.toLowerCase())){ inp.value=''; return; }
+  wrap.insertAdjacentHTML('beforeend', `<label style="display:inline-flex;align-items:center;gap:6px;margin:0;font-weight:500;color:var(--ink)"><input type="checkbox" class="${cls}" value="${esc(v)}" checked style="width:15px;height:15px;accent-color:var(--accent)">${esc(v)}</label>`);
+  inp.value='';
+}
 const obStLabel = k => (OB_STATUS.find(s=>s.k===k)||{}).label || k;
 const obStChip  = k => `<span class="ob-st ${k}">${esc(obStLabel(k))}</span>`;
 const obIsSuper = () => !!(S.me && ['admin','management'].includes(S.me.role));
@@ -232,7 +250,7 @@ function obNewModal(wsId){
     <div class="modal-body">
       <label>Brand</label><select id="on-brand"><option value="__new">＋ New brand…</option>${brands.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('')}</select>
       <input id="on-brand-name" placeholder="Brand name" style="margin-top:6px">
-      <label>Platform</label><select id="on-platform">${OB_PLATFORMS.map(p=>`<option>${p}</option>`).join('')}</select>
+      <label>Platforms ${helpIcon('Tick every platform this onboarding covers. Type a new one and press Add if it is not listed.')}</label>${obPlatformBoxes('on-plat', ['TikTok Shop'])}
       <label>Services ${helpIcon('Each ticked service brings its checklist into the tracker as a section. Add more later with ＋ Service.')}</label>
       ${types.length? types.map(t=>{ const n=obChecklistRows(obChecklistOf(t.id)).length; return `<label style="display:flex;align-items:center;gap:8px;margin:4px 0;font-weight:500;color:var(--ink)"><input type="checkbox" class="on-svc" value="${t.id}" style="width:15px;height:15px;accent-color:var(--accent)">${esc(t.name)} <span class="muted">· ${n} activities</span></label>`; }).join('') : '<p class="muted">No checklist has activities yet — add one under Checklists first.</p>'}
       <label>Shop Live date <span class="req">*</span></label><input id="on-date" type="date">
@@ -250,9 +268,10 @@ function obNewModal(wsId){
       const {data:b, error} = await db.from('brands').insert({name:brandName, active:true, platforms:[]}).select().single(); if(error) return toast(error.message, true);
       S.brandsList=(S.brandsList||[]).concat([b]); brandId=b.id; }
     else brandName=(obBrand(brandId)||{}).name||'Brand';
-    const platform=m.querySelector('#on-platform').value;
+    const platforms=[...m.querySelectorAll('.on-plat:checked')].map(i=>i.value); if(!platforms.length) return toast('Tick at least one platform', true);
+    const platform=platforms.join(', ');
     const btn=m.querySelector('#on-save'); btn.disabled=true; btn.textContent='Creating…';
-    const {data:o, error:e1} = await db.from('onboardings').insert({brand_id:brandId, name:brandName+' — '+platform, platform, go_live:date, status:'active', workspace_id:m.querySelector('#on-ws').value||null, lead_id:m.querySelector('#on-lead').value||null, created_by:S.me.id}).select().single();
+    const {data:o, error:e1} = await db.from('onboardings').insert({brand_id:brandId, name:brandName+' — '+platform, platform, platforms, go_live:date, status:'active', workspace_id:m.querySelector('#on-ws').value||null, lead_id:m.querySelector('#on-lead').value||null, created_by:S.me.id}).select().single();
     if(e1){ btn.disabled=false; btn.textContent='Create tracker'; return toast(e1.message, true); }
     const rows=obActivitiesFromChecklists(o, svcIds, 0);
     const {data:acts, error:e2} = await db.from('onboarding_activities').insert(rows).select();
@@ -572,7 +591,7 @@ function obTypeModal(id){
     <div class="modal-body">
       <label>Service name</label><input id="ot-name" value="${esc(t.name||'')}" placeholder="Store Operation — Shopee">
       <label>Short code</label><input id="ot-code" value="${esc(t.code||'')}" placeholder="STOREOPS_SHP">
-      <label>Platforms</label><div style="display:flex;flex-wrap:wrap;gap:4px 16px">${OB_PLATFORMS.map(p=>`<label style="display:inline-flex;align-items:center;gap:6px;margin:0;font-weight:500;color:var(--ink)"><input type="checkbox" class="ot-ch" value="${p}" ${(t.channels||[]).includes(p)?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)">${p}</label>`).join('')}</div>
+      <label>Platforms</label>${obPlatformBoxes('ot-ch', t.channels||[])}
       <label>Owning team</label><select id="ot-team"><option value="">—</option>${(S.teams||[]).map(x=>`<option value="${x.id}" ${x.id===t.team_id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>
       <label style="display:flex;align-items:center;gap:8px;font-weight:500;color:var(--ink)"><input type="checkbox" id="ot-active" ${t.active!==false?'checked':''} style="width:15px;height:15px;accent-color:var(--accent)">Offered when creating a tracker</label>
     </div>
