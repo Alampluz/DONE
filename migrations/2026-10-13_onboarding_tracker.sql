@@ -87,3 +87,6 @@ alter table public.template_tasks add column if not exists default_assignee_id u
 -- Trackers live inside a workspace (the existing "Onboarding" workspace by default), listed on
 -- its page next to the boards — there is no separate top-level menu item.
 alter table public.onboardings add column if not exists workspace_id uuid references public.workspaces(id) on delete set null;
+
+-- An onboarding can span several platforms (ticked in the New onboarding form).
+alter table public.onboardings add column if not exists platforms text[] not null default '{}';
