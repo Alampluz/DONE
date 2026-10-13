@@ -63,6 +63,7 @@ async function renderHome(){
       <div class="card">${approvalTable(approvals)}</div>`:''}
   `;
   renderHomeTasksBody();
+  if(typeof obHomeSection==='function') obHomeSection();   // my onboarding activities (part8)
 }
 /* My tasks on Home: the open-task list, or the same person's dated tasks across
    every workspace on one calendar. The choice sticks per browser. */
@@ -160,6 +161,7 @@ async function renderWorkspace(id, tab){
         <button class="btn btn-sm btn-ghost" id="ws-board-open" aria-pressed="false">Open work · ${projects.filter(p=>(counts[p.id]?.open||0)>0).length}</button></div>
       </div><div class="ws-board-list" id="ws-board-list"></div><div class="ws-board-count" id="ws-board-count" role="status"></div></section>`
     : `<div class="card empty">No boards yet in this workspace${isStaff()? ' — create the first one.':''}</div>`}`;
+  if(typeof obWorkspaceSection==='function') obWorkspaceSection(id);   // onboarding trackers of this workspace (part8)
   if(!projects.length) return;
   let onlyOpen=false;
   const drawBoards=()=>{
