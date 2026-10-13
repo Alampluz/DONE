@@ -1149,6 +1149,8 @@ function navigate(hash){
   closeModals();
   const parts = hash.replace(/^#\//,'').split('/');
   let view = parts[0]||'home';
+  const pubMount = document.getElementById('ob-pub'); if(pubMount){ if(pubMount.dataset.prevTheme) document.documentElement.setAttribute('data-theme', pubMount.dataset.prevTheme); pubMount.remove(); $('#app').classList.remove('hidden'); }
+  if(view==='share' || (view==='t' && /^[0-9a-f]{36}$/.test(parts[1]||''))){ S.nav=(S.nav||0)+1; renderPublicTracker(parts[1]); return; }   // brand tracker link opened while signed in
   /* Short links: #/b/<board key or name> and #/t/<ticket no>. They resolve to the same
      renderers as #/project/<uuid> and #/task/<uuid>, which still work. */
   if(view==='b'){ const p = boardFromSlug(parts[1]); if(!p){ toast('Board not found', true); location.hash='#/home'; return; } view='project'; parts[1]=p.id; }
