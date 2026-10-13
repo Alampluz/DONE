@@ -1735,6 +1735,7 @@ async function savePlatformCo(id){
 /* ================= INIT ================= */
 (async ()=>{
   if(location.hash.startsWith('#/f/')){ renderPublicForm(location.hash.slice(4).split('?')[0]); return; }
+  if(location.hash.startsWith('#/t/')){ setTimeout(()=>renderPublicTracker(location.hash.slice(4).split('?')[0]), 0); return; }   // brand's read-only onboarding tracker (part8 loads after this block)
   const {data:{session}} = await db.auth.getSession();
   S.session = session;
   if(session) await boot();
