@@ -66,7 +66,7 @@ create policy onboarding_activities_write  on public.onboarding_activities for a
 create or replace function public.ob_public_tracker(p_token text)
 returns jsonb language sql stable security definer set search_path = public as $$
   select case when o.id is null then null else jsonb_build_object(
-    'name', o.name, 'brand', b.name, 'platform', o.platform, 'go_live', o.go_live, 'status', o.status,
+    'id', o.id, 'name', o.name, 'brand', b.name, 'platform', o.platform, 'go_live', o.go_live, 'status', o.status,
     'company', c.name,
     'activities', (select coalesce(jsonb_agg(jsonb_build_object(
         'service', a.service_name, 'code', a.code, 'phase', a.phase, 'title', a.title,
