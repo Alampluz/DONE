@@ -244,3 +244,8 @@ A second Claude session working on the DONE logo overwrote `src/part1_head.html`
 
 ## Data-loss incident — 31 Aug 06:07
 Five files in the folder **root** were truncated to 0 bytes in the same minute: `HANDOFF.md`, `run_tests.sh`, `run_tests.ps1`, `NiRM_One_Feature_Blueprint_v2_1547.xlsx`, `sandbox.html`. Nothing in `src/`, `app/`, `tests/` or `migrations/` was affected, and `roadmap.html` survived. All five have been restored. Cause unidentified — no write was issued to four of them at that time. If it recurs, suspect whatever syncs or scans this folder, and note that only root-level files were hit.
+
+## Listing Tracker
+- **Go-live is blocked on:** IT issuing the read-only CUSP user as the `CUSP_DB_URL` secret (+ a network path from Supabase edge to CUSP's Postgres); Task 6 import of the 2026 Excel; April confirming CUSP's campaign page URL (`LT_CUSP_URL`, null until then, hides "Open in CUSP ↗").
+- CUSP bridge: edge function `cusp-campaign` (lookup / skus / sync); answers 503 `cusp_not_configured` until IT issues a read-only CUSP user and it is set as the `CUSP_DB_URL` secret (503 `cusp_unavailable` when set but unreachable). Until then new setups are logged by hand: "Log a new setup by hand" in `tools/listing_sync/sync_via_mcp.md`.
+- Until then, run the nightly sync by hand through the MCP: `tools/listing_sync/sync_via_mcp.md`.

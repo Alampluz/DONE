@@ -627,6 +627,7 @@ async function renderAdmin(){
         <button class="tab ${adminTab==='types'?'active':''}" onclick="adminTab='types';renderAdmin()">Request types</button>
         <button class="tab ${adminTab==='sla'?'active':''}" onclick="adminTab='sla';renderAdmin()">SLA</button>
         <button class="tab ${adminTab==='automations'?'active':''}" onclick="adminTab='automations';renderAdmin()">Automations</button>
+        ${typeof ltAdminTabButton==='function'? ltAdminTabButton(adminTab):''}
       </div>
       <div class="actions">${adminTab==='users'? '<button class="btn btn-primary" onclick="inviteUserModal()">＋ Add user</button>':''}
         ${adminTab==='workspaces'? '<button class="btn btn-primary" onclick="newWorkspaceModal()">＋ Add workspace</button>':''}
@@ -720,6 +721,7 @@ async function renderAdmin(){
   }
   if(adminTab==='automations'){ await renderAutomationsTab(B); }
   if(adminTab==='sla'){ await renderSlaTab(B); }
+  if(adminTab==='listing' && typeof ltRenderAdminTab==='function'){ await ltRenderAdminTab(B); }
   if(adminTab==='types'){
     const {data:allTypes} = await db.from('request_types').select('*').order('position');
     window._allTypes = allTypes||[];
