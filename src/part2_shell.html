@@ -411,12 +411,14 @@ function csvFilename(name){
   return String(name||'export').replace(/[\\/:*?"<>|]+/g,'-').trim()
     + ' - ' + new Date().toISOString().slice(0,10) + '.csv';
 }
-/* Real .xlsx via SheetJS; falls back to CSV if the library hasn't loaded. */
-function downloadXLSX(filename, rows){
+/* Real .xlsx via SheetJS; falls back to CSV (first sheet only) if the library hasn't loaded.
+   Optional: extraSheets = [{name, rows}] appended after the first sheet; sheetName names the first
+   sheet (default 'Export'). Two-argument callers are unchanged. */
+function downloadXLSX(filename, rows, extraSheets, sheetName){
   if(typeof XLSX === 'undefined') return downloadCSV(filename.replace(/\.xlsx$/i,'.csv'), rows);
-  const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Export');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), sheetName || 'Export');
+  (extraSheets||[]).forEach(s=> XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s.rows), s.name));
   XLSX.writeFile(wb, filename);
 }
 function xlsxFilename(name){
@@ -1149,8 +1151,11 @@ function navigate(hash){
   closeModals();
   const parts = hash.replace(/^#\//,'').split('/');
   let view = parts[0]||'home';
+  const pubMount = document.getElementById('ob-pub'); if(pubMount){ if(pubMount.dataset.prevTheme) document.documentElement.setAttribute('data-theme', pubMount.dataset.prevTheme); pubMount.remove(); $('#app').classList.remove('hidden'); }
+  if(view==='share' || (view==='t' && /^[0-9a-f]{36}$/.test(parts[1]||''))){ S.nav=(S.nav||0)+1; renderPublicTracker(parts[1]); return; }   // brand tracker link opened while signed in
   /* Short links: #/b/<board key or name> and #/t/<ticket no>. They resolve to the same
-     renderers as #/project/<uuid> and #/task/<uuid>, which still work. */
+     renderers as #/project/<uuid> and #/task/<uuid>, which still work.
+     #/listing[/YYYY-MM] is the Listing Tracker month report; #/listing-tracker is an alias (part9). */
   if(view==='b'){ const p = boardFromSlug(parts[1]); if(!p){ toast('Board not found', true); location.hash='#/home'; return; } view='project'; parts[1]=p.id; }
   else if(view==='t'){ view='task'; parts[1]=decodeURIComponent(parts[1]||''); }
   S.route = {view, id:parts[1], tab:parts[2]};
@@ -1162,7 +1167,7 @@ function navigate(hash){
   S.nav = (S.nav || 0) + 1;
   renderSidebar();
   const C = $('#content'); C.scrollTop=0;
-  const map = {home:renderHome, ws:renderWorkspace, project:renderProject, task:openTaskRoute, requests:renderRequests, approvals:renderApprovals, campaigns:renderCampaigns, onboarding:renderOnboarding, dashboard:renderDashboard, admin:renderAdmin, platform:renderPlatform};
+  const map = {home:renderHome, ws:renderWorkspace, project:renderProject, task:openTaskRoute, requests:renderRequests, approvals:renderApprovals, campaigns:renderCampaigns, onboarding:renderOnboarding, listing:renderListingTracker, 'listing-tracker':renderListingTracker, dashboard:renderDashboard, admin:renderAdmin, platform:renderPlatform};
   (map[view]||renderHome)(parts[1], parts[2]);
 }
 
@@ -1291,7 +1296,7 @@ function navItems(){
     {key:'menu:requests',  h:'#/requests',  label:'Requests',  show:true},
     {key:'menu:approvals', h:'#/approvals', label:'Approvals', show:true, badge:'appr'},
     {key:'menu:campaigns', h:'#/campaigns', label:'Campaigns', show:isStaff()},
-    {key:'menu:onboarding', h:'#/onboarding', label:'Onboarding', show:isStaff()},
+    {key:'menu:listing',   h:'#/listing',   label:'Listing Tracker', show:isStaff()},
     {key:'menu:dashboard', h:'#/dashboard', label:'Dashboard', show:isStaff()||isRequester()},
     {key:'menu:admin',     h:'#/admin',     label:'Admin',     show:isAdmin()},
     {key:'menu:platform',  h:'#/platform',  label:'Platform',  show:!!(S.me&&S.me.platform_admin)},
