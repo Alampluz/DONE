@@ -78,5 +78,5 @@ check('Escape closes the popover', r.escClosed);
 check('Add to workspace: three bare labels, no dashes, a note on each', r.addLabels==='Board,Report widget,Form' && r.addNotes && r.addNoDash && r.addIcons===3);
 check('clicking the icon in a menu row does not trigger the row', r.rowNotFired);
 check('view picker descriptions moved behind the icon', r.viewNotes && r.viewIcons===5 && r.viewNoInlineDesc);
-check('every Admin tab has its own help text', r.adminTabs==='automations,brands,sla,teams,types,users,workspaces' && r.adminFilled);
+check('every Admin tab has its own help text', r.adminTabs==='automations,brands,listing,sla,teams,types,users,workspaces' && r.adminFilled);
 if(!ok) process.exit(1); });
