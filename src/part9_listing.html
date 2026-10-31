@@ -1,0 +1,1208 @@
+<style>
+/* ============================================================================
+   LISTING TRACKER — CUSP campaign calendar for Store Ops & Product Listing (Oct 2026)
+   Skeleton: state object + pure helpers (name parser, status map, Bangkok month clip).
+   UI is added by later tasks; use CSS tokens only (var(--ink3) etc.), no raw greys.
+   ============================================================================ */
+/* Ticket section "Campaign setups" (Task 4) */
+.lt-sec .lt-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.lt-sec .lt-head label{margin:0}
+.lt-sec .lt-head .btn{margin-left:auto}
+.lt-add{border:1px dashed var(--line-strong);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--panel-2)}
+.lt-add-h{font-size:12.5px;font-weight:700;color:var(--ink2);margin-bottom:6px}
+.lt-add .tv-add{display:flex;gap:6px}
+.lt-found{margin-top:8px;font-size:13px;color:var(--ink);line-height:1.5}
+.lt-found .lt-fname{font-weight:700}
+.lt-found .lt-facts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;color:var(--ink2);margin:4px 0}
+.lt-found .lt-facts>span+span::before{content:"·";margin-right:6px;color:var(--ink3)}
+.lt-found .lt-acts{display:flex;gap:6px;margin-top:6px}
+.lt-found.err{color:var(--red)}
+.lt-msg{color:var(--amber)}
+.lt-rows{display:flex;flex-direction:column;font-size:12.5px}
+.lt-grp{font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--ink3);padding:8px 0 2px}
+.lt-row,.lt-colh{display:grid;grid-template-columns:62px 74px minmax(120px,1.6fr) 40px 52px minmax(90px,1fr) minmax(110px,1.2fr);gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line-2)}
+.lt-row small{display:block;color:var(--ink3);font-size:11px}
+.lt-row.lt-planned{color:var(--ink3);grid-template-columns:62px 1fr auto}
+.lt-colh{color:var(--ink3);font-size:11px;font-weight:600;border-bottom:1px solid var(--line)}
+.lt-link{background:none;border:0;padding:0;color:var(--accent-ink);font:inherit;font-size:12px;cursor:pointer}
+.lt-link:hover{text-decoration:underline}
+.lt-ok{color:var(--green)}
+.lt-muted{color:var(--ink3)}
+.lt-tag-muted{display:inline-block;padding:1px 7px;border-radius:999px;background:var(--gray-soft);color:var(--ink3);font-size:11px}
+.lt-pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;background:var(--gray-soft);color:var(--ink2)}
+.lt-pill.set{background:var(--amber-soft);color:var(--amber)}
+.lt-pill.live{background:var(--green-soft);color:var(--green)}
+.lt-pill.done{background:var(--gray-soft);color:var(--ink3)}
+.lt-pill.ov{background:var(--red-soft);color:var(--red)}
+.lt-pill.frame{background:var(--blue-soft);color:var(--blue)}
+.lt-pill.pdp{background:var(--accent-soft);color:var(--accent-ink)}
+.lt-pill.both{background:var(--purple-soft);color:var(--purple)}
+.lt-ovd{border-left:3px solid var(--red);background:var(--red-soft);border-radius:0 8px 8px 0;padding:8px 10px;margin:4px 0 8px;font-size:12.5px;color:var(--ink)}
+.lt-ovd ul{margin:4px 0 6px 18px;padding:0}
+.lt-ovd .lt-acts{display:flex;gap:6px;flex-wrap:wrap}
+.lt-empty,.lt-err{color:var(--ink3);font-size:12.5px;padding:6px 0}
+.lt-err{color:var(--red)}
+/* Month report page (Task 7) */
+.lt-page .page-head .actions{align-items:center}
+.lt-mnav{display:inline-flex;align-items:center;gap:2px}
+.lt-mnav a{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;color:var(--ink2);text-decoration:none;font-size:16px}
+.lt-mnav a:hover{background:var(--gray-soft);color:var(--ink)}
+.lt-sum{padding:16px 18px;margin-bottom:14px}
+.lt-sum .lt-para{font-size:14px;line-height:1.6;color:var(--ink);margin:0}
+.lt-nums{margin:0 0 18px}
+.lt-num .n.lt-zero{color:var(--ink3)}
+.lt-foot{color:var(--ink3);font-size:12px;margin-top:14px}
+.lt-pick-list{display:flex;flex-direction:column;max-height:50vh;overflow:auto;margin-top:8px}
+.lt-pick-it{display:flex;gap:8px;align-items:baseline;text-align:left;background:none;border:0;border-bottom:1px solid var(--line-2);padding:8px 4px;font:inherit;font-size:13px;color:var(--ink);cursor:pointer}
+.lt-pick-it:hover,.lt-pick-it:focus-visible{background:var(--gray-soft)}
+.lt-pick-it[hidden]{display:none}
+.lt-pick-it b{white-space:nowrap}
+.lt-ws{margin-bottom:18px}
+.lt-grow{flex:1}
+.lt-pick-it small{margin-left:auto;color:var(--ink3);white-space:nowrap}
+/* Month report body (Task 8): filters, brand cards with platform strips, popover, people, log.
+   Segment colours: Frame = --blue, PDP = --accent, PDP+Frame = --purple; red ring = open overlap.
+   The three platform icons keep their brand colours (not greyscale; TikTok uses --ink). */
+.lt-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 12px}
+.lt-search{display:flex;align-items:center;gap:8px;border:1px solid var(--line-strong);border-radius:999px;background:var(--field);padding:4px 12px;min-width:220px;color:var(--ink3)}
+.lt-search input{border:0;background:none;padding:2px 0;font-size:13px;box-shadow:none}
+.lt-chip{border:1px solid var(--line-strong);background:var(--panel);border-radius:999px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink2)}
+.lt-chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.lt-sortnote{font-size:12.5px;color:var(--ink3)}
+.lt-bcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:12px;overflow:hidden}
+.lt-bcard.alert{border-color:color-mix(in srgb,var(--red) 45%,var(--line))}
+.lt-bhead{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+.lt-bhead h3{margin:0;font-size:17px}
+.lt-bhead .meta{font-size:13px;color:var(--ink2)}
+.lt-bhead .meta b{color:var(--ink)}
+.lt-st{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.lt-st.ok{background:var(--green-soft);color:var(--green)}
+.lt-st.warn{background:var(--red-soft);color:var(--red)}
+.lt-st.idle{background:var(--gray-soft);color:var(--ink2)}
+.lt-prow{display:grid;grid-template-columns:130px minmax(0,1fr);gap:0 14px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line-2)}
+@media (max-width:640px){.lt-prow{grid-template-columns:1fr;gap:6px}.lt-prow .lt-plist{grid-column:1}}
+.lt-plat{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px}
+.lt-ico{width:20px;height:20px;border-radius:6px;display:inline-grid;place-items:center;font-size:10px;font-weight:700;color:#fff;flex:none}
+.lt-ico.shp{background:#EE4D2D}
+.lt-ico.lzd{background:#0F146D}
+.lt-ico.tt{background:var(--ink);color:var(--panel)}
+.lt-ico.oth{background:var(--gray-soft);color:var(--ink2)}
+.lt-strip{position:relative;height:30px;display:grid;border-radius:6px;overflow:hidden;background:var(--panel-2);border:1px solid var(--line-2)}
+.lt-strip .lt-d{border-left:1px solid var(--line-2)}
+.lt-strip .lt-d:first-child{border-left:0}
+.lt-strip .lt-d.we{background:var(--gray-soft)}
+.lt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);z-index:2;pointer-events:none}
+.lt-seg{position:absolute;top:4px;height:20px;border-radius:5px;border:1px solid transparent;background-clip:padding-box;color:var(--panel);font:inherit;font-size:11px;font-weight:600;padding:0 6px;display:flex;align-items:center;white-space:nowrap;overflow:hidden;cursor:pointer;z-index:1;text-align:left}
+.lt-seg.frame{background-color:var(--blue)}
+.lt-seg.pdp{background-color:var(--accent)}
+.lt-seg.both{background-image:linear-gradient(135deg,var(--accent) 0 50%,var(--blue) 50% 100%)}
+.lt-seg.other{background-color:var(--ink3)}
+.lt-seg.set{opacity:.85;outline:1.5px dashed color-mix(in srgb,var(--panel) 85%,transparent);outline-offset:-3px}
+.lt-seg.done{opacity:.45}
+.lt-seg.ov{box-shadow:0 0 0 2px var(--red)}
+.lt-seg:hover{filter:brightness(1.08)}
+.lt-seg.sel{box-shadow:0 0 0 2px var(--ink)}
+.lt-plist{grid-column:2;display:flex;gap:4px 14px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2);margin-top:6px}
+.lt-it{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lt-it i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.lt-it i.frame{background:var(--blue)}
+.lt-it i.pdp{background:var(--accent)}
+.lt-it i.both{background:linear-gradient(135deg,var(--accent) 50%,var(--blue) 50%)}
+.lt-it i.other{background:var(--ink3)}
+.lt-it .st{font-weight:600}
+.lt-it .st.set{color:var(--amber)}
+.lt-it .st.live{color:var(--green)}
+.lt-it .st.done{color:var(--ink3)}
+.lt-it .ov{color:var(--red);font-weight:600}
+.lt-it a{color:var(--ink3);text-decoration:none;border-bottom:1px dotted var(--line-strong)}
+.lt-bfoot{padding:10px 16px;color:var(--ink);font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line-2)}
+.lt-bfoot.red{background:var(--red-soft)}
+.lt-bfoot.red b{color:var(--red)}
+.lt-bfoot.amber{background:var(--amber-soft);flex-direction:column;align-items:stretch;gap:6px}
+.lt-bfoot .acts{margin-left:auto;display:flex;gap:8px}
+.lt-nid{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lt-nid .lt-nidw{color:var(--amber);font-weight:600}
+.lt-pop{position:fixed;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:14px 16px;width:min(340px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;font-size:13px;color:var(--ink)}
+.lt-pop[hidden]{display:none}
+.lt-pop h4{margin:0 0 2px;font-size:15px;padding-right:22px}
+.lt-pop .id{color:var(--ink3);font-size:12px;margin-bottom:8px}
+.lt-pop dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0 0 10px}
+.lt-pop dt{color:var(--ink3)}
+.lt-pop dd{margin:0;font-weight:500}
+.lt-pop dd.ov{color:var(--red)}
+.lt-pop .x{position:absolute;top:8px;right:10px;border:0;background:none;font-size:18px;line-height:1;color:var(--ink3);cursor:pointer}
+.lt-pop .acts{display:flex;gap:6px;flex-wrap:wrap}
+.lt-pop .acts a{text-decoration:none}
+.lt-two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+@media (max-width:820px){.lt-two{grid-template-columns:1fr}}
+.lt-box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;min-width:0}
+.lt-box h3{margin:0 0 4px;font-size:16px}
+.lt-box .hint{font-size:12.5px;color:var(--ink3);margin:0 0 12px}
+.lt-person{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line-2)}
+.lt-av{width:34px;height:34px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:12px}
+.lt-person .n{font-weight:600}
+.lt-person .s{font-size:12px;color:var(--ink3)}
+.lt-person .c{font-weight:600;text-align:right}
+.lt-bars{display:flex;gap:2px;height:8px;width:120px;border-radius:4px;overflow:hidden;background:var(--gray-soft)}
+.lt-bars i{display:block;height:100%}
+.lt-bars .f{background:var(--blue)}
+.lt-bars .p{background:var(--accent)}
+.lt-bars .b{background:var(--purple)}
+.lt-log{list-style:none;margin:0;padding:0}
+.lt-log li{display:grid;grid-template-columns:130px minmax(0,1fr);gap:10px;padding:8px 0;border-top:1px solid var(--line-2);font-size:13px}
+.lt-log .t{color:var(--ink3);font-size:12px}
+.lt-log .lt-flag{color:var(--red);font-weight:600}
+.lt-foot.lt-stale{color:var(--amber)}
+/* Legend + content-freeze windows (Task 9): amber pill per window, thin amber marker on the strip day cells */
+.lt-legend{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--ink2);margin:0 0 12px}
+.lt-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+.lt-legend i.frame{background:var(--blue)}
+.lt-legend i.pdp{background:var(--accent)}
+.lt-legend i.both{background:linear-gradient(135deg,var(--accent) 50%,var(--blue) 50%)}
+.lt-legend .freeze{background:var(--amber-soft);color:var(--amber);padding:3px 10px;border-radius:999px;font-weight:500}
+.lt-strip .lt-d.lt-fz{box-shadow:inset 0 -3px 0 var(--amber)}
+/* Admin → Listing Tracker: freeze windows table */
+.lfw-tbl td{vertical-align:middle}
+.lfw-tbl select,.lfw-tbl input{width:100%;min-width:0}
+.lfw-tbl td.lfw-acts{text-align:right;white-space:nowrap}
+.lfw-tbl tr.lfw-add td{background:var(--panel-2)}
+</style>
+<script>
+/* ---------- state ---------- */
+const LT = { rows:[], month:{y:0,m:0}, loaded:false, lastSynced:null, noIdTasks:[], openTasks:[], filter:{chip:'all', q:''} };
+
+/* Campaign names follow "<ticket> <platform> <dates> (<type>)", e.g.
+   "13333214952 LZD 25-31 OCT 26 (PDP+Frame)" or "CFR-0412 SHP 25-31 Oct 2026 (Frame)". */
+function ltParseName(name){
+  const s = String(name==null ? '' : name);
+  const t = s.match(/^\s*([A-Za-z]{2,5}-\d+|\d{4,})(?=\s|$)/);
+  const p = s.match(/(?:^|[^A-Za-z0-9])(SHP|SHOPEE|LZD|LAZADA|TT|TIKTOK)(?![A-Za-z0-9])/i);
+  const platform = p ? ({shp:'Shopee',shopee:'Shopee',lzd:'Lazada',lazada:'Lazada',tt:'TikTok',tiktok:'TikTok'})[p[1].toLowerCase()] : null;
+  const d = s.match(/\b\d{1,2}(?:\s*-\s*\d{1,2})?\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Za-z]*\s+\d{2,4}\b/i);
+  const g = s.match(/\(([^()]*)\)\s*$/);
+  const k = g ? g[1].toLowerCase().replace(/\s+/g,'') : '';
+  const ctype = k==='pdp+frame' || k==='frame+pdp' ? 'both' : k==='frame' ? 'frame' : (k==='pdp' || k==='pd') ? 'pdp' : 'other';
+  return { ticket: t ? t[1] : null, platform, ctype, dates: d ? d[0] : null };
+}
+
+/* CUSP campaign state -> tracker bucket */
+function ltStatus(cuspState){
+  return ({approved:'set', active:'live', ended:'done'})[String(cuspState==null ? '' : cuspState).toLowerCase()] || 'other';
+}
+
+/* Day-of-month span (1-based, Asia/Bangkok = UTC+7, no DST) of row.begin_at..end_at inside year/month (month 1-12); null if outside. */
+function ltMonthClip(row, year, month){
+  if(!row || !row.begin_at || !row.end_at) return null;
+  const bk = iso => new Date(Date.parse(iso) + 7*3600*1000);
+  const b = bk(row.begin_at), e = bk(row.end_at);
+  if(isNaN(b) || isNaN(e)) return null;
+  const idx = year*12 + (month-1);
+  const bi = b.getUTCFullYear()*12 + b.getUTCMonth(), ei = e.getUTCFullYear()*12 + e.getUTCMonth();
+  if(idx < bi || idx > ei) return null;
+  return { s: idx===bi ? b.getUTCDate() : 1, e: idx===ei ? e.getUTCDate() : new Date(Date.UTC(year, month, 0)).getUTCDate() };
+}
+
+/* ---------- Ticket section "Campaign setups" (spec 4.1) ---------- */
+const LT_PLATFORMS = ['Shopee','Lazada','TikTok','Other'];
+const LT_NO_ANSWER = 'CUSP did not answer, try again';
+const LT_NOT_CONFIGURED = 'CUSP link not set up yet — paste the CUSP ID in a comment and ask April to log it';
+const LT_STAFF_ONLY = 'Staff only — sign in again';
+const LT_TYPE_LABEL = {frame:'Frame', pdp:'PDP', both:'PDP+Frame', other:'Other'};
+const LT_STATUS_LABEL = {set:'Set', live:'Live', done:'Done'};
+
+function ltBoardOn(project_id){
+  return (S.projects.find(p=>p.id===project_id)||{}).field_config?.listing_tracker === true;
+}
+
+/* "72739", "https://cusp…/campaigns/72739", "…?id=72739" → 72739; anything else (e.g. "CFR-0412") → null */
+function ltIdFrom(v){
+  const s = String(v==null ? '' : v).trim();
+  if(/^\d+$/.test(s)) return Number(s);
+  try{
+    const u = new URL(s);
+    const q = u.searchParams.get('id');
+    if(q && /^\d+$/.test(q)) return Number(q);
+    const seg = u.pathname.split('/').filter(Boolean).pop();
+    if(seg && /^\d+$/.test(seg)) return Number(seg);
+  }catch(e){ /* not a URL and not a bare id */ }
+  return null;
+}
+
+/* supabase-js error from functions.invoke → {error, message} the found box can show */
+async function ltFnError(err, id){
+  const status = err && err.context && err.context.status;
+  if(status===404) return {error:'not_found', message:`Campaign ${id} not found in CUSP`};
+  if(status===400){
+    let body = null; try{ body = await err.context.json(); }catch(e){ /* keep generic text */ }
+    return {error:(body&&body.code)||'bad_id', message:(body&&body.message)||'Paste a CUSP campaign ID or link'};
+  }
+  if(status===401 || status===403) return {error:'staff_only', message:LT_STAFF_ONLY};
+  if(status===503){
+    let body = null; try{ body = await err.context.json(); }catch(e){ /* keep generic text */ }
+    if(body && body.code==='cusp_not_configured') return {error:'cusp_not_configured', message:LT_NOT_CONFIGURED};
+  }
+  return {error:'cusp_unavailable', message:LT_NO_ANSWER};   // other 503, 5xx, network/relay errors
+}
+
+async function ltLookup(idOrLink){
+  const id = ltIdFrom(idOrLink);
+  if(!id) return {error:'bad_id', message:'Paste a CUSP campaign ID or link'};
+  try{
+    const a = await db.functions.invoke('cusp-campaign', {body:{action:'lookup', id}});
+    if(a.error) return await ltFnError(a.error, id);
+    if(!a.data || !a.data.id) return {error:'cusp_unavailable', message:LT_NO_ANSWER};
+    const b = await db.functions.invoke('cusp-campaign', {body:{action:'skus', id}});
+    if(b.error) return await ltFnError(b.error, id);
+    return {lookup:a.data, skus:(b.data && Array.isArray(b.data.skus)) ? b.data.skus : []};
+  }catch(e){
+    return {error:'cusp_unavailable', message:LT_NO_ANSWER};
+  }
+}
+
+function ltSave(task, lookup, skus){
+  const pn = ltParseName(lookup.name);
+  const p = {
+    task_id: task.id,
+    cusp_campaign_id: lookup.id,
+    cusp_name: lookup.name,
+    cusp_seller_id: lookup.seller_id,
+    cusp_seller: lookup.seller,
+    platform: pn.platform || ((lookup.shops||[])[0]||{}).platform || 'Other',
+    ctype: pn.ctype,
+    begin_at: lookup.begin,
+    end_at: lookup.end,
+    cusp_state: lookup.state,
+    skus: skus || [],
+  };
+  return db.rpc('lt_upsert_campaign', {p});
+}
+
+/* Re-check: refresh CUSP facts only. No platform/ctype keys, so lt_sync_apply keeps what the PIC logged;
+   it also stamps last_synced and logs CUSP state changes instead of a new "setup logged" entry. */
+function ltSync(task, lookup, skus){
+  return db.rpc('lt_sync_apply', {p:{
+    task_id: task.id, cusp_campaign_id: lookup.id, cusp_name: lookup.name,
+    cusp_seller_id: lookup.seller_id, cusp_seller: lookup.seller,
+    begin_at: lookup.begin, end_at: lookup.end, cusp_state: lookup.state, skus: skus || [],
+  }});
+}
+
+/* Preview of the save-time overlap rule: same seller, approved/active, window intersects, shared listing. */
+async function ltOverlapPreview(lookup, skus){
+  if(!['approved','active'].includes(String(lookup.state||'').toLowerCase())) return {n:0, ids:[]};
+  const {data:rows, error} = await db.from('listing_campaigns')
+    .select('id,cusp_campaign_id,cusp_seller_id,begin_at,end_at,cusp_state')
+    .eq('cusp_seller_id', lookup.seller_id).in('cusp_state', ['approved','active']);
+  if(error) return null;
+  const b = Date.parse(lookup.begin), e = Date.parse(lookup.end);
+  const cands = (rows||[]).filter(r=> r.cusp_campaign_id!==lookup.id && r.cusp_seller_id===lookup.seller_id
+    && ['approved','active'].includes(r.cusp_state) && Date.parse(r.begin_at) < e && Date.parse(r.end_at) > b);
+  if(!cands.length) return {n:0, ids:[]};
+  const ids = cands.map(r=>r.cusp_campaign_id);
+  const {data:other, error:e2} = await db.from('listing_campaign_skus').select('cusp_campaign_id,shop_listing_id').in('cusp_campaign_id', ids);
+  if(e2) return null;
+  const mine = new Set((skus||[]).map(x=>x.shop_listing_id));
+  const hit = (other||[]).filter(x=> ids.includes(x.cusp_campaign_id) && mine.has(x.shop_listing_id));
+  return {n:new Set(hit.map(x=>x.shop_listing_id)).size, ids:[...new Set(hit.map(x=>x.cusp_campaign_id))]};
+}
+
+function ltNormPlatform(v){
+  const k = String(v||'').trim().toLowerCase();
+  return ({shopee:'Shopee',shp:'Shopee',lazada:'Lazada',lzd:'Lazada',tiktok:'TikTok','tiktok shop':'TikTok',tt:'TikTok'})[k] || null;
+}
+function ltPlatList(v){
+  const arr = Array.isArray(v) ? v : (typeof v==='string' ? v.split(',') : []);
+  return [...new Set(arr.map(ltNormPlatform).filter(Boolean))];
+}
+/* Platforms the request asked for: task custom.platform, the board's platform column, else the linked request's form data. */
+async function ltPlannedPlatforms(t){
+  const c = t.custom || {};
+  let out = ltPlatList(c.platform);
+  if(!out.length){
+    (S._fields||[]).filter(f=>f.project_id===t.project_id && f.ftype==='platform')
+      .forEach(f=>{ out = out.concat(ltPlatList(c[f.id])); });
+  }
+  if(!out.length && t.request_id){
+    const {data:req, error} = await db.from('requests').select('*').eq('id', t.request_id).single();
+    if(error) return [];
+    const d = (req && req.data) || {};
+    Object.keys(d).filter(k=>/platform/i.test(k)).forEach(k=>{ out = out.concat(ltPlatList(d[k])); });
+  }
+  return [...new Set(out)];
+}
+
+const ltSkuWord = n => `${n} SKU${n===1?'':'s'}`;
+const ltTypePill = c => `<span class="lt-pill ${esc(c||'other')}">${esc(LT_TYPE_LABEL[c]||'Other')}</span>`;
+const ltStatePill = state => { const st = ltStatus(state);
+  return `<span class="lt-pill ${st}" title="CUSP: ${esc(state||'—')}">${esc(LT_STATUS_LABEL[st]||state||'—')}</span>`; };
+const ltWindow = (b,e) => `${esc(fmtDateTime(b))} – ${esc(fmtDateTime(e))}`;
+const ltOpenOverlaps = r => (r.overlap||[]).filter(o=> !(r.overlap_ack||{})[String(o.campaign_id)]);
+
+function ltTaskSectionHTML(t){
+  if(!t || !ltBoardOn(t.project_id)) return '';
+  const staff = isStaff();
+  return `<section class="tv-sec lt-sec" id="lt-sec">
+    <div class="lt-head"><label>Campaign setups</label>${staff? `<button class="btn btn-ghost btn-sm" id="lt-recheck" title="Refresh every setup on this ticket from CUSP">↻ Re-check CUSP</button>`:''}</div>
+    ${staff? `<div class="lt-add"><div class="lt-add-h">＋ Log a setup</div>
+      <div class="tv-add"><input id="lt-id" placeholder="CUSP ID or link" aria-label="CUSP campaign ID or link"><button class="btn btn-ghost btn-sm" id="lt-look">Look up in CUSP</button></div>
+      <div id="lt-found" class="lt-found" hidden></div></div>`:''}
+    <div id="lt-rows" class="lt-rows"><div class="lt-empty">Loading setups…</div></div></section>`;
+}
+
+function ltRowHTML(r){
+  const open = ltOpenOverlaps(r);
+  const n = new Set(open.flatMap(o=>(o.skus||[]).map(x=>x.sku))).size;
+  const check = open.length
+    ? `<span class="lt-pill ov">${ltSkuWord(n)} overlap</span> <button class="lt-link" data-see="${esc(r.id)}">see ›</button>`
+    : (r.overlap||[]).length ? `<span class="lt-tag-muted" title="Overlap marked as intended">intended</span>`
+    : `<span class="lt-ok">✓ No SKU overlap</span>`;
+  return `<div class="lt-row" data-id="${esc(r.id)}">
+      <span>${esc(r.platform||'Other')}</span>
+      <span>${ltTypePill(r.ctype)}</span>
+      <span>${ltWindow(r.begin_at, r.end_at)}<small>CUSP ${esc(r.cusp_campaign_id)}</small></span>
+      <span>${esc(r.sku_count==null ? '—' : r.sku_count)}</span>
+      <span>${ltStatePill(r.cusp_state)}</span>
+      <span>${esc(prof(r.logged_by)?.full_name||'—')}<small>${esc(fmtDateTime(r.logged_at))}</small></span>
+      <span>${check}</span></div>
+    ${open.length? `<div class="lt-ovd" data-ovd="${esc(r.id)}" hidden>${open.map(o=>{
+      const pic = o.pic_name || prof(o.pic)?.full_name || '—';
+      return `<div class="lt-ov1"><div>Clashes with CUSP <b>${esc(o.campaign_id)}</b> on <b>${esc(o.ticket_no||'another ticket')}</b> · PIC ${esc(pic)}</div>
+        <div class="lt-muted">Overlap ${ltWindow(o.from, o.to)}</div>
+        <ul>${(o.skus||[]).map(x=>`<li>${esc(x.sku||'—')}${x.product_name? ` — ${esc(x.product_name)}`:''}</li>`).join('')}</ul>
+        ${isStaff()? `<div class="lt-acts">${o.pic && o.pic!==S.me?.id? `<button class="btn btn-ghost btn-sm" data-notify="${esc(o.campaign_id)}" data-row="${esc(r.id)}">Notify ${esc(pic)}</button>`:''}<button class="btn btn-ghost btn-sm" data-ack="${esc(o.campaign_id)}" data-row="${esc(r.id)}">Mark as intended</button></div>`:''}</div>`;
+    }).join('')}</div>`:''}`;
+}
+
+function ltRowsHTML(rows, planned){
+  const logged = new Set(rows.map(r=>r.platform||'Other'));
+  const groups = LT_PLATFORMS.map(pl=>{
+    const mine = rows.filter(r=>(r.platform||'Other')===pl);
+    const plan = planned.includes(pl) && !logged.has(pl);
+    if(!mine.length && !plan) return '';
+    return `<div class="lt-grp">${esc(pl)}</div>${mine.map(ltRowHTML).join('')}${plan? `<div class="lt-row lt-planned" data-plan="${esc(pl)}"><span>${esc(pl)}</span><span>Planned, not logged yet</span>${isStaff()? `<button class="lt-link" data-log="${esc(pl)}">log ›</button>`:''}</div>`:''}`;
+  }).join('');
+  if(!groups) return `<div class="lt-empty">No setups logged on this ticket yet.</div>`;
+  return `<div class="lt-colh" aria-hidden="true"><span>Platform</span><span>Type</span><span>Dates</span><span>SKUs</span><span>Status</span><span>Logged by</span><span>Check</span></div>${groups}`;
+}
+
+async function ltRenderRows(t, host){
+  const _nav = S.nav;
+  const box = host.querySelector('#lt-rows'); if(!box) return;
+  const {data, error} = await db.from('listing_campaigns').select('*').eq('task_id', t.id).order('platform').order('begin_at');
+  if(navStale(_nav)) return;
+  if(error){ box.innerHTML = `<div class="lt-err">Could not load setups: ${esc(error.message)}</div>`; return; }
+  const rows = (data||[]).filter(r=>r.task_id===t.id);
+  let planned = [];
+  try{ planned = await ltPlannedPlatforms(t); }catch(e){ toast('Could not read the planned platforms: '+e.message, true); }
+  if(navStale(_nav)) return;
+  host._ltRows = rows;
+  box.innerHTML = ltRowsHTML(rows, planned);
+}
+
+function ltFoundHTML(lookup, skus, ov){
+  const pn = ltParseName(lookup.name);
+  const platform = pn.platform || ((lookup.shops||[])[0]||{}).platform || 'Other';
+  const ovText = ov==null ? `<span class="lt-muted">Overlap is checked on save</span>`
+    : ov.n ? `<span class="lt-pill ov">${ltSkuWord(ov.n)} overlap</span> <span class="lt-muted">with CUSP ${ov.ids.map(esc).join(', ')}</span>`
+    : `<span class="lt-ok">✓ No SKU overlap</span>`;
+  return `<div class="lt-fname">${esc(lookup.name||('CUSP '+lookup.id))}</div>
+    <div class="lt-facts"><span>${esc(platform)}</span><span>${ltTypePill(pn.ctype)}</span><span>${ltWindow(lookup.begin, lookup.end)}</span>
+      <span>${ltSkuWord(Number(lookup.sku_count)||(skus||[]).length)}</span><span>${ltStatePill(lookup.state)}</span>${lookup.seller? `<span>${esc(lookup.seller)}</span>`:''}</div>
+    <div>${ovText}</div>
+    <div class="lt-acts"><button class="btn btn-primary btn-sm" id="lt-save">Save setup</button><button class="btn btn-ghost btn-sm" id="lt-cancel">Cancel</button></div>`;
+}
+
+/* ---------- shared overlap actions ---------- */
+/* Overlap actions shared by the ticket section and the report's brand cards.
+   ltNotify: one notification to the other PIC + a comment on both tickets; the button stays
+   disabled as "Notified <name>" so it cannot double-send. ltAck: lt_ack_overlap for the pair.
+   Both return true on success, false on error or when the view moved on. */
+async function ltNotify(row, o, btn){
+  const _nav = S.nav;
+  const name = o.pic_name || prof(o.pic)?.full_name || 'They';
+  const n = (o.skus||[]).length;
+  if(btn) btn.disabled = true;
+  const {error} = await db.from('notifications').insert([{
+    user_id:o.pic, actor_id:S.me.id, kind:'listing_overlap', entity_type:'task', entity_id:o.task_id,
+    title:`Campaign setup overlap${o.ticket_no? ' · '+o.ticket_no:''}`,
+    body:`${ltSkuWord(n)} overlap: CUSP ${row.cusp_campaign_id} and ${o.campaign_id}, ${fmtDateTime(o.from)} – ${fmtDateTime(o.to)}`.slice(0,180),
+  }]);
+  if(navStale(_nav)) return false;
+  if(error){ if(btn) btn.disabled = false; toast('Notification failed: '+error.message, true); return false; }
+  if(btn) btn.textContent = `Notified ${name}`;            // stays disabled: no duplicate sends
+  // Comment on both tickets, same insert shape as postComment (part2).
+  const body = `SKU overlap with ${o.campaign_id} (${o.ticket_no||'another ticket'}) — ${ltSkuWord(n)}, ${fmtDateTime(o.from)} → ${fmtDateTime(o.to)}. Notified ${name}.`;
+  const tids = [...new Set([row.task_id, o.task_id].filter(Boolean))];
+  let cErr = null;
+  for(const tid of tids){
+    const {error:e2} = await db.from('comments').insert({entity_type:'task', entity_id:tid, author_id:S.me.id, body, mentions:[]}).select().single();
+    if(navStale(_nav)) return false;
+    if(e2 && !cErr) cErr = e2;
+  }
+  if(cErr) toast(`${name} was notified, but the ticket comment failed: ${cErr.message}`, true); else toast(`${name} was notified`);
+  return true;
+}
+async function ltAck(row, o, btn){
+  const _nav = S.nav;
+  if(btn) btn.disabled = true;
+  const {error} = await db.rpc('lt_ack_overlap', {p_id:row.id, p_other:Number(o.campaign_id), p_reason:'intended'});
+  if(navStale(_nav)) return false;
+  if(error){ if(btn) btn.disabled = false; toast(error.message, true); return false; }
+  toast(`Overlap with CUSP ${o.campaign_id} marked as intended`);
+  return true;
+}
+
+function ltTaskSectionWire(t, host){
+  const sec = host && host.querySelector('#lt-sec'); if(!sec) return;
+  const $ = s=> sec.querySelector(s);
+  const found = $('#lt-found'), input = $('#lt-id'), look = $('#lt-look');
+  let pending = null;
+  const say = (msg, cls)=>{ found.hidden = false; found.className = 'lt-found'+(cls? ' '+cls:''); found.textContent = msg; };
+
+  if(look) look.onclick = async ()=>{
+    const _nav = S.nav;
+    pending = null;
+    look.disabled = true; look.textContent = 'Looking up…';
+    const r = await ltLookup(input.value);
+    if(navStale(_nav)) return;
+    const done = ()=>{ look.disabled = false; look.textContent = 'Look up in CUSP'; };
+    if(r.error){ done(); return say(r.message, 'err'); }
+    const ov = await ltOverlapPreview(r.lookup, r.skus);
+    if(navStale(_nav)) return;
+    done();
+    pending = r;
+    found.hidden = false; found.className = 'lt-found';
+    found.innerHTML = ltFoundHTML(r.lookup, r.skus, ov);
+    $('#lt-cancel').onclick = ()=>{ pending = null; found.hidden = true; found.innerHTML = ''; };
+    $('#lt-save').onclick = async ()=>{
+      if(!pending) return;
+      const btn = $('#lt-save'); btn.disabled = true; btn.textContent = 'Saving…';
+      const {data, error} = await ltSave(t, pending.lookup, pending.skus);
+      if(navStale(_nav)) return;
+      if(error){ btn.disabled = false; btn.textContent = 'Save setup'; toast(error.message, true); return say(error.message, 'err'); }
+      if(data && data.already){
+        pending = null;
+        return say(`Already logged on ${data.already.ticket_no||'another ticket'} by ${data.already.logged_by_name||'—'}`, 'lt-msg');
+      }
+      pending = null; input.value = ''; found.hidden = true; found.innerHTML = '';
+      toast(data && data.new_overlaps ? `Setup logged · ${ltSkuWord(new Set((data.overlap||[]).flatMap(o=>(o.skus||[]).map(x=>x.sku))).size)} overlap` : 'Setup logged', !!(data && data.new_overlaps));
+      ltRenderRows(t, host);
+    };
+  };
+  if(input) input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); look.click(); } });
+
+  const rc = $('#lt-recheck');
+  if(rc) rc.onclick = async ()=>{
+    const _nav = S.nav;
+    const rows = host._ltRows || [];
+    if(!rows.length) return toast('Nothing logged on this ticket yet');
+    rc.disabled = true; rc.textContent = 'Re-checking…';
+    let fails = 0, firstErr = '';
+    for(const row of rows){
+      const r = await ltLookup(String(row.cusp_campaign_id));
+      if(navStale(_nav)) return;
+      if(r.error){ fails++; firstErr = firstErr || r.message; continue; }
+      const {error} = await ltSync(t, r.lookup, r.skus);
+      if(navStale(_nav)) return;
+      if(error){ fails++; firstErr = firstErr || error.message; }
+    }
+    rc.disabled = false; rc.textContent = '↻ Re-check CUSP';
+    if(fails) toast(`${fails} of ${rows.length} not re-checked: ${firstErr}`, true);
+    else toast(`Re-checked ${rows.length} setup${rows.length===1?'':'s'} from CUSP`);
+    ltRenderRows(t, host);
+  };
+
+  $('#lt-rows').addEventListener('click', async e=>{
+    const _nav = S.nav;
+    const b = e.target.closest('button'); if(!b) return;
+    if(b.dataset.see){
+      const d = [...sec.querySelectorAll('[data-ovd]')].find(x=>x.dataset.ovd===b.dataset.see);
+      if(d){ d.hidden = !d.hidden; b.textContent = d.hidden ? 'see ›' : 'hide ‹'; }
+      return;
+    }
+    if(b.dataset.log){ if(input){ input.focus(); input.placeholder = `CUSP ID or link for ${b.dataset.log}`; } return; }
+    const row = (host._ltRows||[]).find(r=>r.id===b.dataset.row); if(!row) return;
+    const o = (row.overlap||[]).find(x=>String(x.campaign_id)===b.dataset.notify || String(x.campaign_id)===b.dataset.ack); if(!o) return;
+    if(b.dataset.notify) return ltNotify(row, o, b);
+    if(b.dataset.ack && await ltAck(row, o, b) && !navStale(_nav)) ltRenderRows(t, host);
+  });
+
+  ltRenderRows(t, host);
+}
+
+/* ======================= MY WORK: my listing setups ======================= */
+/* Called by renderHome (one-line hook). Setups I logged that start within 48 h,
+   carry an unacknowledged SKU overlap, or are running now. */
+async function ltHomeSection(){
+  const _nav = S.nav;
+  try{
+    const {data} = await db.from('listing_campaigns').select('id,task_id,cusp_campaign_id,cusp_name,platform,ctype,begin_at,end_at,cusp_state,overlap,overlap_ack,logged_by').eq('logged_by', S.me.id);
+    if(navStale(_nav)) return;
+    const now = Date.now(), soon = now + 48*3600e3, ms = v => v? new Date(v).getTime() : NaN;
+    const rows = (data||[]).filter(r=>{
+      if(r.logged_by && r.logged_by!==S.me.id) return false;
+      const b = ms(r.begin_at), e = ms(r.end_at);
+      return (b>=now && b<=soon) || ltOpenOverlaps(r).length>0 || (['approved','active'].includes(r.cusp_state) && e>=now);
+    }).sort((a,b)=> (ms(a.begin_at)||0)-(ms(b.begin_at)||0));
+    if(!rows.length) return;
+    const ids = [...new Set(rows.map(r=>r.task_id))];
+    const {data:tks} = await db.from('tasks').select('id,ticket_no').in('id', ids);
+    if(navStale(_nav)) return;
+    const tk = {}; (tks||[]).forEach(t=>tk[t.id]=t);
+    const line = r => { const open = ltOpenOverlaps(r); const n = new Set(open.flatMap(o=>(o.skus||[]).map(x=>x.sku))).size;
+      return open.length? `<span class="lt-pill ov">${ltSkuWord(n)} overlap</span>` : `<span class="lt-ok">✓ No SKU overlap</span>`; };
+    const sec = el(`<div><div class="section-title">My listing setups <span class="count">${rows.length}</span></div>
+      <div class="card"><table class="tbl"><thead><tr><th>Campaign</th><th>Starts</th><th>Ends</th><th>Status</th><th>Check</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr class="rowlink" data-task="${esc(r.task_id)}"><td><b>${esc(r.cusp_name||String(r.cusp_campaign_id))}</b><br><span class="lt-pill">${esc(r.platform||'Other')}</span> ${ltTypePill(r.ctype)}</td><td>${esc(fmtDateTime(r.begin_at))}</td><td>${esc(fmtDateTime(r.end_at))}</td><td>${ltStatePill(r.cusp_state)}</td><td>${line(r)}</td></tr>`).join('')}
+      </tbody></table></div></div>`);
+    sec.querySelectorAll('tr.rowlink').forEach(tr=>{ tr.onclick = ()=>{ const id=tr.dataset.task; location.hash = taskHash({id, ticket_no:(tk[id]||{}).ticket_no}); }; });
+    const anchor = [...document.querySelectorAll('#content .section-title')].find(x=>/My requests/.test(x.textContent));
+    if(anchor) anchor.parentNode.insertBefore(sec, anchor); else $('#content').appendChild(sec);
+  }catch(e){}
+}
+
+/* ======================= MONTH REPORT PAGE (spec 4.2) ======================= */
+/* Route #/listing[/YYYY-MM] (alias #/listing-tracker). Summary paragraph + six numbers;
+   brand cards fill #lt-cards (Task 8). Month = Asia/Bangkok calendar month. */
+const LT_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const ltMonthLabel = (y,m) => `${LT_MONTHS[m-1]} ${y}`;
+const ltYM = (y,m,delta=0) => { const i = y*12 + (m-1) + delta; return `${Math.floor(i/12)}-${String(i%12+1).padStart(2,'0')}`; };
+function ltBkMonth(nowMs){ const d = new Date((nowMs==null ? Date.now() : nowMs) + 7*3600e3); return {y:d.getUTCFullYear(), m:d.getUTCMonth()+1}; }
+function ltParseYM(sub){
+  const k = /^(\d{4})-(\d{2})$/.exec(String(sub||'')); if(!k) return null;
+  const y = Number(k[1]), m = Number(k[2]);
+  return m>=1 && m<=12 ? {y, m} : null;
+}
+const ltListingBoards = () => (S.projects||[]).filter(p=> p.field_config?.listing_tracker===true && p.status!=='archived');
+const ltRowStatus = r => r.status || ltStatus(r.cusp_state);
+
+/* Loads one month into LT: rows from lt_month, open listing tickets with no setup logged in
+   any month (noIdTasks, oldest first, server-side via lt_no_id_tasks), open listing tickets for
+   the "Log a setup" picker (openTasks) and the last sync time. Returns {rows, noIdTasks, openTasks,
+   openTasksError, lastSynced, month}. Throws when lt_month or
+   lt_no_id_tasks errors, so a failed query never reads as "Every campaign has a ticket". */
+async function ltLoadMonth(y, m){
+  const [mo, ni] = await Promise.all([db.rpc('lt_month', {p_year:y, p_month:m}), db.rpc('lt_no_id_tasks')]);
+  if(mo.error) throw new Error(mo.error.message || 'lt_month failed');
+  if(ni.error) throw new Error(ni.error.message || 'lt_no_id_tasks failed');
+  const rows = (mo.data||[]).filter(r=> !r.begin_at || !r.end_at || ltMonthClip(r, y, m));
+  const noIdTasks = (ni.data||[]).slice();
+  const boardIds = ltListingBoards().map(p=>p.id);
+  let openTasks = [], openTasksError = null;
+  if(boardIds.length){   // board ids only (a handful), never task ids, in the URL
+    const {data:tks, error:te} = await db.from('tasks').select('id,ticket_no,title,due_date,created_at,status,project_id')
+      .in('project_id', boardIds).neq('status','done').is('archived_at', null);
+    if(te) openTasksError = te.message;
+    openTasks = (tks||[]).filter(t=> boardIds.includes(t.project_id) && !isDoneK(t.status));
+  }
+  // "Last synced" = the newest listing_campaigns.last_synced over ALL rows (only a CUSP read stamps it);
+  // else the newest sync run that reached CUSP (no errors, > 0 campaigns). Never a run that failed.
+  const maxOf = (list, k) => (list||[]).reduce((mx,r)=> r && r[k] && (!mx || r[k] > mx) ? r[k] : mx, null);
+  let lastSynced = maxOf(rows, 'last_synced');
+  { const {data:ls} = await db.from('listing_campaigns').select('last_synced').not('last_synced','is',null).order('last_synced', {ascending:false}).limit(1);
+    const v = maxOf(ls, 'last_synced'); if(v && (!lastSynced || v > lastSynced)) lastSynced = v; }   // footer only: a failure just leaves it
+  if(!lastSynced){
+    const {data:lg} = await db.from('listing_sync_log').select('ran_at,campaigns,errors').is('errors', null).gte('campaigns', 1).order('ran_at', {ascending:false}).limit(1);
+    lastSynced = maxOf((lg||[]).filter(x=> x.errors==null && Number(x.campaigns) > 0), 'ran_at');
+  }
+  const out = {rows, month:{y, m}, noIdTasks, openTasks, openTasksError, lastSynced};
+  Object.assign(LT, out, {loaded:true});
+  return out;   // callers render from this object; LT is shared with the workspace section
+}
+
+/* Numbers for the summary. `now` is passed so tests can freeze it. Overlaps count PAIRS
+   (stored on both rows) that are not marked intended; % in SLA = logged before go-live. */
+function ltSummary(rows, y, m, noIdTasks, now){
+  rows = rows || []; noIdTasks = noIdTasks || LT.noIdTasks || [];
+  const nowMs = now==null ? Date.now() : Number(now), soon = nowMs + 48*3600e3;
+  const cur = ltBkMonth(nowMs), isCurrent = cur.y===y && cur.m===m;   // no-ID tickets are "now", not per month
+  if(!isCurrent) noIdTasks = [];
+  const byType = {frame:0, pdp:0, both:0, other:0};
+  rows.forEach(r=>{ byType[byType[r.ctype]==null ? 'other' : r.ctype]++; });
+  const live = rows.filter(r=>ltRowStatus(r)==='live').length;
+  const setSoon = rows.filter(r=>{ const b = Date.parse(r.begin_at); return ltRowStatus(r)==='set' && b>=nowMs && b<=soon; }).length;
+  const pairs = new Map();
+  rows.forEach(r=> ltOpenOverlaps(r).forEach(o=>{
+    const a = Number(r.cusp_campaign_id), c = Number(o.campaign_id);
+    const k = Math.min(a,c)+'-'+Math.max(a,c);
+    if(!pairs.has(k)) pairs.set(k, {brand:r.brand_name||r.cusp_seller||'A brand', platform:r.platform||'Other',
+      n:new Set((o.skus||[]).map(x=>x.sku)).size, from:o.from, to:o.to});
+  }));
+  const timed = rows.filter(r=>r.logged_at && r.begin_at);
+  const inSla = timed.filter(r=>Date.parse(r.logged_at) <= Date.parse(r.begin_at)).length;
+  return {
+    total: rows.length, byType, live, setSoon,
+    overlaps: pairs.size, overlapList: [...pairs.values()],
+    noId: isCurrent ? noIdTasks.length : null, oldestNoId: noIdTasks[0] || null,
+    pctInSla: timed.length ? Math.round(100*inSla/timed.length) : null,
+    brands: new Set(rows.map(r=>r.brand_name||r.cusp_seller).filter(Boolean)).size,
+  };
+}
+
+/* The plain-words paragraph. Plain text: escape when inserting. */
+function ltSummaryText(s, y, m){
+  const pl = (n, one, many) => `${n} ${n===1 ? one : many}`;
+  const list = a => a.length<2 ? a.join('') : a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+  const out = [];
+  if(s.total){
+    const t = s.byType||{};
+    const types = [t.frame? pl(t.frame,'Frame','Frames') : '', t.pdp? pl(t.pdp,'PDP','PDPs') : '', t.both? `${t.both} PDP+Frame` : '', t.other? `${t.other} other` : ''].filter(Boolean);
+    out.push(`${pl(s.brands,'brand','brands')} ran ${pl(s.total,'campaign','campaigns')} in ${LT_MONTHS[m-1]}: ${list(types)}.`);
+    out.push(`${s.live} ${s.live===1?'is':'are'} live right now and ${s.setSoon} more ${s.setSoon===1?'is':'are'} set to start within 48 hours.`);
+  } else {
+    out.push(`No campaign setups are logged for ${ltMonthLabel(y,m)} yet.`);
+  }
+  if(!s.noId && !s.overlaps){ if(s.total) out.push('Every campaign has a ticket and a PIC.'); }
+  const problems = (s.overlaps||0) + (s.noId ? 1 : 0);   // each unacked overlap pair + the no-ID tickets as one
+  if(problems) out.push(problems===1 ? 'One problem to fix:' : problems===2 ? 'Two problems to fix:' : `${problems} problems to fix:`);
+  if(s.overlaps){
+    (s.overlapList||[]).forEach(o=> out.push(`${o.brand} on ${o.platform} has two campaigns sharing ${ltSkuWord(o.n)} from ${fmtDate(o.from)} to ${fmtDate(o.to)}.`));
+  }
+  if(s.noId){
+    const t = s.oldestNoId || {};
+    const name = [t.ticket_no, t.title].filter(Boolean).join(' ') || 'a ticket';
+    out.push(`${s.noId} ${s.noId===1 ? 'ticket has' : 'tickets have'} no CUSP ID logged yet; the oldest is ${name}${t.due_date ? ', due '+fmtDate(t.due_date) : ''}.`);
+  }
+  return out.join(' ');
+}
+
+function ltNumsHTML(s){
+  const n = (v, label, tone, title) => `<div class="stat lt-num"${title ? ` title="${esc(title)}"` : ''}><div class="n ${v && v!=='—' ? tone : 'lt-zero'}">${esc(v)}</div> <div class="l">${esc(label)}</div></div>`;
+  return `<div class="stat-row lt-nums">
+    ${n(s.total, 'campaigns this month', 'accent')}
+    ${n(s.live, 'live right now', 'green')}
+    ${n(s.setSoon, 'set, starting soon', 'amber')}
+    ${n(s.overlaps, s.overlaps===1 ? 'SKU overlap to resolve' : 'SKU overlaps to resolve', 'red')}
+    ${s.noId==null ? n('—', 'tickets without a CUSP ID', '', 'counted for the current month only')
+      : n(s.noId, s.noId===1 ? 'ticket without a CUSP ID' : 'tickets without a CUSP ID', 'amber')}
+    ${n(s.pctInSla==null ? '—' : s.pctInSla+'%', 'logged within SLA', '')}</div>`;
+}
+
+/* "＋ Log a setup": pick an open ticket on a listing board, then log on the ticket itself. */
+function ltPickTicket(){
+  const list = (LT.openTasks||[]).slice().sort((a,b)=> String(a.ticket_no||'').localeCompare(String(b.ticket_no||'')));
+  const m = modal(`<div class="modal-head"><h2>Log a setup</h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div>
+    <div class="modal-body"><p class="muted">Pick the ticket, then paste the CUSP ID under "Campaign setups".</p>
+      <input id="lt-pick-q" placeholder="Find a ticket number or title" aria-label="Find a ticket" autocomplete="off">
+      ${LT.openTasksError ? `<div class="lt-err">Could not load the tickets: ${esc(LT.openTasksError)}</div>` : ''}
+      <div class="lt-pick-list">${list.length ? list.map(t=>`<button class="lt-pick-it" data-task="${esc(t.id)}"><b>${esc(t.ticket_no||'—')}</b><span>${esc(t.title||'')}</span><small>${t.due_date ? 'due '+esc(fmtDate(t.due_date)) : ''}</small></button>`).join('')
+        : '<div class="lt-empty">No open tickets on the listing boards.</div>'}</div></div>`);
+  const q = m.querySelector('#lt-pick-q');
+  q.addEventListener('input', ()=>{
+    const v = q.value.trim().toLowerCase();
+    m.querySelectorAll('[data-task]').forEach(b=>{ b.hidden = !!v && !b.textContent.toLowerCase().includes(v); });
+  });
+  m.querySelectorAll('[data-task]').forEach(b=>{ b.onclick = ()=>{ const t = list.find(x=>x.id===b.dataset.task); closeModals(); location.hash = taskHash(t); }; });
+}
+
+/* ---------- report body (spec 4.2 bullets 4–8) ---------- */
+const LT_CUSP_URL = null;   // set to CUSP's campaign page base once April confirms it (+ campaign id)
+const LT_ICO = {Shopee:['shp','S'], Lazada:['lzd','L'], TikTok:['tt','T'], Other:['oth','O']};
+const LT_CHIPS = [['all','All brands'],['attention','Needs attention'],['live','Live now'],['soon','Starting soon']];
+const LT_STATE_WORD = {set:'approved', live:'active', done:'ended'};
+const ltPct = v => v.toFixed(3)+'%';
+const ltDaysIn = (y,m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+const ltBk = v => new Date(Date.parse(v) + 7*3600e3);                 // Bangkok wall clock in UTC fields
+const ltMon = d => LT_MONTHS[d.getUTCMonth()].slice(0,3);
+const ltDay = v => { const d = ltBk(v); return isNaN(d) ? '' : `${d.getUTCDate()} ${ltMon(d)}`; };
+/* "25–31 Oct", "28 Oct–3 Nov", "22 Oct" (Bangkok dates) */
+function ltDayRange(b, e){
+  const B = ltBk(b), E = ltBk(e);
+  if(isNaN(B) || isNaN(E)) return '';
+  if(B.getUTCFullYear()===E.getUTCFullYear() && B.getUTCMonth()===E.getUTCMonth())
+    return B.getUTCDate()===E.getUTCDate() ? `${B.getUTCDate()} ${ltMon(B)}` : `${B.getUTCDate()}–${E.getUTCDate()} ${ltMon(E)}`;
+  return `${B.getUTCDate()} ${ltMon(B)}–${E.getUTCDate()} ${ltMon(E)}`;
+}
+const ltCls = (v, ok) => ok.includes(v) ? v : 'other';
+const ltRowType = r => ltCls(r.ctype, ['frame','pdp','both']);
+const ltRowSt = r => ltCls(ltRowStatus(r), ['set','live','done']);
+const ltPicName = r => r.logged_by_name || prof(r.logged_by)?.full_name || '';
+const ltOvSkus = r => new Set(ltOpenOverlaps(r).flatMap(o=>(o.skus||[]).map(x=>x.sku))).size;
+const ltBrandOf = r => r.brand_name || r.cusp_seller || 'No brand';
+const ltTicketLink = (id, no) => `<a href="${esc(taskHash({id, ticket_no:no}))}">${esc(no||'ticket')}</a>`;
+const ltList = a => a.length<2 ? a.join('') : a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+
+/* One platform's strip: a cell per day of that month (weekends shaded from the real calendar),
+   a today line when the month is the current Bangkok month, a segment per campaign positioned by
+   ltMonthClip; segments that share days stack into further lanes (top 4 + lane*26 px, strip grows). */
+function ltStripHTML(rows, y, m, now, freeze){
+  const nowMs = now==null ? Date.now() : Number(now);
+  const days = ltDaysIn(y, m), cur = ltBkMonth(nowMs);
+  const fz = new Set();   // Bangkok days touched by a content-freeze window for this platform
+  (freeze||[]).forEach(w=>{ const c = ltMonthClip({begin_at:w.starts_at, end_at:w.ends_at}, y, m); if(c) for(let d=c.s; d<=c.e; d++) fz.add(d); });
+  let cells = '';
+  for(let d=1; d<=days; d++){ const wd = new Date(Date.UTC(y, m-1, d)).getUTCDay(); cells += `<div class="lt-d${wd===0||wd===6 ? ' we' : ''}${fz.has(d) ? ' lt-fz' : ''}"></div>`; }
+  const today = cur.y===y && cur.m===m ? ltBk(new Date(nowMs).toISOString()).getUTCDate() : 0;
+  const segs = (rows||[]).map(r=>({r, c:ltMonthClip(r, y, m)})).filter(x=>x.c).sort((a,b)=> a.c.s-b.c.s || a.c.e-b.c.e);
+  const laneEnd = [];
+  segs.forEach(x=>{ let l = laneEnd.findIndex(e=> e < x.c.s); if(l<0) l = laneEnd.length; laneEnd[l] = x.c.e; x.lane = l; });
+  const lanes = Math.max(1, laneEnd.length);
+  const segHTML = segs.map(({r, c, lane})=>{
+    const ty = ltRowType(r), st = ltRowSt(r);
+    return `<button type="button" class="lt-seg ${ty} ${st}${ltOpenOverlaps(r).length ? ' ov' : ''}" data-row="${esc(r.id)}" style="left:${ltPct((c.s-1)/days*100)};width:${ltPct((c.e-c.s+1)/days*100)};top:${4+lane*26}px" title="${esc(`${LT_TYPE_LABEL[ty]} ${ltDayRange(r.begin_at, r.end_at)} · CUSP ${r.cusp_campaign_id}`)}">${esc(LT_TYPE_LABEL[ty])}</button>`;
+  }).join('');
+  return `<div class="lt-strip" style="grid-template-columns:repeat(${days},1fr);height:${8+lanes*26}px">${cells}${today ? `<div class="lt-today" style="left:${ltPct((today-1)/days*100)}"></div>` : ''}${segHTML}</div>`;
+}
+
+/* Does a ticket title name this brand? Tasks carry no brand_id (the real fix), so the title is the
+   only link. Whole words only (Unicode, case-insensitive); names of 3 chars or fewer must equal a
+   whole token of the title, so "IN" never matches "Listing". */
+function ltBrandMatch(name, title){
+  const n = String(name||'').trim(), t = String(title||'');
+  if(!n || !t) return false;
+  if(n.length <= 3) return t.split(/[^\p{L}\p{N}]+/u).some(w=> w.toLowerCase()===n.toLowerCase());
+  const re = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${re}(?![\\p{L}\\p{N}])`, 'iu').test(t);   // no lookbehind: Safari < 16.4
+}
+const LT_CATCHALL = 'Tickets without a CUSP ID';
+/* Brands from the month rows: problem = an unacked overlap or a no-ID ticket whose title names the
+   brand. Each no-ID ticket goes to the longest matching brand name ("Dove Men+Care" beats "Dove");
+   tickets matching no brand go to one catch-all card. Sorted problems first (catch-all last among
+   them), then A→Z. */
+function ltBrandGroups(rows, noIdTasks, now){
+  const map = new Map();
+  (rows||[]).forEach(r=>{ const k = ltBrandOf(r); if(!map.has(k)) map.set(k, []); map.get(k).push(r); });
+  const soonTo = now + 48*3600e3;
+  const names = [...map.keys()].filter(k=>k!=='No brand').sort((a,b)=> b.length-a.length);
+  const owner = new Map(), rest = [];
+  (noIdTasks||[]).forEach(t=>{ const b = names.find(n=> ltBrandMatch(n, t.title)); if(b) owner.set(t, b); else rest.push(t); });
+  const groups = [...map].map(([name, rs])=>{
+    const noId = (noIdTasks||[]).filter(t=> owner.get(t)===name);
+    const ov = rs.some(r=>ltOpenOverlaps(r).length>0);
+    const live = rs.filter(r=>ltRowStatus(r)==='live').length;
+    const soon = rs.some(r=>{ const b = Date.parse(r.begin_at); return ltRowStatus(r)==='set' && b>=now && b<=soonTo; });
+    return {name, rows:rs, noId, ov, live, soon, problem: ov || noId.length>0};
+  });
+  if(rest.length) groups.push({name:LT_CATCHALL, rows:[], noId:rest, ov:false, live:0, soon:false, problem:true, catchAll:true});
+  return groups.sort((a,b)=> (b.problem - a.problem) || (!!a.catchAll - !!b.catchAll) || a.name.localeCompare(b.name));
+}
+
+function ltOverlapSentence(r, o, all){
+  const other = (all||[]).find(x=>Number(x.cusp_campaign_id)===Number(o.campaign_id));
+  const n = new Set((o.skus||[]).map(x=>x.sku)).size;
+  const names = (o.skus||[]).slice(0,3).map(x=>x.product_name||x.sku).filter(Boolean);
+  const picA = ltPicName(r) || 'Someone', picB = o.pic_name || prof(o.pic)?.full_name || 'someone';
+  const tyB = other ? LT_TYPE_LABEL[ltRowType(other)] : 'campaign';
+  return `<b>${esc(`${ltSkuWord(n)} overlap on ${r.platform||'Other'}, ${ltDayRange(o.from, o.to)}.`)}</b> `
+    + esc(`${picA}'s ${LT_TYPE_LABEL[ltRowType(r)]} (${r.cusp_campaign_id}) and ${picB}'s ${tyB} (${o.campaign_id}) both include ${ltList(names)}.`);
+}
+
+function ltBrandCardHTML(g, all, y, m, now, freeze){
+  const pics = {}; g.rows.forEach(r=>{ const n = ltPicName(r); if(n) pics[n] = (pics[n]||0)+1; });
+  const pic = Object.keys(pics).reduce((a,k)=> a==null || pics[k]>pics[a] ? k : a, null);
+  const chip = g.problem ? `<span class="lt-st warn">Needs attention</span>` : g.live ? `<span class="lt-st ok">${g.live} live</span>` : `<span class="lt-st idle">Nothing live today</span>`;
+  const plats = LT_PLATFORMS.filter(p=> g.rows.some(r=>(r.platform||'Other')===p));
+  const prows = plats.map(p=>{
+    const rs = g.rows.filter(r=>(r.platform||'Other')===p).sort((a,b)=> Date.parse(a.begin_at)-Date.parse(b.begin_at));
+    const [cls, letter] = LT_ICO[p];
+    const items = rs.map(r=>{ const ty = ltRowType(r), st = ltRowSt(r), n = ltOvSkus(r);
+      return `<span class="lt-it"><i class="${ty}"></i>${esc(LT_TYPE_LABEL[ty])} ${esc(ltDayRange(r.begin_at, r.end_at))} · <span class="st ${st}">${esc(LT_STATUS_LABEL[st]||r.cusp_state||'—')}</span>${n ? ` · <span class="ov">${ltSkuWord(n)} overlap</span>` : ''} · ${ltTicketLink(r.task_id, r.ticket_no)}</span>`; }).join('');
+    return `<div class="lt-prow"><div class="lt-plat"><span class="lt-ico ${cls}" aria-hidden="true">${letter}</span>${esc(p)}</div>${ltStripHTML(rs, y, m, now, ltFreezeFor(freeze, p))}<div class="lt-plist">${items}</div></div>`;
+  }).join('');
+  const seen = new Set(); let red = '';
+  g.rows.forEach(r=> ltOpenOverlaps(r).forEach(o=>{
+    const a = Number(r.cusp_campaign_id), c = Number(o.campaign_id), k = Math.min(a,c)+'-'+Math.max(a,c);
+    if(seen.has(k)) return; seen.add(k);
+    const name = o.pic_name || prof(o.pic)?.full_name || 'the PIC';
+    red += `<div class="lt-bfoot red"><span class="lt-fs">${ltOverlapSentence(r, o, all)}</span><span class="acts">${o.pic && o.pic!==S.me?.id ? `<button type="button" class="btn btn-ghost btn-sm" data-notify="${esc(o.campaign_id)}" data-row="${esc(r.id)}">Notify ${esc(name)}</button>` : ''}<button type="button" class="btn btn-ghost btn-sm" data-ack="${esc(o.campaign_id)}" data-row="${esc(r.id)}">Mark as intended</button></span></div>`;
+  }));
+  const amber = g.noId.length ? `<div class="lt-bfoot amber">${g.noId.map(t=>`<div class="lt-nid"><span><b>${esc(t.ticket_no||'—')}</b> ${esc(t.title||'')} · <span class="lt-nidw">no CUSP ID</span>${t.due_date ? ` · due ${esc(fmtDate(t.due_date))}` : ''}</span><span class="acts"><a class="btn btn-ghost btn-sm" href="${esc(taskHash(t))}">Open ticket</a></span></div>`).join('')}</div>` : '';
+  const n = g.rows.length, k = g.noId.length;
+  const meta = g.catchAll ? `<b>${k}</b> ${k===1 ? 'ticket' : 'tickets'} · no brand matched in the title`
+    : `<b>${n}</b> ${n===1 ? 'campaign' : 'campaigns'}${pic ? ` · PIC <b>${esc(pic)}</b>` : ''}`;
+  return `<article class="lt-bcard${g.problem ? ' alert' : ''}${g.catchAll ? ' lt-catchall' : ''}"><div class="lt-bhead"><h3>${esc(g.name)}</h3> <span class="meta">${meta}</span> <span class="lt-grow"></span> ${chip}</div>${prows}${red}${amber}</article>`;
+}
+
+/* filter = {chip:'all'|'attention'|'live'|'soon', q}; opts = {noIdTasks, now, freeze} (default LT / Date.now() / none). */
+function ltBrandCardsHTML(rows, y, m, filter, opts){
+  const o = opts || {}, now = o.now==null ? Date.now() : Number(o.now);
+  const f = filter || {chip:'all', q:''}, q = String(f.q||'').trim().toLowerCase();
+  const noIdTasks = o.noIdTasks || LT.noIdTasks || [];
+  if(!(rows||[]).length && !noIdTasks.length) return `<div class="card empty">No campaign setups logged for ${esc(ltMonthLabel(y,m))} yet.</div>`;
+  const groups = ltBrandGroups(rows, noIdTasks, now).filter(g=>
+    (f.chip==='attention' ? g.problem : f.chip==='live' ? g.live>0 : f.chip==='soon' ? g.soon : true)
+    && (!q || g.name.toLowerCase().includes(q) || g.rows.concat(g.noId).some(r=> String(r.ticket_no||'').toLowerCase().includes(q))));
+  if(!groups.length) return `<div class="lt-empty">No brands match.</div>`;
+  return groups.map(g=> ltBrandCardHTML(g, rows, y, m, now, o.freeze)).join('');
+}
+
+function ltFiltersHTML(f){
+  return `<div class="lt-filters"><label class="lt-search"><span aria-hidden="true">⌕</span><input id="lt-q" type="search" placeholder="Find a brand or ticket…" aria-label="Find a brand or ticket" autocomplete="off" value="${esc(f.q||'')}"></label>${LT_CHIPS.map(([k,l])=>`<button type="button" class="lt-chip" data-chip="${k}" aria-pressed="${f.chip===k}">${l}</button>`).join('')}<span class="lt-grow"></span><span class="lt-sortnote">Sorted: problems first, then A → Z</span></div>`;
+}
+
+/* "Who set what": per PIC — count, type mix, brands (up to 3), last log time; most setups first. */
+function ltPeopleHTML(rows){
+  const by = new Map();
+  (rows||[]).forEach(r=>{
+    const n = ltPicName(r) || '—';
+    if(!by.has(n)) by.set(n, {n, c:0, t:{frame:0,pdp:0,both:0}, brands:[], last:null});
+    const p = by.get(n); p.c++;
+    if(p.t[r.ctype]!=null) p.t[r.ctype]++;
+    const b = r.brand_name || r.cusp_seller; if(b && !p.brands.includes(b)) p.brands.push(b);
+    if(r.logged_at && (!p.last || Date.parse(r.logged_at) > Date.parse(p.last))) p.last = r.logged_at;
+  });
+  const list = [...by.values()].sort((a,b)=> b.c-a.c || a.n.localeCompare(b.n));
+  const ini = n => { const w = n.split(/\s+/).filter(Boolean); return (w.length>1 ? w[0][0]+w[1][0] : n.slice(0,2)).toUpperCase(); };
+  const bar = (cls, v, c) => v ? `<i class="${cls}" style="width:${Math.round(100*v/c)}%"></i>` : '';
+  return `<h3>Who set what</h3><p class="hint">Setups logged this month, by PIC.</p>`
+    + (list.length ? list.map(p=>`<div class="lt-person"><div class="lt-av" aria-hidden="true">${esc(ini(p.n))}</div><div><div class="n">${esc(p.n)}</div><div class="s">${esc(p.brands.slice(0,3).join(', '))}${p.last ? ` · last log ${esc(fmtDateTime(p.last))}` : ''}</div></div><div><div class="lt-bars" title="Frame ${p.t.frame} · PDP ${p.t.pdp} · PDP+Frame ${p.t.both}">${bar('f',p.t.frame,p.c)}${bar('p',p.t.pdp,p.c)}${bar('b',p.t.both,p.c)}</div><div class="c">${p.c}</div></div></div>`).join('')
+      : `<div class="lt-empty">No setups logged this month.</div>`);
+}
+
+/* Month window in Bangkok as ISO strings. */
+function ltMonthRange(y, m){
+  const a = Date.UTC(y, m-1, 1) - 7*3600e3, b = Date.UTC(y, m, 1) - 7*3600e3 - 1;
+  return {start:new Date(a).toISOString(), end:new Date(b).toISOString()};
+}
+/* listing_* activity + sync runs for the month. {items, error}; a sync-log failure only drops those lines. */
+async function ltLoadActivity(y, m){
+  const {start, end} = ltMonthRange(y, m);
+  const [a, s] = await Promise.all([
+    db.from('activity_log').select('id,actor_id,action,detail,created_at').like('action','listing_%').gte('created_at', start).lte('created_at', end).order('created_at',{ascending:false}).limit(100),
+    db.from('listing_sync_log').select('ran_at,campaigns,"overlaps",errors').gte('ran_at', start).lte('ran_at', end).order('ran_at',{ascending:false}).limit(31)]);
+  if(a.error) return {items:[], error:a.error.message || 'activity_log failed'};
+  const acts = (a.data||[]).filter(x=> /^listing_/.test(x.action||''));
+  return {items: ltMergeActivity(acts, s.error ? [] : s.data), error:null};
+}
+function ltMergeActivity(acts, syncs){
+  return (acts||[]).map(x=>({at:x.created_at, act:x})).concat((syncs||[]).map(x=>({at:x.ran_at, sync:x})))
+    .sort((p,q)=> Date.parse(q.at) - Date.parse(p.at));
+}
+/* Renders the merged log. Detail keys as written by lt__apply / lt_ack_overlap:
+   listing_setup_logged {cusp_campaign_id, platform, ctype, begin_at, end_at, new}
+   listing_state_changed {cusp_campaign_id, from, to} (actor null = CUSP via the nightly sync)
+   listing_overlap_found {campaign_id, other_campaign_id, other_task_id, from, to, sku_count} (one per ticket)
+   listing_overlap_ack {campaign_id, other_campaign_id, reason} (one per ticket) */
+function ltLogHTML(items, rows){
+  const byCid = new Map((rows||[]).map(r=>[Number(r.cusp_campaign_id), r]));
+  const label = (cid, platform, ctype) => { const r = byCid.get(Number(cid)) || {};
+    const ty = ctype || r.ctype; return [r.brand_name || r.cusp_seller, platform || r.platform, ty ? LT_TYPE_LABEL[ltCls(ty, ['frame','pdp','both'])] : ''].filter(Boolean).join(' · '); };
+  const seen = new Set();
+  const pairSeen = (a, b, at, kind) => { const k = kind+Math.min(a,b)+'-'+Math.max(a,b)+'@'+String(at).slice(0,16); if(seen.has(k)) return true; seen.add(k); return false; };
+  const lines = (items||[]).map(it=>{
+    if(it.sync){ const x = it.sync, n = Number(x.campaigns)||0, v = Number(x.overlaps)||0;   // overlaps = NEW pairs found in that run
+      const k = x.errors ? String(x.errors).split('\n').filter(l=>l.trim()).length || 1 : 0;
+      return `<b>DONE</b> nightly check: ${n} ${n===1 ? 'campaign' : 'campaigns'} refreshed, ${v} new ${v===1 ? 'overlap' : 'overlaps'} found${k ? `, <span class="lt-flag" title="${esc(x.errors)}">${k} ${k===1 ? 'error' : 'errors'}</span>` : ''}`; }
+    const a = it.act || {}, d = a.detail || {}, actor = `<b>${esc(prof(a.actor_id)?.full_name || 'DONE')}</b>`;
+    if(a.action==='listing_setup_logged')
+      return `${actor} logged ${esc(label(d.cusp_campaign_id, d.platform, d.ctype))} ${esc(ltDayRange(d.begin_at, d.end_at))} (${esc(d.cusp_campaign_id)})`;
+    if(a.action==='listing_overlap_found'){
+      if(pairSeen(d.campaign_id, d.other_campaign_id, a.created_at, 'o')) return null;
+      const n = Number(d.sku_count)||0;
+      return `<span class="lt-flag">Overlap found</span> — ${esc(label(d.campaign_id))} (${esc(d.campaign_id)}) shares ${ltSkuWord(n)} with ${esc(d.other_campaign_id)}${d.to ? ` until ${esc(ltDay(d.to))}` : ''}`;
+    }
+    if(a.action==='listing_overlap_ack'){
+      if(pairSeen(d.campaign_id, d.other_campaign_id, a.created_at, 'a')) return null;
+      return `${actor} marked the overlap between ${esc(d.campaign_id)} and ${esc(d.other_campaign_id)} as ${esc(d.reason||'intended')}`;
+    }
+    if(a.action==='listing_state_changed'){
+      const to = String(d.to||'').toLowerCase(), what = to==='active' ? 'went <b>live</b>' : to==='ended' ? 'ended' : `changed to ${esc(d.to||'—')} in CUSP`;
+      return `<b>${a.actor_id ? esc(prof(a.actor_id)?.full_name || 'DONE') : 'CUSP'}</b> ${esc(label(d.cusp_campaign_id))} (${esc(d.cusp_campaign_id)}) ${what}`;
+    }
+    return `${actor} ${esc(String(a.action||'').replace(/^listing_/,'').replace(/_/g,' '))}`;
+  }).map((t,i)=> t==null ? '' : `<li><span class="t">${esc(fmtDateTime(items[i].at))}</span><span class="lt-lt">${t}</span></li>`).join('');
+  return lines ? `<ul class="lt-log">${lines}</ul>` : `<div class="lt-empty">Nothing logged this month yet.</div>`;
+}
+
+/* Footer: "Last synced <time>", with "— CUSP not reachable since" when older than 26 h; "Not synced yet" when CUSP was never reached. */
+function ltFootHTML(lastSynced, now){
+  if(!lastSynced) return `<div class="lt-foot lt-stale">Not synced yet</div>`;
+  const stale = (now==null ? Date.now() : Number(now)) - Date.parse(lastSynced) > 26*3600e3;
+  return `<div class="lt-foot${stale ? ' lt-stale' : ''}">Last synced ${esc(fmtDateTime(lastSynced))}${stale ? ' — CUSP not reachable since' : ''}</div>`;
+}
+
+/* ---------- detail popover (one element, reused) ---------- */
+/* Reloads from the popover or a card only while the report is the current route. */
+const ltOnReport = () => ['listing','listing-tracker'].includes(S.route && S.route.view);
+let ltPage = null;   // {data, y, m}: what the report page last rendered (not the shared LT cache)
+function ltPopClose(){
+  const pop = document.getElementById('lt-pop'); if(pop) pop.hidden = true;
+  document.querySelectorAll('.lt-seg.sel').forEach(x=>x.classList.remove('sel'));
+}
+function ltPopEl(){
+  let pop = document.getElementById('lt-pop');
+  if(pop) return pop;
+  pop = document.createElement('div');
+  pop.id = 'lt-pop'; pop.className = 'lt-pop'; pop.hidden = true;
+  pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Campaign details');
+  document.body.appendChild(pop);
+  document.addEventListener('click', e=>{ if(!pop.hidden && !pop.contains(e.target) && !e.target.closest('.lt-seg')) ltPopClose(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !pop.hidden) ltPopClose(); });
+  document.addEventListener('scroll', e=>{ if(!pop.hidden && !pop.contains(e.target)) ltPopClose(); }, true);   // #content scrolls
+  pop.addEventListener('click', e=>{
+    if(e.target.closest('[data-close]') || e.target.closest('a')) return ltPopClose();
+    const b = e.target.closest('[data-recheck]');
+    const row = b && ltPage && ltPage.data.rows.find(r=>r.id===b.dataset.recheck);
+    if(row) ltRecheckRow(row, b);
+  });
+  return pop;
+}
+function ltPopover(rowId, anchorEl){
+  const pop = ltPopEl();
+  const row = ltPage && ltPage.data.rows.find(r=>r.id===rowId);
+  ltPopClose();
+  if(!row) return;
+  const ty = LT_TYPE_LABEL[ltRowType(row)], st = ltRowSt(row);
+  const ovs = ltOpenOverlaps(row).map(o=>`<dt>Overlap</dt><dd class="ov">${esc(`${ltSkuWord(new Set((o.skus||[]).map(x=>x.sku)).size)} with ${o.campaign_id} (${o.pic_name || prof(o.pic)?.full_name || '—'}), ${ltDayRange(o.from, o.to)}`)}</dd>`).join('');
+  pop.innerHTML = `<button type="button" class="x" data-close aria-label="Close">×</button>`
+    + `<h4>${esc(`${ltBrandOf(row)} · ${row.platform||'Other'} · ${ty} campaign`)}</h4>`
+    + `<div class="id">${esc(`CUSP ${row.cusp_campaign_id} · ticket ${row.ticket_no||'—'}`)}</div>`
+    + `<dl><dt>Dates</dt><dd>${ltWindow(row.begin_at, row.end_at)}</dd>`
+    + `<dt>Status</dt><dd>${esc(`${LT_STATUS_LABEL[st]||'Other'} (${LT_STATE_WORD[st]||row.cusp_state||'—'} in CUSP)`)}</dd>`
+    + `<dt>SKUs</dt><dd>${esc(row.sku_count==null ? '—' : row.sku_count)}</dd>`
+    + `<dt>PIC</dt><dd>${esc(`${ltPicName(row)||'—'} · logged ${fmtDateTime(row.logged_at)}`)}</dd>${ovs}</dl>`
+    + `<div class="acts"><a class="btn btn-ghost btn-sm" href="${esc(taskHash({id:row.task_id, ticket_no:row.ticket_no}))}">Open ticket</a>`
+    + (LT_CUSP_URL ? `<a class="btn btn-ghost btn-sm" href="${esc(LT_CUSP_URL + encodeURIComponent(row.cusp_campaign_id))}" target="_blank" rel="noopener">Open in CUSP ↗</a>` : '')
+    + `<button type="button" class="btn btn-ghost btn-sm" data-recheck="${esc(row.id)}">↻ Re-check</button></div>`;
+  pop.hidden = false;
+  if(anchorEl && anchorEl.getBoundingClientRect){
+    anchorEl.classList.add('sel');
+    const r = anchorEl.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+    const x = Math.max(16, Math.min(r.left, window.innerWidth - w - 16));
+    let y = r.bottom + 8; if(y + h > window.innerHeight - 16) y = Math.max(16, r.top - h - 8);
+    pop.style.left = x+'px'; pop.style.top = y+'px';
+  } else { pop.style.left = '16px'; pop.style.top = '80px'; }
+}
+/* ↻ Re-check from the popover: fresh CUSP facts for this one row, then reload the month. */
+async function ltRecheckRow(row, btn){
+  const _nav = S.nav;
+  if(!ltOnReport()){ ltPopClose(); return; }
+  btn.disabled = true; btn.textContent = 'Re-checking…';
+  const r = await ltLookup(String(row.cusp_campaign_id));
+  if(navStale(_nav)) return;
+  const fail = msg => { btn.disabled = false; btn.textContent = '↻ Re-check'; toast(msg, true); };
+  if(r.error) return fail(r.message);
+  const {error} = await ltSync({id:row.task_id}, r.lookup, r.skus);
+  if(navStale(_nav)) return;
+  if(error) return fail(error.message);
+  toast(`Re-checked CUSP ${row.cusp_campaign_id}`);
+  ltPopClose();
+  if(ltPage && ltOnReport()) renderListingTracker(ltYM(ltPage.y, ltPage.m));
+}
+/* Clicks inside #lt-cards: segment → popover; red footer → the shared Notify / Mark as intended. */
+async function ltCardsClick(e){
+  const seg = e.target.closest('.lt-seg');
+  if(seg) return ltPopover(seg.dataset.row, seg);
+  const b = e.target.closest('button[data-row]'); if(!b || !ltPage) return;
+  const row = ltPage.data.rows.find(r=>r.id===b.dataset.row); if(!row) return;
+  const o = ltOpenOverlaps(row).find(x=> String(x.campaign_id)===(b.dataset.notify || b.dataset.ack)); if(!o) return;
+  if(b.dataset.notify) return ltNotify(row, o, b);
+  const _nav = S.nav, page = ltPage;
+  if(await ltAck(row, o, b) && !navStale(_nav) && ltOnReport()) renderListingTracker(ltYM(page.y, page.m));
+}
+
+window.addEventListener('hashchange', ()=> ltPopClose());   // navigate() only clears #modal-root
+
+/* ---------- content-freeze windows + Excel export (spec 4.2: legend line, export bullet) ---------- */
+/* Bangkok (UTC+7, no DST) wall-clock helpers. Admins type Bangkok time whatever the browser's zone. */
+const ltBkHM = v => { const d = ltBk(v); return isNaN(d) ? '' : d.toISOString().slice(11,16); };
+const ltBkDT = v => { const d = ltBk(v); return isNaN(d) ? '' : `${ltDay(v)} ${ltBkHM(v)}`; };            // "8 Oct 19:30"
+const ltBkDate = v => { const d = ltBk(v); return isNaN(d) ? '' : `${ltDay(v)} ${d.getUTCFullYear()}`; };  // "8 Oct 2026"
+/* datetime-local value typed as Bangkok time → ISO (UTC); null when not "YYYY-MM-DDTHH:MM[:SS]". */
+function ltBkInputToISO(v){
+  const k = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(String(v||'').trim());
+  if(!k) return null;
+  const ms = Date.parse(`${k[1]}-${k[2]}-${k[3]}T${k[4]}:${k[5]}:${k[6]||'00'}+07:00`);
+  return isNaN(ms) ? null : new Date(ms).toISOString();
+}
+/* ISO → "YYYY-MM-DDTHH:MM" in Bangkok time for a datetime-local input. */
+function ltIsoToBkInput(iso){ const d = ltBk(iso); return isNaN(d) ? '' : d.toISOString().slice(0,16); }
+
+const LT_FZ_PLATFORMS = ['Shopee','Lazada','TikTok','All'];
+const ltFreezeFor = (list, platform) => (list||[]).filter(w=> w.platform===platform || w.platform==='All');
+/* "⚠︎ Lazada content freeze 8 Oct 19:30–20:30"; across midnight "… 8 Oct 23:30–9 Oct 00:30". Plain text. */
+function ltFreezeText(w){
+  const who = w.platform==='All' ? 'All platforms' : (w.platform||'Lazada');
+  const sameDay = ltDay(w.starts_at)===ltDay(w.ends_at) && ltBk(w.starts_at).getUTCFullYear()===ltBk(w.ends_at).getUTCFullYear();
+  return `⚠︎ ${who} content freeze ${ltBkDT(w.starts_at)}–${sameDay ? ltBkHM(w.ends_at) : ltBkDT(w.ends_at)}`;
+}
+/* Windows touching the Bangkok month. {items, error}: a failure only drops the pills. */
+async function ltLoadFreeze(y, m){
+  const {start, end} = ltMonthRange(y, m);
+  const {data, error} = await db.from('listing_freeze_windows').select('*').lte('starts_at', end).gte('ends_at', start).order('starts_at');
+  if(error) return {items:[], error:error.message || 'listing_freeze_windows failed'};
+  const a = Date.parse(start), b = Date.parse(end);
+  return {items:(data||[]).filter(w=> Date.parse(w.starts_at) <= b && Date.parse(w.ends_at) >= a), error:null};
+}
+function ltLegendHTML(fz){
+  const pills = (fz.items||[]).map(w=>`<span class="freeze"${w.note ? ` title="${esc(w.note)}"` : ''}>${esc(ltFreezeText(w))}</span>`).join('');
+  return `<div class="lt-legend"><span><i class="frame"></i>Frame</span><span><i class="pdp"></i>PDP</span><span><i class="both"></i>PDP+Frame</span>`
+    + `<span>dashed = set · solid = live · faded = done · red ring = SKU overlap</span>${pills}`
+    + `${fz.error ? `<span class="lt-err">Freeze windows not loaded: ${esc(fz.error)}</span>` : ''}</div>`;
+}
+
+/* Excel export: sheet "<Mon YYYY>" = the old slot grid (one row per brand × platform, a 5-column block
+   per campaign in start order, as many blocks as the busiest row needs, at least one); sheet "Log" = one
+   row per setup (the old AWO columns). All dates/times Bangkok. Category stays empty: lt_month has none. */
+const LT_XL_HEAD = ['Category','Brand','Country','Platform','PIC','Note'];
+const LT_XL_BLOCK = ['Start Campaign','Status','Campaign End','Campaign ID','Ticket No.'];
+const LT_XL_LOG = ['Brand','Platform','Type','Campaign Name (in CUSP)','Campaign ID','Start Date','Start Time','End Date','End Time','PIC','Status','Ticket No.','Logged at'];
+const ltByStart = (a,b) => (Date.parse(a.begin_at)||0) - (Date.parse(b.begin_at)||0) || Number(a.cusp_campaign_id||0) - Number(b.cusp_campaign_id||0);
+const ltCountry = rs => { for(const r of rs){ const k = /\[([A-Za-z]{2})\]\s*$/.exec(String(r.cusp_seller||'')); if(k) return k[1].toUpperCase(); } return 'TH'; };
+const ltStLabel = r => LT_STATUS_LABEL[ltRowSt(r)] || r.cusp_state || '';
+function ltExportRows(data, y, m){
+  const rows = ((data && data.rows) || []).slice().sort(ltByStart);
+  const groups = new Map();
+  rows.forEach(r=>{ const k = ltBrandOf(r)+'\u0000'+(r.platform||'Other'); if(!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+  const pIdx = p => { const i = LT_PLATFORMS.indexOf(p); return i<0 ? LT_PLATFORMS.length : i; };
+  const list = [...groups.values()].sort((a,b)=> ltBrandOf(a[0]).localeCompare(ltBrandOf(b[0])) || pIdx(a[0].platform||'Other') - pIdx(b[0].platform||'Other'));
+  const n = Math.max(1, ...list.map(g=>g.length));
+  const header = LT_XL_HEAD.slice();
+  for(let i=0; i<n; i++) header.push(...LT_XL_BLOCK);
+  const overview = [header].concat(list.map(rs=>{
+    const pics = {}; rs.forEach(r=>{ const p = ltPicName(r); if(p) pics[p] = (pics[p]||0)+1; });
+    const pic = Object.keys(pics).reduce((a,k)=> a==null || pics[k]>pics[a] ? k : a, null) || '';
+    const note = ['frame','pdp','both','other'].filter(t=> rs.some(r=>ltRowType(r)===t)).map(t=>LT_TYPE_LABEL[t]).join('/');
+    const out = ['', ltBrandOf(rs[0]), ltCountry(rs), rs[0].platform||'Other', pic, note];
+    for(let i=0; i<n; i++){
+      const r = rs[i];
+      out.push(...(r ? [ltBkDT(r.begin_at), ltStLabel(r), ltBkDT(r.end_at), r.cusp_campaign_id==null ? '' : r.cusp_campaign_id, r.ticket_no||''] : ['','','','','']));
+    }
+    return out;
+  }));
+  const log = [LT_XL_LOG.slice()].concat(rows.map(r=>[ltBrandOf(r), r.platform||'Other', LT_TYPE_LABEL[ltRowType(r)], r.cusp_name||'',
+    r.cusp_campaign_id==null ? '' : r.cusp_campaign_id, ltBkDate(r.begin_at), ltBkHM(r.begin_at), ltBkDate(r.end_at), ltBkHM(r.end_at),
+    ltPicName(r), ltStLabel(r), r.ticket_no||'', r.logged_at ? `${ltBkDate(r.logged_at)} ${ltBkHM(r.logged_at)}` : '']));
+  return {overview, log};
+}
+/* "⇩ Excel": uses what the report page shows for that month, else loads it. */
+async function ltExport(y, m){
+  let data = ltPage && ltPage.y===y && ltPage.m===m ? ltPage.data : null;
+  if(!data){ try{ data = await ltLoadMonth(y, m); }catch(e){ toast('Export failed: '+e.message, true); return; } }
+  const x = ltExportRows(data, y, m);
+  downloadXLSX(xlsxFilename(`Listing Tracker ${ltYM(y, m)}`), x.overview, [{name:'Log', rows:x.log}], `${LT_MONTHS[m-1].slice(0,3)} ${y}`);
+}
+
+/* ---------- Admin → Listing Tracker tab (two hook lines in renderAdmin, part6) ---------- */
+if(typeof ADMIN_HELP==='object') ADMIN_HELP.listing = 'Content-freeze windows shown on the Listing Tracker legend and as an amber mark on that platform\'s day cells. Enter times in Bangkok time (UTC+7). Admins edit these here.';
+const ltCanEditFreeze = () => !!S.me && ['admin','management'].includes(S.me.role);   // matches RLS lfw_write (is_super)
+function ltAdminTabButton(current){
+  return `<button class="tab ${current==='listing'?'active':''}" onclick="adminTab='listing';renderAdmin()">Listing Tracker</button>`;
+}
+/* The app's confirm pattern (a modal, not window.confirm). Resolves true on the OK button only. */
+function ltConfirm(title, body, okLabel){
+  return new Promise(resolve=>{
+    const m = modal(`<div class="modal-head"><h2>${esc(title)}</h2><button class="x" data-no aria-label="Close">✕</button></div>
+      <div class="modal-body"><p class="lt-confirm-p">${esc(body)}</p></div>
+      <div class="modal-foot"><button class="btn btn-ghost" data-no>Cancel</button><button class="btn btn-danger" data-yes>${esc(okLabel)}</button></div>`);
+    m.querySelectorAll('[data-no]').forEach(b=>{ b.onclick = ()=>{ closeModals(); resolve(false); }; });
+    m.querySelector('[data-yes]').onclick = ()=>{ closeModals(); resolve(true); };
+  });
+}
+async function ltRenderAdminTab(B){
+  const _nav = S.nav;
+  B.innerHTML = '<div class="empty">Loading…</div>';
+  const {data, error} = await db.from('listing_freeze_windows').select('*').order('starts_at', {ascending:false});
+  if(navStale(_nav)) return;
+  if(error){ B.innerHTML = `<div class="card empty lt-err">Could not load the freeze windows: ${esc(error.message)}</div>`; return; }
+  const list = data||[], can = ltCanEditFreeze();
+  const opts = v => LT_FZ_PLATFORMS.map(p=>`<option value="${p}"${p===v ? ' selected' : ''}>${p}</option>`).join('');
+  const edit = (w, add) => `<tr ${add ? 'class="lfw-add"' : `data-id="${esc(w.id)}"`}>
+      <td><select data-k="platform" aria-label="Platform">${opts(w.platform||'Lazada')}</select></td>
+      <td><input type="datetime-local" data-k="from" aria-label="From, Bangkok time" value="${esc(ltIsoToBkInput(w.starts_at))}"></td>
+      <td><input type="datetime-local" data-k="to" aria-label="To, Bangkok time" value="${esc(ltIsoToBkInput(w.ends_at))}"></td>
+      <td><input data-k="note" aria-label="Note" placeholder="${add ? 'Note (optional)' : ''}" value="${esc(w.note||'')}"></td>
+      <td class="lfw-acts">${add ? '<button class="btn btn-primary btn-sm" data-act="add">＋ Add</button>'
+        : '<button class="btn btn-ghost btn-sm" data-act="save">Save</button> <button class="btn btn-ghost btn-sm btn-danger-ghost" data-act="del">Delete</button>'}</td></tr>`;
+  const ro = w => `<tr data-id="${esc(w.id)}"><td>${esc(w.platform||'')}</td><td>${esc(ltBkDT(w.starts_at))}</td><td>${esc(ltBkDT(w.ends_at))}</td><td>${esc(w.note||'')}</td><td></td></tr>`;
+  B.innerHTML = `<div class="section-title">Content-freeze windows</div>
+    <p class="hint lt-muted">Shown on the Listing Tracker legend for the month. Times are Bangkok time (UTC+7).${can ? '' : ' Only admin and management can change them.'}</p>
+    <div class="card"><table class="tbl lfw-tbl"><thead><tr><th>Platform</th><th>From</th><th>To</th><th>Note</th><th></th></tr></thead><tbody>
+      ${list.map(w=> can ? edit(w) : ro(w)).join('')}
+      ${!list.length && !can ? '<tr><td colspan="5" class="lt-muted">No freeze windows yet.</td></tr>' : ''}
+      ${can ? edit({}, true) : ''}</tbody></table></div>`;
+  if(!can) return;
+  const again = ()=>{ if(!navStale(_nav) && B.isConnected) ltRenderAdminTab(B); };
+  const read = tr => {
+    const v = k => tr.querySelector(`[data-k="${k}"]`).value;
+    const platform = v('platform'), starts_at = ltBkInputToISO(v('from')), ends_at = ltBkInputToISO(v('to')), note = v('note').trim() || null;
+    if(!LT_FZ_PLATFORMS.includes(platform)){ toast('Pick a platform', true); return null; }
+    if(!starts_at || !ends_at){ toast('Enter From and To (Bangkok time)', true); return null; }
+    if(Date.parse(ends_at) <= Date.parse(starts_at)){ toast('To must be after From', true); return null; }
+    return {platform, starts_at, ends_at, note};
+  };
+  B.querySelectorAll('[data-act]').forEach(btn=>{ btn.onclick = async ()=>{
+    const tr = btn.closest('tr'), id = tr.dataset.id, act = btn.dataset.act;
+    if(act==='del'){
+      if(!(await ltConfirm('Delete this freeze window?', `${ltFreezeText((list.find(w=>w.id===id))||{})}. It disappears from the Listing Tracker legend.`, 'Delete'))) return;
+      if(navStale(_nav)) return;
+      btn.disabled = true;
+      const {error:e} = await db.from('listing_freeze_windows').delete().eq('id', id);
+      if(navStale(_nav)) return;
+      if(e){ btn.disabled = false; return toast(e.message, true); }
+      toast('Freeze window deleted'); return again();
+    }
+    const p = read(tr); if(!p) return;
+    btn.disabled = true;
+    const {error:e} = act==='add' ? await db.from('listing_freeze_windows').insert(p) : await db.from('listing_freeze_windows').update(p).eq('id', id);
+    if(navStale(_nav)) return;
+    if(e){ btn.disabled = false; return toast(e.message, true); }
+    toast(act==='add' ? 'Freeze window added' : 'Freeze window saved'); again();
+  }; });
+}
+
+async function renderListingTracker(sub){
+  const _nav = S.nav;
+  const {y, m} = ltParseYM(sub) || ltBkMonth();
+  setTopbar('Listing Tracker');
+  ltPopClose();
+  const C = $('#content');
+  if(!isStaff()){ C.innerHTML = '<div class="card empty">The Listing Tracker is for staff.</div>'; return; }
+  C.innerHTML = '<div class="empty">Loading…</div>';
+  let data = null, err = null;
+  const [mo, fz] = await Promise.all([ltLoadMonth(y, m).then(d=>({d}), e=>({e})), ltLoadFreeze(y, m).catch(e=>({items:[], error:e.message}))]);
+  data = mo.d || null; err = mo.e || null;
+  if(navStale(_nav)) return;
+  if(err){ C.innerHTML = `<div class="card empty lt-err">Could not load the Listing Tracker: ${esc(err.message)}</div>`; return; }
+  const rows = data.rows, now = Date.now(), freeze = fz.items;
+  const s = ltSummary(rows, y, m, data.noIdTasks, now);
+  ltPage = {data, y, m};
+  const f = LT.filter = {chip:'all', q:'', ...(LT.filter||{})};
+  C.innerHTML = `<div class="lt-page">
+    <div class="page-head"><div><h1>Listing Tracker · ${esc(ltMonthLabel(y,m))}</h1><div class="sub">CUSP campaign setups, logged on their tickets</div></div>
+      <div class="actions"><span class="lt-mnav"><a href="#/listing/${ltYM(y,m,-1)}" aria-label="Previous month" title="Previous month">‹</a><a href="#/listing/${ltYM(y,m,1)}" aria-label="Next month" title="Next month">›</a></span>
+        <button class="btn btn-ghost btn-sm" id="lt-xl">⇩ Excel</button><button class="btn btn-primary btn-sm" id="lt-log">＋ Log a setup</button></div></div>
+    <div class="section-title">This month in one paragraph</div>
+    <div class="card lt-sum"><p class="lt-para">${esc(ltSummaryText(s, y, m))}</p></div>
+    ${ltNumsHTML(s)}
+    ${ltFiltersHTML(f)}
+    ${ltLegendHTML(fz)}
+    <div id="lt-cards">${ltBrandCardsHTML(rows, y, m, f, {noIdTasks:data.noIdTasks, now, freeze})}</div>
+    <div class="lt-two"><section class="lt-box" aria-label="Who set what">${ltPeopleHTML(rows)}</section>
+      <section class="lt-box" aria-label="Activity"><h3>What happened, latest first</h3><p class="hint">Setups, CUSP status changes, overlaps and the nightly check.</p><div id="lt-logbox"><div class="lt-empty">Loading…</div></div></section></div>
+    ${ltFootHTML(data.lastSynced, now)}</div>`;
+  C.querySelector('#lt-xl').onclick = ()=> ltExport(y, m);
+  C.querySelector('#lt-log').onclick = ltPickTicket;
+  const cards = C.querySelector('#lt-cards');
+  const redraw = ()=>{ ltPopClose(); cards.innerHTML = ltBrandCardsHTML(rows, y, m, LT.filter, {noIdTasks:data.noIdTasks, now, freeze}); };
+  const chips = [...C.querySelectorAll('.lt-chip')];
+  chips.forEach(b=>{ b.onclick = ()=>{ LT.filter = {...LT.filter, chip:b.dataset.chip}; chips.forEach(x=>x.setAttribute('aria-pressed', String(x===b))); redraw(); }; });
+  const q = C.querySelector('#lt-q');
+  q.addEventListener('input', ()=>{ LT.filter = {...LT.filter, q:q.value}; redraw(); });
+  cards.addEventListener('click', ltCardsClick);
+  const act = await ltLoadActivity(y, m);
+  if(navStale(_nav)) return;
+  const box = C.querySelector('#lt-logbox'); if(!box) return;
+  box.innerHTML = act.error ? `<div class="lt-err">Could not load the activity: ${esc(act.error)}</div>` : ltLogHTML(act.items, rows);
+}
+
+/* Workspace page hook (part3): the six numbers for this Bangkok month + "Open report",
+   only on a workspace that owns a board with field_config.listing_tracker. */
+async function ltWorkspaceSection(wsId){
+  const _nav = S.nav;
+  if(!isStaff()) return;
+  if(!ltListingBoards().some(p=>p.workspace_id===wsId)) return;
+  const {y, m} = ltBkMonth();
+  let data = null, err = null;
+  try{ data = await ltLoadMonth(y, m); }catch(e){ err = e; }
+  if(navStale(_nav)) return;
+  const s = err ? null : ltSummary(data.rows, y, m, data.noIdTasks, Date.now());
+  const sec = el(`<section class="lt-ws" aria-label="Listing Tracker">
+    <div class="section-title">Listing Tracker · ${esc(ltMonthLabel(y,m))} ${s? `<span class="count">${s.total}</span>`:''}<span class="lt-grow"></span>
+      <button class="btn btn-ghost btn-sm" data-lt-open>Open report</button></div>
+    ${s ? ltNumsHTML(s) : `<div class="lt-err">Could not load the Listing Tracker numbers: ${esc(err.message)}</div>`}</section>`);
+  sec.querySelector('[data-lt-open]').onclick = ()=>{ location.hash = '#/listing'; };
+  const C = $('#content'); const anchor = C.querySelector('.ws-board-directory, .card.empty');
+  if(anchor) anchor.parentNode.insertBefore(sec, anchor); else C.appendChild(sec);
+}
+</script>
