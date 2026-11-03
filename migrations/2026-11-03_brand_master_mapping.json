@@ -1,0 +1,2756 @@
+{
+ "masters": {
+  "111skin": {
+   "name": "111SKIN",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "111Skin",
+    "111SKIN-IN"
+   ],
+   "aliases": [
+    "111SKIN-IN",
+    "111Skin"
+   ],
+   "tasks": 263,
+   "cusp": [
+    [
+     "111SKIN",
+     "TH",
+     "Lazada,Shopee",
+     "Retail",
+     "Beauty"
+    ]
+   ]
+  },
+  "acneaidandspectraban": {
+   "name": "Acne Aid and Spectraban",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Acne Aid and Spectraban-IN",
+    "Acne-Aid and Spectraban (iNova)"
+   ],
+   "aliases": [
+    "Acne Aid and Spectraban-IN",
+    "Acne-Aid and Spectraban (iNova)"
+   ],
+   "tasks": 698,
+   "cusp": [
+    [
+     "Acne Aid and Spectraban",
+     "TH",
+     "Amaze,Lazada,Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "aestura": {
+   "name": "Aestura",
+   "groups": [
+    "Amore"
+   ],
+   "rows": [
+    "Aestura",
+    "AESTURA - Amore"
+   ],
+   "aliases": [
+    "AESTURA - Amore"
+   ],
+   "tasks": 845,
+   "cusp": [
+    [
+     "Aestura",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "alpecin": {
+   "name": "Alpecin",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Alpecin-IN"
+   ],
+   "aliases": [
+    "Alpecin-IN"
+   ],
+   "tasks": 0,
+   "cusp": []
+  },
+  "americantourister": {
+   "name": "American Tourister",
+   "groups": [],
+   "rows": [
+    "Americaan Tourister"
+   ],
+   "aliases": [
+    "Americaan Tourister"
+   ],
+   "tasks": 13,
+   "cusp": [
+    [
+     "American Tourister",
+     "TH",
+     "TikTok",
+     "Service",
+     "Sports/Outdoor"
+    ]
+   ]
+  },
+  "armaniexchange": {
+   "name": "Armani Exchange",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Armani Exchange",
+    "Armani Exchange-CMG"
+   ],
+   "aliases": [
+    "Armani Exchange-CMG"
+   ],
+   "tasks": 369,
+   "cusp": [
+    [
+     "Armani Exchange",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Premium"
+    ]
+   ]
+  },
+  "balmuda": {
+   "name": "Balmuda",
+   "groups": [
+    "PWB"
+   ],
+   "rows": [
+    "Balmuda",
+    "BALMUDA - PWB"
+   ],
+   "aliases": [
+    "BALMUDA - PWB"
+   ],
+   "tasks": 31,
+   "cusp": [
+    [
+     "Balmuda",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Electronics"
+    ]
+   ]
+  },
+  "banilaco": {
+   "name": "Banila Co",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Banila Co",
+    "Banila-CMG"
+   ],
+   "aliases": [
+    "Banila",
+    "Banila-CMG"
+   ],
+   "tasks": 351,
+   "cusp": [
+    [
+     "Banila",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "bose": {
+   "name": "Bose",
+   "groups": [
+    "PWB"
+   ],
+   "rows": [
+    "Bose",
+    "Bose - PWB"
+   ],
+   "aliases": [
+    "Bose - PWB"
+   ],
+   "tasks": 77,
+   "cusp": [
+    [
+     "Bose",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Electronics"
+    ]
+   ]
+  },
+  "brandzale": {
+   "name": "Brandzale",
+   "groups": [],
+   "rows": [
+    "Brandzale"
+   ],
+   "aliases": [],
+   "tasks": 6,
+   "cusp": []
+  },
+  "calvinkleinpvh": {
+   "name": "Calvin Klein PVH",
+   "groups": [
+    "PVH"
+   ],
+   "rows": [
+    "Calvin Klein-MY PVH",
+    "Calvin Klein-SG PVH",
+    "PVH Calvin Klein"
+   ],
+   "aliases": [
+    "Calvin Klein-MY PVH",
+    "Calvin Klein-SG PVH",
+    "PVH Calvin Klein"
+   ],
+   "tasks": 308,
+   "cusp": [
+    [
+     "Calvin Klein PVH",
+     "MY",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Premium"
+    ],
+    [
+     "Calvin Klein PVH",
+     "SG",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Premium"
+    ]
+   ]
+  },
+  "casio": {
+   "name": "Casio",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Casio",
+    "Casio-CMG"
+   ],
+   "aliases": [
+    "Casio-CMG",
+    "casi"
+   ],
+   "tasks": 930,
+   "cusp": [
+    [
+     "Casio",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Fashion Mass"
+    ]
+   ]
+  },
+  "changchoice": {
+   "name": "Chang Choice",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Chang Choice - IN notax"
+   ],
+   "aliases": [
+    "Chang Choice - IN notax"
+   ],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Chang Choice",
+     "TH",
+     "Lazada,Shopee",
+     "Retail",
+     "Electronics"
+    ]
+   ]
+  },
+  "clarins": {
+   "name": "Clarins",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Clarins",
+    "Clarins-CMG"
+   ],
+   "aliases": [
+    "Clarins-CMG"
+   ],
+   "tasks": 404,
+   "cusp": [
+    [
+     "Clarins",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "cledepeau": {
+   "name": "Cle de Peau",
+   "groups": [
+    "CPB"
+   ],
+   "rows": [
+    "Cle de Peau - CPB"
+   ],
+   "aliases": [
+    "Cle de Peau - CPB"
+   ],
+   "tasks": 0,
+   "cusp": []
+  },
+  "cosmedix": {
+   "name": "CosMedix",
+   "groups": [],
+   "rows": [
+    "Cosmedix",
+    "CosMedix (Lazada)"
+   ],
+   "aliases": [
+    "CosMedix (Lazada)",
+    "Cosmedix"
+   ],
+   "tasks": 0,
+   "cusp": []
+  },
+  "creabeauty": {
+   "name": "CREA Beauty",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "CREA Beauty-IN"
+   ],
+   "aliases": [
+    "CREA Beauty-IN",
+    "Crea Beauty"
+   ],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Crea Beauty",
+     "TH",
+     "TikTok",
+     "Retail",
+     "Beauty"
+    ]
+   ]
+  },
+  "crocs": {
+   "name": "Crocs",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Crocs",
+    "Crocs-CMG"
+   ],
+   "aliases": [
+    "Crocs-CMG"
+   ],
+   "tasks": 3104,
+   "cusp": [
+    [
+     "Crocs",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Fashion Mass"
+    ]
+   ]
+  },
+  "decathlon": {
+   "name": "Decathlon",
+   "groups": [],
+   "rows": [
+    "Decathlon",
+    "Decathlon Thailand"
+   ],
+   "aliases": [
+    "Decathlon Thailand"
+   ],
+   "tasks": 212,
+   "cusp": [
+    [
+     "Decathlon",
+     "TH",
+     "Shopee",
+     "Service",
+     "Fashion Mass"
+    ]
+   ]
+  },
+  "dettolwashingmachinecleaner": {
+   "name": "Dettol Washing Machine Cleaner",
+   "groups": [
+    "Reckitt"
+   ],
+   "rows": [
+    "Dettol Washing Machine Cleaner-IN"
+   ],
+   "aliases": [
+    "Dettol WMC-RB",
+    "Dettol Washing Machine Cleaner-IN",
+    "Reckitt - Dettol Washing Machine Cleaner"
+   ],
+   "tasks": 63,
+   "cusp": [
+    [
+     "Reckitt - Dettol Washing Machine Cleaner",
+     "TH",
+     "TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "dettolandhygiene": {
+   "name": "Dettol & Hygiene",
+   "groups": [
+    "Reckitt"
+   ],
+   "rows": [
+    "Dettol-IN"
+   ],
+   "aliases": [
+    "Dettol-IN",
+    "Dettol-RB",
+    "RB Dettol & Hygiene",
+    "Reckitt - Dettol and Hygiene"
+   ],
+   "tasks": 544,
+   "cusp": [
+    [
+     "Reckitt - Dettol and Hygiene",
+     "TH",
+     "TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "dremel": {
+   "name": "Dremel",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Dremel Thailand-IN"
+   ],
+   "aliases": [
+    "Dremel Thailand-IN"
+   ],
+   "tasks": 22,
+   "cusp": [
+    [
+     "Dremel",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Retail",
+     "Electronics"
+    ]
+   ]
+  },
+  "durex": {
+   "name": "Durex",
+   "groups": [
+    "Reckitt"
+   ],
+   "rows": [
+    "Durex-IN",
+    "RB Durex"
+   ],
+   "aliases": [
+    "Durex-IN",
+    "Durex-RB",
+    "RB Durex",
+    "Reckitt - Durex"
+   ],
+   "tasks": 138,
+   "cusp": [
+    [
+     "Reckitt - Durex",
+     "TH",
+     "Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "enfa": {
+   "name": "Enfa",
+   "groups": [
+    "Reckitt"
+   ],
+   "rows": [
+    "Enfa"
+   ],
+   "aliases": [
+    "Reckitt - Enfa"
+   ],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Reckitt - Enfa",
+     "TH",
+     "Shopify",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "etude": {
+   "name": "Etude",
+   "groups": [
+    "Amore"
+   ],
+   "rows": [
+    "Etude",
+    "Etude - Amore"
+   ],
+   "aliases": [
+    "Etude - Amore"
+   ],
+   "tasks": 329,
+   "cusp": [
+    [
+     "Etude",
+     "TH",
+     "AWARENESS,Lazada,Shopee,TikTok",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "fitflop": {
+   "name": "FitFlop",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "FitFlop - CMG"
+   ],
+   "aliases": [
+    "Fit Flop",
+    "FitFlop - CMG",
+    "Fitflop"
+   ],
+   "tasks": 1564,
+   "cusp": [
+    [
+     "FitFlop",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "DataOnly",
+     "Fashion Mass"
+    ]
+   ]
+  },
+  "g2000": {
+   "name": "G2000",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "G2000",
+    "G2000 - CMG"
+   ],
+   "aliases": [
+    "G2000 - CMG"
+   ],
+   "tasks": 1034,
+   "cusp": [
+    [
+     "G2000",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Mass"
+    ]
+   ]
+  },
+  "gq": {
+   "name": "GQ",
+   "groups": [],
+   "rows": [
+    "GQ"
+   ],
+   "aliases": [],
+   "tasks": 14,
+   "cusp": []
+  },
+  "guess": {
+   "name": "Guess",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Guess",
+    "Guess-CMG TH"
+   ],
+   "aliases": [
+    "GUESS",
+    "Guess-CMG TH"
+   ],
+   "tasks": 1395,
+   "cusp": [
+    [
+     "Guess",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Mass"
+    ]
+   ]
+  },
+  "hasbro": {
+   "name": "Hasbro",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Hasbro-IN"
+   ],
+   "aliases": [
+    "Hasbro-IN"
+   ],
+   "tasks": 0,
+   "cusp": []
+  },
+  "healthandlove": {
+   "name": "Health and Love",
+   "groups": [],
+   "rows": [
+    "HealthAndLove"
+   ],
+   "aliases": [
+    "HealthAndLove"
+   ],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Health and Love",
+     "TH",
+     "-",
+     "Retail",
+     "Beauty"
+    ]
+   ]
+  },
+  "hera": {
+   "name": "Hera",
+   "groups": [
+    "Amore"
+   ],
+   "rows": [
+    "Hera",
+    "HERA - Amore"
+   ],
+   "aliases": [
+    "HERA - Amore"
+   ],
+   "tasks": 278,
+   "cusp": [
+    [
+     "Hera",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "hills": {
+   "name": "Hill's",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Hill's-IN",
+    "Hills' Pet"
+   ],
+   "aliases": [
+    "Hill's-IN",
+    "Hills",
+    "Hills' Pet"
+   ],
+   "tasks": 460,
+   "cusp": [
+    [
+     "Hills",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "hushpuppies": {
+   "name": "Hush Puppies",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Hush Puppies",
+    "Hush Puppies - CMG"
+   ],
+   "aliases": [
+    "Hush Puppies - CMG"
+   ],
+   "tasks": 567,
+   "cusp": [
+    [
+     "Hush Puppies",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Mass"
+    ]
+   ]
+  },
+  "innisfree": {
+   "name": "Innisfree",
+   "groups": [
+    "Amore"
+   ],
+   "rows": [
+    "Innisfree",
+    "innisfree - Amore"
+   ],
+   "aliases": [
+    "innisfree - Amore"
+   ],
+   "tasks": 477,
+   "cusp": [
+    [
+     "Innisfree",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "interpharma": {
+   "name": "Interpharma",
+   "groups": [],
+   "rows": [
+    "Interpharma"
+   ],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Interpharma",
+     "TH",
+     "TikTok",
+     "Marketing",
+     "Beauty"
+    ]
+   ]
+  },
+  "jdeworldofcoffee": {
+   "name": "JDE World Of Coffee",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "JDE World Of Coffee",
+    "JDE-IN"
+   ],
+   "aliases": [
+    "JDE-IN"
+   ],
+   "tasks": 178,
+   "cusp": [
+    [
+     "JDE World Of Coffee",
+     "TH",
+     "Lazada,Shopee",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "jockey": {
+   "name": "Jockey",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Jockey",
+    "Jockey - CMG"
+   ],
+   "aliases": [
+    "Jockey - CMG"
+   ],
+   "tasks": 286,
+   "cusp": [
+    [
+     "Jockey",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Mass"
+    ]
+   ]
+  },
+  "jungsaemmool": {
+   "name": "Jungsaemmool",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Jungsaemmool (JSM)",
+    "JUNGSAEMMOOL-CMG"
+   ],
+   "aliases": [
+    "JUNGSAEMMOOL-CMG",
+    "Jungsaemmool (JSM)"
+   ],
+   "tasks": 773,
+   "cusp": [
+    [
+     "Jungsaemmool",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "kiko": {
+   "name": "KIKO Milano",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "KIKO - CMG",
+    "Kiko Milano"
+   ],
+   "aliases": [
+    "KIKO",
+    "KIKO - CMG",
+    "Kiko Milano"
+   ],
+   "tasks": 588,
+   "cusp": [
+    [
+     "KIKO",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "kitchenaid": {
+   "name": "KitchenAid",
+   "groups": [
+    "PWB"
+   ],
+   "rows": [
+    "Kitchenaid",
+    "KitchenAid - PWB"
+   ],
+   "aliases": [
+    "Kitchen Aid",
+    "KitchenAid - PWB",
+    "Kitchenaid"
+   ],
+   "tasks": 11,
+   "cusp": [
+    [
+     "KitchenAid",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Electronics"
+    ]
+   ]
+  },
+  "lacoste": {
+   "name": "Lacoste",
+   "groups": [],
+   "rows": [
+    "Lacoste"
+   ],
+   "aliases": [],
+   "tasks": 19,
+   "cusp": [
+    [
+     "Lacoste",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion"
+    ]
+   ]
+  },
+  "laneige": {
+   "name": "Laneige",
+   "groups": [
+    "Amore"
+   ],
+   "rows": [
+    "Laneige",
+    "Laneige - Amore"
+   ],
+   "aliases": [
+    "Laneige - Amore"
+   ],
+   "tasks": 569,
+   "cusp": [
+    [
+     "Laneige",
+     "TH",
+     "AWARENESS,Lazada,Shopee,TikTok",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "lee": {
+   "name": "Lee",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Lee",
+    "LEE - CMG"
+   ],
+   "aliases": [
+    "LEE",
+    "LEE - CMG",
+    "Lee - CMG"
+   ],
+   "tasks": 610,
+   "cusp": [
+    [
+     "Lee",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Mass"
+    ]
+   ]
+  },
+  "locknlock": {
+   "name": "LocknLock",
+   "groups": [],
+   "rows": [
+    "LocknLock"
+   ],
+   "aliases": [],
+   "tasks": 11,
+   "cusp": [
+    [
+     "LocknLock",
+     "TH",
+     "TikTok",
+     "Content",
+     "Home and Appliances"
+    ]
+   ]
+  },
+  "malingoetz": {
+   "name": "MALIN+GOETZ",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "MALIN+GOETZ-IN"
+   ],
+   "aliases": [
+    "MALIN+GOETZ-IN"
+   ],
+   "tasks": 0,
+   "cusp": []
+  },
+  "mariobadescu": {
+   "name": "Mario Badescu",
+   "groups": [
+    "CREA",
+    "IN"
+   ],
+   "rows": [
+    "Mario Badescu - IN",
+    "Mario Badescu-CREA"
+   ],
+   "aliases": [
+    "Mario Badescu - IN",
+    "Mario Badescu-CREA"
+   ],
+   "tasks": 0,
+   "cusp": []
+  },
+  "mars": {
+   "name": "Mars",
+   "groups": [],
+   "rows": [
+    "Mars"
+   ],
+   "aliases": [],
+   "tasks": 866,
+   "cusp": [
+    [
+     "Mars",
+     "TH",
+     "Amaze,Lazada,Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "megawecare": {
+   "name": "MEGA We Care",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "MEGA We Care-IN",
+    "Mega wecare"
+   ],
+   "aliases": [
+    "MEGA We Care-IN",
+    "Mega Wecare",
+    "Mega wecare"
+   ],
+   "tasks": 325,
+   "cusp": [
+    [
+     "MEGA We Care",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "miloandnestlebreakfastcereals": {
+   "name": "Milo & Nestle Breakfast Cereals",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Milo & Nestle Breakfast Cereals - IN"
+   ],
+   "aliases": [
+    "Milo & Nestle Breakfast Cereals - IN"
+   ],
+   "tasks": 1,
+   "cusp": []
+  },
+  "mlb": {
+   "name": "MLB",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "MLB",
+    "MLB - CMG"
+   ],
+   "aliases": [
+    "MLB - CMG"
+   ],
+   "tasks": 502,
+   "cusp": [
+    [
+     "MLB",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Premium"
+    ]
+   ]
+  },
+  "mondelez": {
+   "name": "Mondelez",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Mondelez-IN"
+   ],
+   "aliases": [
+    "Mondelez-IN"
+   ],
+   "tasks": 323,
+   "cusp": [
+    [
+     "Mondelez",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "mustela": {
+   "name": "Mustela",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Mustela",
+    "Mustela-IN"
+   ],
+   "aliases": [
+    "Mustela-IN"
+   ],
+   "tasks": 217,
+   "cusp": [
+    [
+     "Mustela",
+     "TH",
+     "Lazada,Shopee",
+     "Retail",
+     "Beauty"
+    ]
+   ]
+  },
+  "nars": {
+   "name": "NARS",
+   "groups": [
+    "CPB"
+   ],
+   "rows": [
+    "NARS - CPB"
+   ],
+   "aliases": [
+    "NARS - CPB"
+   ],
+   "tasks": 10,
+   "cusp": []
+  },
+  "nescafedolcegusto": {
+   "name": "Nescafe Dolce Gusto",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Nescafe Dolce Gusto (NDG)",
+    "Nescafe Dolce Gusto-IN"
+   ],
+   "aliases": [
+    "Nescafe Dolce Gusto (NDG)",
+    "Nescafe Dolce Gusto-IN",
+    "Nestle Dolce Gusto"
+   ],
+   "tasks": 1128,
+   "cusp": [
+    [
+     "Nestle Dolce Gusto",
+     "TH",
+     "Amaze,Lazada,Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "nescafe": {
+   "name": "Nescafe",
+   "groups": [],
+   "rows": [
+    "Nescafe Official Store"
+   ],
+   "aliases": [
+    "NesCafe",
+    "Nescafe Official Store"
+   ],
+   "tasks": 160,
+   "cusp": [
+    [
+     "NesCafe",
+     "TH",
+     "Lazada",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "nespresso": {
+   "name": "Nespresso",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Nespresso",
+    "Nespresso-IN"
+   ],
+   "aliases": [
+    "Nespresso-IN"
+   ],
+   "tasks": 170,
+   "cusp": [
+    [
+     "Nespresso",
+     "TH",
+     "TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "nestlefoodandbeverages": {
+   "name": "Nestle Food & Beverages",
+   "groups": [],
+   "rows": [
+    "Nestle Food & Beverages Official"
+   ],
+   "aliases": [
+    "Nestle F&B",
+    "Nestle Food & Beverages Official"
+   ],
+   "tasks": 325,
+   "cusp": [
+    [
+     "Nestle Food & Beverages",
+     "TH",
+     "Amaze,Lazada,Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "nestlehealthscience": {
+   "name": "Nestle Health Science",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Nestle Health Science",
+    "Nestle Health Science - IN"
+   ],
+   "aliases": [
+    "Nestle Health Science - IN"
+   ],
+   "tasks": 258,
+   "cusp": [
+    [
+     "Nestle Health Science",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "nestlepetcare": {
+   "name": "Nestle PetCare",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Nestle Pet Care",
+    "Nestle PetCare-IN"
+   ],
+   "aliases": [
+    "Nestle Pet Care",
+    "Nestle PetCare-IN"
+   ],
+   "tasks": 707,
+   "cusp": [
+    [
+     "Nestle PetCare",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "nestleprofessional": {
+   "name": "Nestle Professional",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Nestle Professional",
+    "Nestle Professional - IN"
+   ],
+   "aliases": [
+    "Nestle Professional - IN"
+   ],
+   "tasks": 205,
+   "cusp": [
+    [
+     "Nestle Professional",
+     "TH",
+     "Lazada,Outlier,Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "organicground": {
+   "name": "Organic Ground",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Organic Ground"
+   ],
+   "aliases": [
+    "Organic ground"
+   ],
+   "tasks": 95,
+   "cusp": [
+    [
+     "Organic Ground",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Retail",
+     "Beauty"
+    ]
+   ]
+  },
+  "panasonic": {
+   "name": "Panasonic",
+   "groups": [],
+   "rows": [
+    "Panasonic"
+   ],
+   "aliases": [],
+   "tasks": 7,
+   "cusp": []
+  },
+  "paulsmith": {
+   "name": "Paul Smith",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Paul Smith",
+    "Paul Smith-CMG"
+   ],
+   "aliases": [
+    "Paul Smith-CMG"
+   ],
+   "tasks": 228,
+   "cusp": [
+    [
+     "Paul Smith",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Premium"
+    ]
+   ]
+  },
+  "pedigreeandwhiskas": {
+   "name": "Pedigree & Whiskas",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Pedigree & Whiskas-IN"
+   ],
+   "aliases": [
+    "Pedigree & Whiskas-IN"
+   ],
+   "tasks": 223,
+   "cusp": []
+  },
+  "plantur21": {
+   "name": "Plantur 21",
+   "groups": [],
+   "rows": [
+    "Plantur 21"
+   ],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": []
+  },
+  "poloralphlauren": {
+   "name": "Polo Ralph Lauren",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Polo Ralph Lauren-CMG"
+   ],
+   "aliases": [
+    "Polo",
+    "Polo Ralph Lauren-CMG"
+   ],
+   "tasks": 469,
+   "cusp": [
+    [
+     "Polo Ralph Lauren",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Premium"
+    ]
+   ]
+  },
+  "provamed": {
+   "name": "Provamed",
+   "groups": [],
+   "rows": [
+    "Provamed"
+   ],
+   "aliases": [],
+   "tasks": 19,
+   "cusp": []
+  },
+  "dettolpersonalwash": {
+   "name": "Dettol Personal Wash",
+   "groups": [
+    "Reckitt"
+   ],
+   "rows": [
+    "RB Personal Wash"
+   ],
+   "aliases": [
+    "Personal Wash-RB",
+    "RB Personal Wash",
+    "Reckitt - Dettol Personal Wash"
+   ],
+   "tasks": 3,
+   "cusp": [
+    [
+     "Reckitt - Dettol Personal Wash",
+     "TH",
+     "Shopee",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "veet": {
+   "name": "Veet",
+   "groups": [
+    "Reckitt"
+   ],
+   "rows": [
+    "RB Veet",
+    "Veet - IN"
+   ],
+   "aliases": [
+    "RB Veet",
+    "Reckitt - Veet",
+    "Veet - IN",
+    "Veet-RB"
+   ],
+   "tasks": 20,
+   "cusp": [
+    [
+     "Reckitt - Veet",
+     "TH",
+     "Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "dettolwellness": {
+   "name": "Dettol Wellness",
+   "groups": [
+    "Reckitt"
+   ],
+   "rows": [
+    "RB Wellness"
+   ],
+   "aliases": [
+    "RB Wellness",
+    "Reckitt - Dettol Wellness",
+    "Wellness Shop-RB"
+   ],
+   "tasks": 2,
+   "cusp": [
+    [
+     "Reckitt - Dettol Wellness",
+     "TH",
+     "Shopee",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "remington": {
+   "name": "Remington",
+   "groups": [
+    "PWB"
+   ],
+   "rows": [
+    "Remington",
+    "REMINGTON - PWB"
+   ],
+   "aliases": [
+    "REMINGTON - PWB"
+   ],
+   "tasks": 35,
+   "cusp": [
+    [
+     "Remington",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Electronics"
+    ]
+   ]
+  },
+  "revlon": {
+   "name": "Revlon",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Revlon",
+    "Revlon-IN"
+   ],
+   "aliases": [
+    "Revlon-IN"
+   ],
+   "tasks": 230,
+   "cusp": [
+    [
+     "Revlon",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Retail",
+     "Beauty"
+    ]
+   ]
+  },
+  "rinbee": {
+   "name": "Rinbee",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Rinbee",
+    "Rinbee-IN"
+   ],
+   "aliases": [
+    "Rinbee-IN"
+   ],
+   "tasks": 35,
+   "cusp": [
+    [
+     "Rinbee",
+     "TH",
+     "Shopee,TikTok",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "sermsuk": {
+   "name": "Sermsuk",
+   "groups": [],
+   "rows": [
+    "Sermsuk"
+   ],
+   "aliases": [],
+   "tasks": 1,
+   "cusp": []
+  },
+  "sharkninja": {
+   "name": "SharkNinja",
+   "groups": [
+    "PWB"
+   ],
+   "rows": [
+    "SharkNinja",
+    "SharkNinja - PWB"
+   ],
+   "aliases": [
+    "Shark Ninja",
+    "SharkNinja - PWB"
+   ],
+   "tasks": 190,
+   "cusp": [
+    [
+     "Shark Ninja",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Home and Appliances"
+    ]
+   ]
+  },
+  "shiseido": {
+   "name": "Shiseido",
+   "groups": [
+    "CPB"
+   ],
+   "rows": [
+    "Shiseido - CPB"
+   ],
+   "aliases": [
+    "Shiseido - CPB"
+   ],
+   "tasks": 11,
+   "cusp": []
+  },
+  "shopatnestle": {
+   "name": "Shop at Nestle",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Shop at Nestle-IN"
+   ],
+   "aliases": [
+    "Shop at Nestle-IN"
+   ],
+   "tasks": 73,
+   "cusp": []
+  },
+  "sisley": {
+   "name": "Sisley",
+   "groups": [
+    "PFC"
+   ],
+   "rows": [
+    "sisley",
+    "Sisley - PFC"
+   ],
+   "aliases": [
+    "Sisley - PFC",
+    "sisley"
+   ],
+   "tasks": 36,
+   "cusp": [
+    [
+     "Sisley",
+     "TH",
+     "Lazada",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "sleephappy": {
+   "name": "SleepHappy",
+   "groups": [],
+   "rows": [
+    "SleepHappy"
+   ],
+   "aliases": [],
+   "tasks": 3,
+   "cusp": []
+  },
+  "stiebeleltron": {
+   "name": "Stiebel Eltron",
+   "groups": [],
+   "rows": [
+    "Stiebel Eltron",
+    "STIEBEL ELTRON TH"
+   ],
+   "aliases": [
+    "STIEBEL ELTRON TH"
+   ],
+   "tasks": 54,
+   "cusp": [
+    [
+     "Stiebel Eltron",
+     "TH",
+     "Line,TikTok",
+     "Retail",
+     "Home and Appliances"
+    ]
+   ]
+  },
+  "sulwhasoo": {
+   "name": "Sulwhasoo",
+   "groups": [
+    "Amore"
+   ],
+   "rows": [
+    "Sulhwasoo - Amore",
+    "Sulwhasoo"
+   ],
+   "aliases": [
+    "Sulhwasoo - Amore"
+   ],
+   "tasks": 486,
+   "cusp": [
+    [
+     "Sulwhasoo",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "three": {
+   "name": "Three",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Three",
+    "THREE - CMG"
+   ],
+   "aliases": [
+    "THREE - CMG"
+   ],
+   "tasks": 270,
+   "cusp": [
+    [
+     "Three",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "tinder": {
+   "name": "Tinder",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "Tinder",
+    "Tinder-IN"
+   ],
+   "aliases": [
+    "Tinder-IN",
+    "Tinders"
+   ],
+   "tasks": 51,
+   "cusp": [
+    [
+     "Tinder",
+     "TH",
+     "Lazada,Shopee",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "tommyhilfiger": {
+   "name": "Tommy Hilfiger",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Tommy Hilfiger",
+    "TOMMY-CMG"
+   ],
+   "aliases": [
+    "TOMMY-CMG"
+   ],
+   "tasks": 799,
+   "cusp": [
+    [
+     "Tommy Hilfiger",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Premium"
+    ]
+   ]
+  },
+  "tommyhilfigerpvh": {
+   "name": "Tommy Hilfiger PVH",
+   "groups": [
+    "PVH"
+   ],
+   "rows": [
+    "Tommy Hilfiger-MY PVH",
+    "Tommy Hilfiger-SG PVH"
+   ],
+   "aliases": [
+    "PVH Tommy Hilfiger",
+    "Tommy Hilfiger-MY PVH",
+    "Tommy Hilfiger-SG PVH",
+    "Tommy PVH"
+   ],
+   "tasks": 128,
+   "cusp": [
+    [
+     "Tommy Hilfiger PVH",
+     "SG",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Premium"
+    ],
+    [
+     "Tommy Hilfiger PVH",
+     "MY",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Premium"
+    ]
+   ]
+  },
+  "ultimaii": {
+   "name": "Ultima II",
+   "groups": [
+    "IN"
+   ],
+   "rows": [
+    "ULTIMA II-IN",
+    "Ultima ll"
+   ],
+   "aliases": [
+    "ULTIMA II-IN",
+    "Ultima ll"
+   ],
+   "tasks": 133,
+   "cusp": [
+    [
+     "Ultima II",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Retail",
+     "Beauty"
+    ]
+   ]
+  },
+  "wrangler": {
+   "name": "Wrangler",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [
+    "Wrangler - CMG"
+   ],
+   "aliases": [
+    "Wrangler - CMG"
+   ],
+   "tasks": 570,
+   "cusp": [
+    [
+     "Wrangler",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Fashion Mass"
+    ]
+   ]
+  },
+  "amuse": {
+   "name": "Amuse",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Amuse",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "arencia": {
+   "name": "Arencia",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Arencia",
+     "TH",
+     "TikTok",
+     "Marketing",
+     "Beauty"
+    ]
+   ]
+  },
+  "aveda": {
+   "name": "Aveda",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 3,
+   "cusp": [
+    [
+     "Aveda",
+     "TH",
+     "Lazada,Shopee",
+     "Service",
+     "FMCG"
+    ]
+   ]
+  },
+  "beautytheory": {
+   "name": "Beauty Theory",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Beauty Theory",
+     "TH",
+     "Lazada,Shopee,Shopify",
+     "Retail",
+     "Beauty"
+    ]
+   ]
+  },
+  "calvinklein": {
+   "name": "Calvin Klein",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [],
+   "aliases": [
+    "Calvin Klein-CMG"
+   ],
+   "tasks": 272,
+   "cusp": [
+    [
+     "Calvin Klein",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "DataOnly",
+     "Fashion Premium"
+    ]
+   ]
+  },
+  "canmake": {
+   "name": "Canmake",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 14,
+   "cusp": [
+    [
+     "Canmake",
+     "TH",
+     "Shopee,TikTok",
+     "Marketing",
+     "Beauty"
+    ]
+   ]
+  },
+  "casiocalculator": {
+   "name": "Casio Calculator",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Casio Calculator",
+     "TH",
+     "Lazada,Shopee",
+     "DataOnly",
+     "Electronics"
+    ]
+   ]
+  },
+  "casiomusic": {
+   "name": "Casio Music",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Casio Music",
+     "TH",
+     "Lazada,Shopee",
+     "DataOnly",
+     "Electronics"
+    ]
+   ]
+  },
+  "certainty": {
+   "name": "Certainty",
+   "groups": [],
+   "rows": [],
+   "aliases": [
+    "Certainty Thailand",
+    "DSG Certainty"
+   ],
+   "tasks": 7,
+   "cusp": [
+    [
+     "Certainty Thailand",
+     "TH",
+     "TikTok",
+     "Content",
+     "FMCG"
+    ]
+   ]
+  },
+  "dailybeauty": {
+   "name": "Daily Beauty",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Daily Beauty",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Service",
+     "Beauty"
+    ]
+   ]
+  },
+  "dyson": {
+   "name": "Dyson",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Dyson",
+     "TH",
+     "AWARENESS,Lazada,Shopee",
+     "DataOnly",
+     "Home and Appliances"
+    ]
+   ]
+  },
+  "garmin": {
+   "name": "Garmin",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Garmin",
+     "TH",
+     "AWARENESS,Lazada,Shopee",
+     "Service",
+     "Fashion"
+    ]
+   ]
+  },
+  "isntree": {
+   "name": "ISNtree",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "ISNtree",
+     "TH",
+     "Lazada,Shopee",
+     "Marketing",
+     "Beauty"
+    ]
+   ]
+  },
+  "irisohyama": {
+   "name": "Iris Ohyama",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Iris Ohyama",
+     "TH",
+     "TikTok",
+     "DataOnly",
+     "FMCG"
+    ]
+   ]
+  },
+  "johnhenry": {
+   "name": "John Henry",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "John Henry",
+     "TH",
+     "Lazada,Shopee",
+     "DataOnly",
+     "Fashion"
+    ]
+   ]
+  },
+  "kohler": {
+   "name": "Kohler",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Kohler",
+     "TH",
+     "TikTok",
+     "DataOnly",
+     "Home and Appliances"
+    ]
+   ]
+  },
+  "lululun": {
+   "name": "Lululun",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Lululun",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "DataOnly",
+     "Beauty"
+    ]
+   ]
+  },
+  "mcjsports": {
+   "name": "MCJ Sports",
+   "groups": [],
+   "rows": [],
+   "aliases": [
+    "MCJ Sport"
+   ],
+   "tasks": 9,
+   "cusp": [
+    [
+     "MCJ Sports",
+     "TH",
+     "TikTok",
+     "Content",
+     "FMCG"
+    ]
+   ]
+  },
+  "neocal": {
+   "name": "Neo Cal",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Neo Cal",
+     "TH",
+     "Lazada,Shopee",
+     "DataOnly",
+     "Electronics"
+    ]
+   ]
+  },
+  "dettollaundry": {
+   "name": "Dettol Laundry",
+   "groups": [
+    "Reckitt"
+   ],
+   "rows": [],
+   "aliases": [
+    "Laundry Essential-Dettol-RB",
+    "Reckitt - Dettol Laundry"
+   ],
+   "tasks": 1,
+   "cusp": [
+    [
+     "Reckitt - Dettol Laundry",
+     "TH",
+     "Shopee",
+     "Retail",
+     "FMCG"
+    ]
+   ]
+  },
+  "smib": {
+   "name": "SMIB",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "SMIB",
+     "TH",
+     "Lazada,Shopee",
+     "Marketing",
+     "Beauty"
+    ]
+   ]
+  },
+  "shaper": {
+   "name": "Shaper",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Shaper",
+     "TH",
+     "Lazada,Shopee",
+     "DataOnly",
+     "Home and Appliances"
+    ]
+   ]
+  },
+  "suntory": {
+   "name": "Suntory",
+   "groups": [],
+   "rows": [],
+   "aliases": [
+    "Suntory MRP"
+   ],
+   "tasks": 14,
+   "cusp": [
+    [
+     "Suntory MRP",
+     "TH",
+     "Lazada",
+     "Marketing",
+     "FMCG"
+    ]
+   ]
+  },
+  "tanita": {
+   "name": "Tanita",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Tanita",
+     "TH",
+     "Lazada,Shopee",
+     "DataOnly",
+     "Home and Appliances"
+    ]
+   ]
+  },
+  "torriden": {
+   "name": "Torriden",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 12,
+   "cusp": [
+    [
+     "Torriden",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Marketing",
+     "Beauty"
+    ]
+   ]
+  },
+  "veldent": {
+   "name": "Veldent",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Veldent",
+     "TH",
+     "Lazada,Shopee,TikTok",
+     "Marketing",
+     "Beauty"
+    ]
+   ]
+  },
+  "vistra": {
+   "name": "Vistra",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 27,
+   "cusp": [
+    [
+     "Vistra",
+     "TH",
+     "Lazada,Shopee",
+     "Marketing",
+     "Beauty"
+    ]
+   ]
+  },
+  "wakemake": {
+   "name": "Wakemake",
+   "groups": [],
+   "rows": [],
+   "aliases": [],
+   "tasks": 0,
+   "cusp": [
+    [
+     "Wakemake",
+     "TH",
+     "TikTok",
+     "Marketing",
+     "Beauty"
+    ]
+   ]
+  },
+  "fila": {
+   "name": "Fila",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [],
+   "aliases": [
+    "Fila-CMG"
+   ],
+   "tasks": 257,
+   "cusp": [],
+   "new": true
+  },
+  "heydude": {
+   "name": "HeyDude",
+   "groups": [
+    "CMG"
+   ],
+   "rows": [],
+   "aliases": [
+    "Hey Dude",
+    "Heydude",
+    "Heydude - CMG"
+   ],
+   "tasks": 45,
+   "cusp": [],
+   "new": true
+  },
+  "unileverhotpro": {
+   "name": "Unilever HotPro",
+   "groups": [],
+   "rows": [],
+   "aliases": [
+    "Unilever - Hot Pro",
+    "Unilever - HotPro"
+   ],
+   "tasks": 23,
+   "cusp": [],
+   "new": true
+  }
+ },
+ "vmap": {
+  "111Skin": "111SKIN",
+  "111SKIN-IN": "111SKIN",
+  "Acne Aid and Spectraban": "Acne Aid and Spectraban",
+  "Acne Aid and Spectraban-IN": "Acne Aid and Spectraban",
+  "Acne-Aid and Spectraban (iNova)": "Acne Aid and Spectraban",
+  "Aestura": "Aestura",
+  "AESTURA - Amore": "Aestura",
+  "Americaan Tourister": "American Tourister",
+  "Armani Exchange": "Armani Exchange",
+  "Armani Exchange-CMG": "Armani Exchange",
+  "Aveda": "Aveda",
+  "Balmuda": "Balmuda",
+  "BALMUDA - PWB": "Balmuda",
+  "Banila": "Banila Co",
+  "Banila Co": "Banila Co",
+  "Banila-CMG": "Banila Co",
+  "Bose": "Bose",
+  "Bose - PWB": "Bose",
+  "Brandzale": "Brandzale",
+  "Calvin Klein": "Calvin Klein",
+  "Calvin Klein PVH": "Calvin Klein PVH",
+  "Calvin Klein-CMG": "Calvin Klein",
+  "Calvin Klein-MY PVH": "Calvin Klein PVH",
+  "Calvin Klein-SG PVH": "Calvin Klein PVH",
+  "Canmake": "Canmake",
+  "Casio": "Casio",
+  "Casio-CMG": "Casio",
+  "casi": "Casio",
+  "Clarins": "Clarins",
+  "Clarins-CMG": "Clarins",
+  "Crocs": "Crocs",
+  "Crocs-CMG": "Crocs",
+  "Decathlon": "Decathlon",
+  "Decathlon Thailand": "Decathlon",
+  "Dettol Washing Machine Cleaner-IN": "Dettol Washing Machine Cleaner",
+  "Dettol WMC-RB": "Dettol Washing Machine Cleaner",
+  "Dettol-IN": "Dettol & Hygiene",
+  "Dettol-RB": "Dettol & Hygiene",
+  "Dremel": "Dremel",
+  "Dremel Thailand-IN": "Dremel",
+  "DSG Certainty": "Certainty",
+  "Durex-IN": "Durex",
+  "Durex-RB": "Durex",
+  "Etude": "Etude",
+  "Etude - Amore": "Etude",
+  "Fila": "Fila",
+  "Fila-CMG": "Fila",
+  "Fit Flop": "FitFlop",
+  "Fitflop": "FitFlop",
+  "FitFlop": "FitFlop",
+  "FitFlop - CMG": "FitFlop",
+  "G2000": "G2000",
+  "G2000 - CMG": "G2000",
+  "GQ": "GQ",
+  "Guess": "Guess",
+  "GUESS": "Guess",
+  "Guess-CMG TH": "Guess",
+  "Hera": "Hera",
+  "HERA - Amore": "Hera",
+  "Hey Dude": "HeyDude",
+  "Heydude": "HeyDude",
+  "HeyDude": "HeyDude",
+  "Heydude - CMG": "HeyDude",
+  "Hill's-IN": "Hill's",
+  "Hills": "Hill's",
+  "Hills' Pet": "Hill's",
+  "Hush Puppies": "Hush Puppies",
+  "Hush Puppies - CMG": "Hush Puppies",
+  "Innisfree": "Innisfree",
+  "innisfree - Amore": "Innisfree",
+  "JDE World Of Coffee": "JDE World Of Coffee",
+  "JDE-IN": "JDE World Of Coffee",
+  "Jockey": "Jockey",
+  "Jockey - CMG": "Jockey",
+  "Jungsaemmool": "Jungsaemmool",
+  "Jungsaemmool (JSM)": "Jungsaemmool",
+  "JUNGSAEMMOOL-CMG": "Jungsaemmool",
+  "KIKO": "KIKO Milano",
+  "KIKO - CMG": "KIKO Milano",
+  "Kiko Milano": "KIKO Milano",
+  "Kitchen Aid": "KitchenAid",
+  "KitchenAid - PWB": "KitchenAid",
+  "Lacoste": "Lacoste",
+  "Laneige": "Laneige",
+  "Laneige - Amore": "Laneige",
+  "Laundry Essential-Dettol-RB": "Dettol Laundry",
+  "Lee": "Lee",
+  "LEE": "Lee",
+  "LEE - CMG": "Lee",
+  "Lee - CMG": "Lee",
+  "LocknLock": "LocknLock",
+  "Mars": "Mars",
+  "MCJ Sport": "MCJ Sports",
+  "MEGA We Care-IN": "MEGA We Care",
+  "Mega wecare": "MEGA We Care",
+  "Mega Wecare": "MEGA We Care",
+  "Milo & Nestle Breakfast Cereals - IN": "Milo & Nestle Breakfast Cereals",
+  "MLB": "MLB",
+  "MLB - CMG": "MLB",
+  "Mondelez": "Mondelez",
+  "Mondelez-IN": "Mondelez",
+  "Mustela": "Mustela",
+  "Mustela-IN": "Mustela",
+  "NARS": "NARS",
+  "Nescafe": "Nescafe",
+  "NesCafe": "Nescafe",
+  "Nescafe Dolce Gusto": "Nescafe Dolce Gusto",
+  "Nescafe Dolce Gusto (NDG)": "Nescafe Dolce Gusto",
+  "Nescafe Dolce Gusto-IN": "Nescafe Dolce Gusto",
+  "Nescafe Official Store": "Nescafe",
+  "Nespresso": "Nespresso",
+  "Nespresso-IN": "Nespresso",
+  "Nestle Dolce Gusto": "Nescafe Dolce Gusto",
+  "Nestle F&B": "Nestle Food & Beverages",
+  "Nestle Food & Beverages Official": "Nestle Food & Beverages",
+  "Nestle Health Science": "Nestle Health Science",
+  "Nestle Health Science - IN": "Nestle Health Science",
+  "Nestle Pet Care": "Nestle PetCare",
+  "Nestle PetCare": "Nestle PetCare",
+  "Nestle PetCare-IN": "Nestle PetCare",
+  "Nestle Professional": "Nestle Professional",
+  "Nestle Professional - IN": "Nestle Professional",
+  "Organic ground": "Organic Ground",
+  "Organic Ground": "Organic Ground",
+  "Panasonic": "Panasonic",
+  "Paul Smith": "Paul Smith",
+  "Paul Smith-CMG": "Paul Smith",
+  "Pedigree & Whiskas-IN": "Pedigree & Whiskas",
+  "Personal Wash-RB": "Dettol Personal Wash",
+  "Polo": "Polo Ralph Lauren",
+  "Polo Ralph Lauren": "Polo Ralph Lauren",
+  "Polo Ralph Lauren-CMG": "Polo Ralph Lauren",
+  "Provamed": "Provamed",
+  "PVH Calvin Klein": "Calvin Klein PVH",
+  "PVH Tommy Hilfiger": "Tommy Hilfiger PVH",
+  "RB Dettol & Hygiene": "Dettol & Hygiene",
+  "RB Durex": "Durex",
+  "RB Personal Wash": "Dettol Personal Wash",
+  "RB Veet": "Veet",
+  "Remington": "Remington",
+  "REMINGTON - PWB": "Remington",
+  "Revlon": "Revlon",
+  "Revlon-IN": "Revlon",
+  "Rinbee": "Rinbee",
+  "Sermsuk": "Sermsuk",
+  "SharkNinja": "SharkNinja",
+  "SharkNinja - PWB": "SharkNinja",
+  "Shiseido": "Shiseido",
+  "Shop at Nestle-IN": "Shop at Nestle",
+  "Sisley": "Sisley",
+  "Sisley - PFC": "Sisley",
+  "SleepHappy": "SleepHappy",
+  "Stiebel Eltron": "Stiebel Eltron",
+  "STIEBEL ELTRON TH": "Stiebel Eltron",
+  "Sulhwasoo - Amore": "Sulwhasoo",
+  "Sulwhasoo": "Sulwhasoo",
+  "Suntory": "Suntory",
+  "Three": "Three",
+  "THREE - CMG": "Three",
+  "Tinder": "Tinder",
+  "Tinder-IN": "Tinder",
+  "Tinders": "Tinder",
+  "Tommy Hilfiger": "Tommy Hilfiger",
+  "Tommy Hilfiger-MY PVH": "Tommy Hilfiger PVH",
+  "Tommy Hilfiger-SG PVH": "Tommy Hilfiger PVH",
+  "Tommy PVH": "Tommy Hilfiger PVH",
+  "TOMMY-CMG": "Tommy Hilfiger",
+  "Torriden": "Torriden",
+  "Ultima II": "Ultima II",
+  "ULTIMA II-IN": "Ultima II",
+  "Ultima ll": "Ultima II",
+  "Unilever - Hot Pro": "Unilever HotPro",
+  "Unilever - HotPro": "Unilever HotPro",
+  "Veet - IN": "Veet",
+  "Veet-RB": "Veet",
+  "Vistra": "Vistra",
+  "Wellness Shop-RB": "Dettol Wellness",
+  "Wrangler": "Wrangler",
+  "Wrangler - CMG": "Wrangler"
+ },
+ "review": [
+  [
+   "B2B Shopee",
+   2,
+   "\"B2B Shopee\" is a channel, not a brand"
+  ],
+  [
+   "Bosch",
+   14,
+   "Bosch: own brand, or under Chang Choice?"
+  ],
+  [
+   "Bosch (Chang Choice)",
+   3,
+   "Bosch: own brand, or under Chang Choice?"
+  ],
+  [
+   "CPB",
+   15,
+   "\"CPB\" is a group (Shiseido/NARS/Clé de Peau), not a brand"
+  ],
+  [
+   "Enfagrow",
+   79,
+   "Enfagrow: same as Enfa (Reckitt)?"
+  ],
+  [
+   "JDE Moccona",
+   204,
+   "Moccona: part of JDE World Of Coffee or its own line?"
+  ],
+  [
+   "Nestle",
+   92,
+   "\"Nestle\" alone: which Nestlé brand?"
+  ]
+ ],
+ "untouched": [
+  [
+   "3CE",
+   1
+  ],
+  [
+   "3M",
+   8
+  ],
+  [
+   "ALDO",
+   3
+  ],
+  [
+   "American eagle",
+   2
+  ],
+  [
+   "Anessa",
+   1
+  ],
+  [
+   "Anitech",
+   3
+  ],
+  [
+   "Barenbliss",
+   1
+  ],
+  [
+   "Best Health By Gaviscon-RB",
+   8
+  ],
+  [
+   "Brushtoo",
+   1
+  ],
+  [
+   "Cerave",
+   15
+  ],
+  [
+   "Colgate",
+   25
+  ],
+  [
+   "d program",
+   1
+  ],
+  [
+   "d'Alba",
+   3
+  ],
+  [
+   "DoiCha",
+   2
+  ],
+  [
+   "Ekseption",
+   1
+  ],
+  [
+   "Elemis",
+   1
+  ],
+  [
+   "Family Care-RB",
+   8
+  ],
+  [
+   "Fiit",
+   1
+  ],
+  [
+   "GSK",
+   5
+  ],
+  [
+   "Haleon-Healthcare",
+   5
+  ],
+  [
+   "Hocothailand",
+   2
+  ],
+  [
+   "Keds",
+   4
+  ],
+  [
+   "La Roche Posay",
+   13
+  ],
+  [
+   "Malin",
+   1
+  ],
+  [
+   "Marcjacobs",
+   1
+  ],
+  [
+   "Melynn",
+   1
+  ],
+  [
+   "Moochie",
+   1
+  ],
+  [
+   "Mpro",
+   10
+  ],
+  [
+   "Musicflower",
+   1
+  ],
+  [
+   "Oatside",
+   7
+  ],
+  [
+   "PLAYBOY",
+   8
+  ],
+  [
+   "Protex",
+   5
+  ],
+  [
+   "Simpluspink",
+   5
+  ],
+  [
+   "Smart-Travel",
+   39
+  ],
+  [
+   "Tefal",
+   6
+  ],
+  [
+   "Tenju",
+   8
+  ],
+  [
+   "The cosmetics",
+   1
+  ],
+  [
+   "The North Face",
+   74
+  ],
+  [
+   "TirTir",
+   1
+  ],
+  [
+   "Unilever - Homecare",
+   25
+  ],
+  [
+   "Unilever - Pond's",
+   28
+  ],
+  [
+   "Unilever - Professional",
+   3
+  ],
+  [
+   "Vichy",
+   2
+  ],
+  [
+   "WYN",
+   10
+  ]
+ ]
+}
