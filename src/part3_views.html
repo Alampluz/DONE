@@ -102,7 +102,7 @@ function requestTable(reqs){
     ${reqs.map(r=>{
       const rt=S.requestTypes.find(x=>x.id===r.request_type_id);
       return `<tr class="rowlink" onclick="openRequest('${r.id}')">
-        <td style="font-weight:600">${r.ticket_no? `<span style="color:var(--ink3);font-weight:700;font-size:11.5px;margin-right:6px">WO-${r.ticket_no}</span>`:''}${esc(r.title)}</td>
+        <td style="font-weight:600">${reqNo(r)? `<span style="color:var(--ink3);font-weight:700;font-size:11.5px;margin-right:6px">${esc(reqNo(r))}</span>`:''}${esc(r.title)}</td>
         <td style="color:var(--ink2)">${rt? esc(rt.name):'—'}</td>
         <td>${reqStatusChip(r.status)}</td>
         <td>${slaBadge(r.sla_due_at, r.status)}</td>
@@ -177,7 +177,7 @@ async function renderWorkspace(id, tab){
         <span class="ws-dot" style="background:${esc(p.color||'var(--accent)')}"></span>
         <span class="ws-board-identity"><strong>${esc(p.name)}</strong>${p.description&&!imported? `<span>${esc(p.description)}</span>`:''}</span></a>
         <div class="ws-board-metrics"><span class="ws-board-open ${c.open?'has-work':''}">${c.open} open</span><span>${c.done} done</span></div>
-        <div class="ws-board-options">${visChip(p.visibility)}${p.status!=='active'? `<span class="chip">${esc(p.status.replace('_',' '))}</span>`:''}
+        <div class="ws-board-options">${visChip(p.visibility)}${boardForms(p.id).length? `<button type="button" class="chip ws-board-form" title="Request form${boardForms(p.id).length>1?'s':''} that create tasks on this board" onclick="boardFormsMenu(this,'${p.id}')">Form${boardForms(p.id).length>1?'s':''}</button>`:''}${p.status!=='active'? `<span class="chip">${esc(p.status.replace('_',' '))}</span>`:''}
         ${canEdit()? `<button class="pj-menu" aria-label="Options for ${esc(p.name)}" onclick="projMenu(this,'${p.id}')">⋯</button>`:''}</div></div>`;
     }).join('')||'<div class="empty">No boards match. Try another search or choose All boards.</div>';
     C.querySelector('#ws-board-count').textContent=visible.length+' of '+projects.length+' boards';
@@ -1142,14 +1142,24 @@ let _shareSel = new Set();
 /* Request forms whose submissions land on this board (request_types.default_project_id). */
 function boardForms(pid){ return (S.requestTypes||[]).filter(r=>r.default_project_id===pid && r.public_enabled && r.public_token); }
 const formLink = r => location.origin + location.pathname + '#/f/' + r.public_token;
+/* Like monday's "Form" view, the form lives at board level: admins open it from the board, create a
+   new one preset to this board, or edit the existing one; everyone else sees the link to share. */
+async function boardFormEdit(pid, rtId){
+  const p = projById(pid); if(!p) return;
+  const {data} = await db.from('request_types').select('*').order('position');
+  window._allTypes = data||[];
+  closeModals(); editTypeModal(rtId||null, p.workspace_id, pid);
+}
 function boardFormsMenu(btn, pid){
-  const forms = boardForms(pid); if(!forms.length) return;
+  const forms = boardForms(pid);
+  if(!forms.length){ if(isAdmin()) boardFormEdit(pid); return; }
   const m = modal(`<div class="modal-head"><h2>Request form${forms.length>1?'s':''} for this board</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">${forms.map(r=>`<div class="share-sec"><label>${esc(r.name)} <span class="ca-opt">each submission becomes a task here</span></label>
       <div class="share-row"><input readonly value="${esc(formLink(r))}" onclick="this.select()">
         <button class="btn btn-ghost btn-sm" onclick="window.open('${formLink(r)}','_blank','noopener')">Open</button>
-        <button class="btn btn-primary btn-sm" onclick="copyText('${formLink(r)}')">Copy</button></div></div>`).join('')}</div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Close</button></div>`);
+        <button class="btn btn-primary btn-sm" onclick="copyText('${formLink(r)}')">Copy</button>
+        ${isAdmin()? `<button class="btn btn-ghost btn-sm" onclick="boardFormEdit('${pid}','${r.id}')" title="Change the form's fields or how they map to this board's columns">Edit</button>`:''}</div></div>`).join('')}</div>
+    <div class="modal-foot">${isAdmin()? `<button class="btn btn-ghost" onclick="boardFormEdit('${pid}')">＋ New form for this board</button>`:''}<button class="btn btn-ghost" onclick="closeModals()">Close</button></div>`);
   m.querySelector('.modal').classList.add('wide');
 }
 function shareBoardModal(pid){
@@ -1200,7 +1210,7 @@ async function renderProject(id){
   const gateChip = p.approval_gate?.on? `<span class="chip" style="background:var(--gray-soft);color:var(--ink3)" title="Tasks need an approved sign-off before they can be marked ${esc((STATUSES.find(s=>s.k===p.approval_gate.status)||{}).label||'Done')}">Sign-off required</span>` : '';
   setTopbar(`<span onclick="location.hash='#/ws/${p.workspace_id}'" style="cursor:pointer">${w? esc(w.name):''}</span> <span>/</span> ${esc(p.name)} ${visChip(p.visibility)}${gateChip}`,
     `${viewPickerHTML(id)}
-     ${boardForms(id).length? `<button class="btn btn-ghost btn-sm" onclick="boardFormsMenu(this,'${id}')" title="Request forms that create tasks on this board">Form${boardForms(id).length>1?'s':''}</button>`:''}
+     ${boardForms(id).length || isAdmin()? `<button class="btn btn-ghost btn-sm" onclick="boardFormsMenu(this,'${id}')" title="${boardForms(id).length? 'Request forms that create tasks on this board':'Create a request form whose submissions become tasks on this board'}">Form${boardForms(id).length>1?'s':''}</button>`:''}
      <button class="btn btn-ghost btn-sm" onclick="shareBoardModal('${id}')" title="Copy the link, send it to colleagues, or make a public read-only link">Share</button>
      ${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="projectMembersModal('${id}')">Partner access</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" onclick="boardAutomationsModal('${id}')" title="Rules that watch this board and react on their own">Automate</button>`:''}
