@@ -1150,7 +1150,7 @@ body.modal-open{overflow:hidden}
 .kb-more{padding:10px;font-size:12px;color:var(--ink3);text-align:center}
 </style>
 <script>
-/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · c13cdfe</div> so a dark-theme user never sees a flash of the light app. The real
+/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · 11b3a98</div> so a dark-theme user never sees a flash of the light app. The real
    preference lives in profiles.nav_prefs.theme and is applied again at boot; this is only
    the fast local echo of it. 'system' follows the OS. */
 (function(){
@@ -2323,10 +2323,11 @@ function navigate(hash){
   if(view==='share' || (view==='t' && /^[0-9a-f]{36}$/.test(parts[1]||''))){ S.nav=(S.nav||0)+1; renderPublicTracker(parts[1]); return; }   // brand tracker link opened while signed in
   /* Short links: #/b/<board key or name> and #/t/<ticket no>. They resolve to the same
      renderers as #/project/<uuid> and #/task/<uuid>, which still work.
-     #/listing[/YYYY-MM] is the Listing Tracker month report; #/listing-tracker is an alias (part9). */
+     The Listing Tracker lives in its workspace: #/ws/<id>/listing[/YYYY-MM]. The old #/listing[/YYYY-MM]
+     and #/listing-tracker links forward there (part9). */
   if(view==='b'){ const p = boardFromSlug(parts[1]); if(!p){ toast('Board not found', true); location.hash='#/home'; return; } view='project'; parts[1]=p.id; }
   else if(view==='t'){ view='task'; parts[1]=decodeURIComponent(parts[1]||''); }
-  S.route = {view, id:parts[1], tab:parts[2]};
+  S.route = {view, id:parts[1], tab:parts[2], sub:parts[3]};
   setStatusScope(view==='project'? parts[1] : null);
   /* Every navigation bumps this. An async renderer captures it on entry and refuses to paint
      #content once it has changed, so a slow view cannot land on top of the one you clicked.
@@ -2335,8 +2336,8 @@ function navigate(hash){
   S.nav = (S.nav || 0) + 1;
   renderSidebar();
   const C = $('#content'); C.scrollTop=0;
-  const map = {home:renderHome, ws:renderWorkspace, project:renderProject, task:openTaskRoute, requests:renderRequests, approvals:renderApprovals, campaigns:renderCampaigns, onboarding:renderOnboarding, listing:renderListingTracker, 'listing-tracker':renderListingTracker, dashboard:renderDashboard, admin:renderAdmin, platform:renderPlatform};
-  (map[view]||renderHome)(parts[1], parts[2]);
+  const map = {home:renderHome, ws:renderWorkspace, project:renderProject, task:openTaskRoute, requests:renderRequests, approvals:renderApprovals, campaigns:renderCampaigns, onboarding:renderOnboarding, listing:ltOldRoute, 'listing-tracker':ltOldRoute, dashboard:renderDashboard, admin:renderAdmin, platform:renderPlatform};
+  (map[view]||renderHome)(parts[1], parts[2], parts[3]);
 }
 
 /* ================= SIDEBAR ================= */
@@ -2464,7 +2465,6 @@ function navItems(){
     {key:'menu:requests',  h:'#/requests',  label:'Requests',  show:true},
     {key:'menu:approvals', h:'#/approvals', label:'Approvals', show:true, badge:'appr'},
     {key:'menu:campaigns', h:'#/campaigns', label:'Campaigns', show:isStaff()},
-    {key:'menu:listing',   h:'#/listing',   label:'Listing Tracker', show:isStaff()},
     {key:'menu:dashboard', h:'#/dashboard', label:'Dashboard', show:isStaff()||isRequester()},
     {key:'menu:admin',     h:'#/admin',     label:'Admin',     show:isAdmin()},
     {key:'menu:platform',  h:'#/platform',  label:'Platform',  show:!!(S.me&&S.me.platform_admin)},
@@ -3382,14 +3382,16 @@ function wsTabsHTML(wsId, active){
     <button class="tab ${active==='calendar'?'active':''}" onclick="location.hash='#/ws/${wsId}/calendar'">Calendar</button>
     <button class="tab ${active==='report'?'active':''}" onclick="location.hash='#/ws/${wsId}/report'">Report</button>
     ${isStaff()? `<button class="tab ${active==='automations'?'active':''}" onclick="location.hash='#/ws/${wsId}/automations'">Automations</button>`:''}
+    ${isStaff() && typeof ltListingBoards==='function' && ltListingBoards().some(p=>p.workspace_id===wsId)? `<button class="tab ${active==='listing'?'active':''}" onclick="location.hash='#/ws/${wsId}/listing'">Listing Tracker</button>`:''}
   </div>`;
 }
-async function renderWorkspace(id, tab){
+async function renderWorkspace(id, tab, sub){
   const _nav = S.nav;
   const w = wsById(id); if(!w){ location.hash='#/home'; return; }
   if(tab==='report') return renderWorkspaceReport(id);
   if(tab==='calendar') return renderWorkspaceCalendar(id);
   if(tab==='automations') return renderWorkspaceAutomations(id);
+  if(tab==='listing' && typeof renderListingTracker==='function') return renderListingTracker(sub, id);   // part9
   widgetScope = null; widgetProjScope = null;
   setTopbar(esc(w.name), (canManageWs(w.id)? `<button class="btn btn-ghost btn-sm" onclick="editWorkspaceModal('${w.id}')">Edit workspace</button>`:'')
     + (isStaff()? `<button class="btn btn-ghost btn-sm" onclick="teamMembersModal('${w.id}')">Members</button>
@@ -4461,6 +4463,7 @@ async function renderProject(id){
   setTopbar(`<span onclick="location.hash='#/ws/${p.workspace_id}'" style="cursor:pointer">${w? esc(w.name):''}</span> <span>/</span> ${esc(p.name)} ${visChip(p.visibility)}${gateChip}`,
     `${viewPickerHTML(id)}
      ${boardForms(id).length || isAdmin()? `<button class="btn btn-ghost btn-sm" onclick="boardFormsMenu(this,'${id}')" title="${boardForms(id).length? 'Request forms that create tasks on this board':'Create a request form whose submissions become tasks on this board'}">Form${boardForms(id).length>1?'s':''}</button>`:''}
+     ${isStaff() && p.field_config?.listing_tracker===true? `<button class="btn btn-ghost btn-sm" onclick="location.hash='#/ws/${p.workspace_id}/listing'" title="The month report of every ticket and campaign setup on this board">Listing Tracker</button>`:''}
      <button class="btn btn-ghost btn-sm" onclick="shareBoardModal('${id}')" title="Copy the link, send it to colleagues, or make a public read-only link">Share</button>
      ${isStaff()? `<button class="btn btn-ghost btn-sm" onclick="projectMembersModal('${id}')">Partner access</button>`:''}
      ${canManageBoard(id)? `<button class="btn btn-ghost btn-sm" onclick="boardAutomationsModal('${id}')" title="Rules that watch this board and react on their own">Automate</button>`:''}
@@ -12055,6 +12058,12 @@ function obImportPreview(parsed, fileName){
 .lt-seg.set{opacity:.85;outline:1.5px dashed color-mix(in srgb,var(--panel) 85%,transparent);outline-offset:-3px}
 .lt-seg.done{opacity:.45}
 .lt-seg.ov{box-shadow:0 0 0 2px var(--red)}
+.lt-seg.req{background-color:var(--amber-soft);background-image:repeating-linear-gradient(135deg,transparent 0 6px,color-mix(in srgb,var(--amber) 22%,transparent) 6px 12px);color:var(--amber);border:1px dashed var(--amber);text-decoration:none}
+.lt-it i.req{background:var(--amber)}
+.lt-it .st.req{color:var(--amber)}
+.lt-st.req{background:var(--amber-soft);color:var(--amber)}
+.lt-src{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--ink2);margin:-6px 0 14px}
+.lt-src a{color:var(--accent);text-decoration:none;font-weight:600}
 .lt-seg:hover{filter:brightness(1.08)}
 .lt-seg.sel{box-shadow:0 0 0 2px var(--ink)}
 .lt-plist{grid-column:2;display:flex;gap:4px 14px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2);margin-top:6px}
@@ -12541,15 +12550,24 @@ async function ltLoadMonth(y, m){
   if(mo.error) throw new Error(mo.error.message || 'lt_month failed');
   if(ni.error) throw new Error(ni.error.message || 'lt_no_id_tasks failed');
   const rows = (mo.data||[]).filter(r=> !r.begin_at || !r.end_at || ltMonthClip(r, y, m));
-  const noIdTasks = (ni.data||[]).slice();
+  let noIdTasks = (ni.data||[]).slice();
   const boardIds = ltListingBoards().map(p=>p.id);
-  let openTasks = [], openTasksError = null;
+  let openTasks = [], openTasksError = null, fields = [];
   if(boardIds.length){   // board ids only (a handful), never task ids, in the URL
-    const {data:tks, error:te} = await db.from('tasks').select('id,ticket_no,title,due_date,created_at,status,project_id')
-      .in('project_id', boardIds).neq('status','done').is('archived_at', null);
-    if(te) openTasksError = te.message;
-    openTasks = (tks||[]).filter(t=> boardIds.includes(t.project_id) && !isDoneK(t.status));
+    const [tk, fl] = await Promise.all([
+      db.from('tasks').select('id,ticket_no,title,due_date,created_at,status,project_id,custom')
+        .in('project_id', boardIds).neq('status','done').is('archived_at', null),
+      Promise.resolve().then(()=> db.from('project_fields').select('id,project_id,label,ftype').in('project_id', boardIds)).catch(()=>({data:[]}))]);
+    if(tk.error) openTasksError = tk.error.message;
+    openTasks = (tk.data||[]).filter(t=> boardIds.includes(t.project_id) && !isDoneK(t.status));
+    fields = (fl && fl.data) || [];
   }
+  /* A ticket shows in the tracker from the moment it is submitted: its Brand, Platform and
+     Campaign Start/End fields place it on the brand card as "Requested" until a CUSP ID is logged.
+     Dated tickets appear in the months their dates touch; undated ones stay listed every month. */
+  { const byId = new Map(openTasks.map(t=>[t.id, t]));
+    noIdTasks = noIdTasks.map(t=> ({...t, ...ltReqInfo({...t, custom:(byId.get(t.id)||t).custom}, fields)}))
+      .filter(t=> !t.begin_at || ltMonthClip(t, y, m)); }
   // "Last synced" = the newest listing_campaigns.last_synced over ALL rows (only a CUSP read stamps it);
   // else the newest sync run that reached CUSP (no errors, > 0 campaigns). Never a run that failed.
   const maxOf = (list, k) => (list||[]).reduce((mx,r)=> r && r[k] && (!mx || r[k] > mx) ? r[k] : mx, null);
@@ -12570,8 +12588,9 @@ async function ltLoadMonth(y, m){
 function ltSummary(rows, y, m, noIdTasks, now){
   rows = rows || []; noIdTasks = noIdTasks || LT.noIdTasks || [];
   const nowMs = now==null ? Date.now() : Number(now), soon = nowMs + 48*3600e3;
-  const cur = ltBkMonth(nowMs), isCurrent = cur.y===y && cur.m===m;   // no-ID tickets are "now", not per month
-  if(!isCurrent) noIdTasks = [];
+  const cur = ltBkMonth(nowMs), isCurrent = cur.y===y && cur.m===m;   // undated no-ID tickets are "now"; dated ones belong to their month
+  const dated = noIdTasks.filter(t=> t.requested && ltMonthClip(t, y, m));
+  if(!isCurrent) noIdTasks = dated;
   const byType = {frame:0, pdp:0, both:0, other:0};
   rows.forEach(r=>{ byType[byType[r.ctype]==null ? 'other' : r.ctype]++; });
   const live = rows.filter(r=>ltRowStatus(r)==='live').length;
@@ -12588,7 +12607,7 @@ function ltSummary(rows, y, m, noIdTasks, now){
   return {
     total: rows.length, byType, live, setSoon,
     overlaps: pairs.size, overlapList: [...pairs.values()],
-    noId: isCurrent ? noIdTasks.length : null, oldestNoId: noIdTasks[0] || null,
+    noId: isCurrent || dated.length ? noIdTasks.length : null, oldestNoId: noIdTasks[0] || null,
     pctInSla: timed.length ? Math.round(100*inSla/timed.length) : null,
     brands: new Set(rows.map(r=>r.brand_name||r.cusp_seller).filter(Boolean)).size,
   };
@@ -12693,6 +12712,7 @@ function ltStripHTML(rows, y, m, now, freeze){
   segs.forEach(x=>{ let l = laneEnd.findIndex(e=> e < x.c.s); if(l<0) l = laneEnd.length; laneEnd[l] = x.c.e; x.lane = l; });
   const lanes = Math.max(1, laneEnd.length);
   const segHTML = segs.map(({r, c, lane})=>{
+    if(r.requested) return `<a class="lt-seg req" href="${esc(taskHash(r))}" style="left:${ltPct((c.s-1)/days*100)};width:${ltPct((c.e-c.s+1)/days*100)};top:${4+lane*26}px" title="${esc(`Requested ${ltDayRange(r.begin_at, r.end_at)} · ${r.ticket_no||'ticket'} · no CUSP ID yet`)}">Requested</a>`;
     const ty = ltRowType(r), st = ltRowSt(r);
     return `<button type="button" class="lt-seg ${ty} ${st}${ltOpenOverlaps(r).length ? ' ov' : ''}" data-row="${esc(r.id)}" style="left:${ltPct((c.s-1)/days*100)};width:${ltPct((c.e-c.s+1)/days*100)};top:${4+lane*26}px" title="${esc(`${LT_TYPE_LABEL[ty]} ${ltDayRange(r.begin_at, r.end_at)} · CUSP ${r.cusp_campaign_id}`)}">${esc(LT_TYPE_LABEL[ty])}</button>`;
   }).join('');
@@ -12710,6 +12730,23 @@ function ltBrandMatch(name, title){
   return new RegExp(`(^|[^\\p{L}\\p{N}])${re}(?![\\p{L}\\p{N}])`, 'iu').test(t);   // no lookbehind: Safari < 16.4
 }
 const LT_CATCHALL = 'Tickets without a CUSP ID';
+/* What the requester filled in on the ticket (board fields, by type/label): brand, platform, dates,
+   kind. `requested` = it can be drawn on a strip (has a start date); begin_at/end_at are Bangkok days. */
+function ltReqInfo(t, fields){
+  const c = (t && t.custom) || {}, fs = (fields||[]).filter(f=> f.project_id===t.project_id);
+  const val = test => { const f = fs.find(test); const v = f ? c[f.id] : null; return v==null || v==='' ? null : (Array.isArray(v) ? v[0] : v); };
+  const day = v => /^\d{4}-\d{2}-\d{2}/.test(String(v||'')) ? String(v).slice(0,10) : null;
+  const brand = val(f=> f.ftype==='brand');
+  const plat = val(f=> f.ftype==='platform') || val(f=> /^platform$/i.test(String(f.label||'').trim()));
+  const s = day(val(f=> f.ftype==='date' && /start/i.test(f.label||''))), e = day(val(f=> f.ftype==='date' && /end/i.test(f.label||''))) || s;
+  const kind = val(f=> /campaign request/i.test(f.label||''));
+  const out = {req_brand: brand ? String(brand).trim() : null, req_platform: plat ? (ltNormPlatform(plat) || 'Other') : null, req_kind: kind ? String(kind) : null, requested: !!s};
+  if(s){ out.begin_at = s+'T00:00:00+07:00'; out.end_at = (e < s ? s : e)+'T23:59:59+07:00'; }
+  return out;
+}
+const ltReqType = t => /pdp/i.test(t.req_kind||'') ? (/frame/i.test(t.req_kind) ? 'both' : 'pdp') : /frame/i.test(t.req_kind||'') ? 'frame' : 'other';
+/* A requested ticket needs attention once its start is within 48 hours (or past) and nothing is set. */
+const ltReqLate = (t, now) => !t.requested || Date.parse(t.begin_at) <= now + 48*3600e3;
 /* Brands from the month rows: problem = an unacked overlap or a no-ID ticket whose title names the
    brand. Each no-ID ticket goes to the longest matching brand name ("Dove Men+Care" beats "Dove");
    tickets matching no brand go to one catch-all card. Sorted problems first (catch-all last among
@@ -12720,13 +12757,17 @@ function ltBrandGroups(rows, noIdTasks, now){
   const soonTo = now + 48*3600e3;
   const names = [...map.keys()].filter(k=>k!=='No brand').sort((a,b)=> b.length-a.length);
   const owner = new Map(), rest = [];
-  (noIdTasks||[]).forEach(t=>{ const b = names.find(n=> ltBrandMatch(n, t.title)); if(b) owner.set(t, b); else rest.push(t); });
+  (noIdTasks||[]).forEach(t=>{
+    let b = null;
+    if(t.req_brand){ b = [...map.keys()].find(n=> n.toLowerCase()===t.req_brand.toLowerCase()) || t.req_brand; if(!map.has(b)) map.set(b, []); }   // the ticket's Brand field wins
+    else b = names.find(n=> ltBrandMatch(n, t.title));
+    if(b) owner.set(t, b); else rest.push(t); });
   const groups = [...map].map(([name, rs])=>{
     const noId = (noIdTasks||[]).filter(t=> owner.get(t)===name);
     const ov = rs.some(r=>ltOpenOverlaps(r).length>0);
     const live = rs.filter(r=>ltRowStatus(r)==='live').length;
     const soon = rs.some(r=>{ const b = Date.parse(r.begin_at); return ltRowStatus(r)==='set' && b>=now && b<=soonTo; });
-    return {name, rows:rs, noId, ov, live, soon, problem: ov || noId.length>0};
+    return {name, rows:rs, noId, ov, live, soon, problem: ov || noId.some(t=> ltReqLate(t, now))};
   });
   if(rest.length) groups.push({name:LT_CATCHALL, rows:[], noId:rest, ov:false, live:0, soon:false, problem:true, catchAll:true});
   return groups.sort((a,b)=> (b.problem - a.problem) || (!!a.catchAll - !!b.catchAll) || a.name.localeCompare(b.name));
@@ -12745,12 +12786,15 @@ function ltOverlapSentence(r, o, all){
 function ltBrandCardHTML(g, all, y, m, now, freeze){
   const pics = {}; g.rows.forEach(r=>{ const n = ltPicName(r); if(n) pics[n] = (pics[n]||0)+1; });
   const pic = Object.keys(pics).reduce((a,k)=> a==null || pics[k]>pics[a] ? k : a, null);
-  const chip = g.problem ? `<span class="lt-st warn">Needs attention</span>` : g.live ? `<span class="lt-st ok">${g.live} live</span>` : `<span class="lt-st idle">Nothing live today</span>`;
-  const plats = LT_PLATFORMS.filter(p=> g.rows.some(r=>(r.platform||'Other')===p));
+  const reqs = g.noId.filter(t=> t.requested && t.req_platform);   // drawn on a strip; the rest stay in the amber list
+  const chip = g.problem ? `<span class="lt-st warn">Needs attention</span>` : g.live ? `<span class="lt-st ok">${g.live} live</span>` : reqs.length ? `<span class="lt-st req">${reqs.length} requested</span>` : `<span class="lt-st idle">Nothing live today</span>`;
+  const plats = LT_PLATFORMS.filter(p=> g.rows.some(r=>(r.platform||'Other')===p) || reqs.some(t=> t.req_platform===p));
   const prows = plats.map(p=>{
-    const rs = g.rows.filter(r=>(r.platform||'Other')===p).sort((a,b)=> Date.parse(a.begin_at)-Date.parse(b.begin_at));
+    const rs = g.rows.filter(r=>(r.platform||'Other')===p).concat(reqs.filter(t=> t.req_platform===p)).sort((a,b)=> Date.parse(a.begin_at)-Date.parse(b.begin_at));
     const [cls, letter] = LT_ICO[p];
-    const items = rs.map(r=>{ const ty = ltRowType(r), st = ltRowSt(r), n = ltOvSkus(r);
+    const items = rs.map(r=>{
+      if(r.requested) return `<span class="lt-it"><i class="req"></i>${esc(r.req_kind || 'Requested')} ${esc(ltDayRange(r.begin_at, r.end_at))} · <span class="st req">requested, no CUSP ID yet</span> · ${ltTicketLink(r.id, r.ticket_no)}</span>`;
+      const ty = ltRowType(r), st = ltRowSt(r), n = ltOvSkus(r);
       return `<span class="lt-it"><i class="${ty}"></i>${esc(LT_TYPE_LABEL[ty])} ${esc(ltDayRange(r.begin_at, r.end_at))} · <span class="st ${st}">${esc(LT_STATUS_LABEL[st]||r.cusp_state||'—')}</span>${n ? ` · <span class="ov">${ltSkuWord(n)} overlap</span>` : ''} · ${ltTicketLink(r.task_id, r.ticket_no)}</span>`; }).join('');
     return `<div class="lt-prow"><div class="lt-plat"><span class="lt-ico ${cls}" aria-hidden="true">${letter}</span>${esc(p)}</div>${ltStripHTML(rs, y, m, now, ltFreezeFor(freeze, p))}<div class="lt-plist">${items}</div></div>`;
   }).join('');
@@ -12761,10 +12805,11 @@ function ltBrandCardHTML(g, all, y, m, now, freeze){
     const name = o.pic_name || prof(o.pic)?.full_name || 'the PIC';
     red += `<div class="lt-bfoot red"><span class="lt-fs">${ltOverlapSentence(r, o, all)}</span><span class="acts">${o.pic && o.pic!==S.me?.id ? `<button type="button" class="btn btn-ghost btn-sm" data-notify="${esc(o.campaign_id)}" data-row="${esc(r.id)}">Notify ${esc(name)}</button>` : ''}<button type="button" class="btn btn-ghost btn-sm" data-ack="${esc(o.campaign_id)}" data-row="${esc(r.id)}">Mark as intended</button></span></div>`;
   }));
-  const amber = g.noId.length ? `<div class="lt-bfoot amber">${g.noId.map(t=>`<div class="lt-nid"><span><b>${esc(t.ticket_no||'—')}</b> ${esc(t.title||'')} · <span class="lt-nidw">no CUSP ID</span>${t.due_date ? ` · due ${esc(fmtDate(t.due_date))}` : ''}</span><span class="acts"><a class="btn btn-ghost btn-sm" href="${esc(taskHash(t))}">Open ticket</a></span></div>`).join('')}</div>` : '';
+  const loose = g.noId.filter(t=> !reqs.includes(t));
+  const amber = loose.length ? `<div class="lt-bfoot amber">${loose.map(t=>`<div class="lt-nid"><span><b>${esc(t.ticket_no||'—')}</b> ${esc(t.title||'')} · <span class="lt-nidw">no CUSP ID</span>${t.due_date ? ` · due ${esc(fmtDate(t.due_date))}` : ''}</span><span class="acts"><a class="btn btn-ghost btn-sm" href="${esc(taskHash(t))}">Open ticket</a></span></div>`).join('')}</div>` : '';
   const n = g.rows.length, k = g.noId.length;
   const meta = g.catchAll ? `<b>${k}</b> ${k===1 ? 'ticket' : 'tickets'} · no brand matched in the title`
-    : `<b>${n}</b> ${n===1 ? 'campaign' : 'campaigns'}${pic ? ` · PIC <b>${esc(pic)}</b>` : ''}`;
+    : `<b>${n}</b> ${n===1 ? 'campaign' : 'campaigns'}${reqs.length ? ` · <b>${reqs.length}</b> requested` : ''}${pic ? ` · PIC <b>${esc(pic)}</b>` : ''}`;
   return `<article class="lt-bcard${g.problem ? ' alert' : ''}${g.catchAll ? ' lt-catchall' : ''}"><div class="lt-bhead"><h3>${esc(g.name)}</h3> <span class="meta">${meta}</span> <span class="lt-grow"></span> ${chip}</div>${prows}${red}${amber}</article>`;
 }
 
@@ -12868,7 +12913,12 @@ function ltFootHTML(lastSynced, now){
 
 /* ---------- detail popover (one element, reused) ---------- */
 /* Reloads from the popover or a card only while the report is the current route. */
-const ltOnReport = () => ['listing','listing-tracker'].includes(S.route && S.route.view);
+const ltOnReport = () => !!S.route && (['listing','listing-tracker'].includes(S.route.view) || (S.route.view==='ws' && S.route.tab==='listing'));
+/* The tracker belongs to the workspace that owns the listing board(s). */
+const ltWsId = () => (ltListingBoards()[0]||{}).workspace_id || null;
+const ltHref = (ym, ws) => { const w = ws || ltWsId(); return (w ? `#/ws/${w}/listing` : '#/listing') + (ym ? '/'+ym : ''); };
+/* Old #/listing[/YYYY-MM] links: forward into the workspace; render in place only when no workspace owns a listing board. */
+function ltOldRoute(sub){ const w = ltWsId(); if(w){ location.replace(ltHref(sub, w)); return; } return renderListingTracker(sub); }
 let ltPage = null;   // {data, y, m}: what the report page last rendered (not the shared LT cache)
 function ltPopClose(){
   const pop = document.getElementById('lt-pop'); if(pop) pop.hidden = true;
@@ -12932,7 +12982,7 @@ async function ltRecheckRow(row, btn){
   if(error) return fail(error.message);
   toast(`Re-checked CUSP ${row.cusp_campaign_id}`);
   ltPopClose();
-  if(ltPage && ltOnReport()) renderListingTracker(ltYM(ltPage.y, ltPage.m));
+  if(ltPage && ltOnReport()) renderListingTracker(ltYM(ltPage.y, ltPage.m), S.route.view==='ws' ? S.route.id : null);
 }
 /* Clicks inside #lt-cards: segment → popover; red footer → the shared Notify / Mark as intended. */
 async function ltCardsClick(e){
@@ -12943,7 +12993,7 @@ async function ltCardsClick(e){
   const o = ltOpenOverlaps(row).find(x=> String(x.campaign_id)===(b.dataset.notify || b.dataset.ack)); if(!o) return;
   if(b.dataset.notify) return ltNotify(row, o, b);
   const _nav = S.nav, page = ltPage;
-  if(await ltAck(row, o, b) && !navStale(_nav) && ltOnReport()) renderListingTracker(ltYM(page.y, page.m));
+  if(await ltAck(row, o, b) && !navStale(_nav) && ltOnReport()) renderListingTracker(ltYM(page.y, page.m), S.route.view==='ws' ? S.route.id : null);
 }
 
 window.addEventListener('hashchange', ()=> ltPopClose());   // navigate() only clears #modal-root
@@ -12982,7 +13032,7 @@ async function ltLoadFreeze(y, m){
 function ltLegendHTML(fz){
   const pills = (fz.items||[]).map(w=>`<span class="freeze"${w.note ? ` title="${esc(w.note)}"` : ''}>${esc(ltFreezeText(w))}</span>`).join('');
   return `<div class="lt-legend"><span><i class="frame"></i>Frame</span><span><i class="pdp"></i>PDP</span><span><i class="both"></i>PDP+Frame</span>`
-    + `<span>dashed = set · solid = live · faded = done · red ring = SKU overlap</span>${pills}`
+    + `<span>hatched = requested, not set yet · dashed = set · solid = live · faded = done · red ring = SKU overlap</span>${pills}`
     + `${fz.error ? `<span class="lt-err">Freeze windows not loaded: ${esc(fz.error)}</span>` : ''}</div>`;
 }
 
@@ -13096,10 +13146,12 @@ async function ltRenderAdminTab(B){
   }; });
 }
 
-async function renderListingTracker(sub){
+async function renderListingTracker(sub, wsId){
   const _nav = S.nav;
   const {y, m} = ltParseYM(sub) || ltBkMonth();
-  setTopbar('Listing Tracker');
+  const ws = wsId || ltWsId(), W = ws && typeof wsById==='function' ? wsById(ws) : null;
+  const boards = ltListingBoards().filter(p=> !ws || p.workspace_id===ws);
+  setTopbar(W ? `<span onclick="location.hash='#/ws/${ws}'" style="cursor:pointer">${esc(W.name)}</span> <span>/</span> Listing Tracker` : 'Listing Tracker');
   ltPopClose();
   const C = $('#content');
   if(!isStaff()){ C.innerHTML = '<div class="card empty">The Listing Tracker is for staff.</div>'; return; }
@@ -13114,9 +13166,11 @@ async function renderListingTracker(sub){
   ltPage = {data, y, m};
   const f = LT.filter = {chip:'all', q:'', ...(LT.filter||{})};
   C.innerHTML = `<div class="lt-page">
-    <div class="page-head"><div><h1>Listing Tracker · ${esc(ltMonthLabel(y,m))}</h1><div class="sub">CUSP campaign setups, logged on their tickets</div></div>
-      <div class="actions"><span class="lt-mnav"><a href="#/listing/${ltYM(y,m,-1)}" aria-label="Previous month" title="Previous month">‹</a><a href="#/listing/${ltYM(y,m,1)}" aria-label="Next month" title="Next month">›</a></span>
+    <div class="page-head"><div><h1>Listing Tracker · ${esc(ltMonthLabel(y,m))}</h1><div class="sub">Every ticket from the moment it is submitted, and the CUSP campaign setups logged on it</div></div>
+      <div class="actions"><span class="lt-mnav"><a href="${ltHref(ltYM(y,m,-1), ws)}" aria-label="Previous month" title="Previous month">‹</a><a href="${ltHref(ltYM(y,m,1), ws)}" aria-label="Next month" title="Next month">›</a></span>
         <button class="btn btn-ghost btn-sm" id="lt-xl">⇩ Excel</button><button class="btn btn-primary btn-sm" id="lt-log">＋ Log a setup</button></div></div>
+    ${W && typeof wsTabsHTML==='function' ? wsTabsHTML(ws, 'listing') : ''}
+    ${boards.length ? `<div class="lt-src">Tickets come from ${boards.map(p=>`<a href="#/project/${esc(p.id)}">${esc(p.name)} ›</a>`).join(' ')}<span>· ${data.openTasks.length} open ${data.openTasks.length===1 ? 'ticket' : 'tickets'}</span></div>` : ''}
     <div class="section-title">This month in one paragraph</div>
     <div class="card lt-sum"><p class="lt-para">${esc(ltSummaryText(s, y, m))}</p></div>
     ${ltNumsHTML(s)}
@@ -13156,7 +13210,7 @@ async function ltWorkspaceSection(wsId){
     <div class="section-title">Listing Tracker · ${esc(ltMonthLabel(y,m))} ${s? `<span class="count">${s.total}</span>`:''}<span class="lt-grow"></span>
       <button class="btn btn-ghost btn-sm" data-lt-open>Open report</button></div>
     ${s ? ltNumsHTML(s) : `<div class="lt-err">Could not load the Listing Tracker numbers: ${esc(err.message)}</div>`}</section>`);
-  sec.querySelector('[data-lt-open]').onclick = ()=>{ location.hash = '#/listing'; };
+  sec.querySelector('[data-lt-open]').onclick = ()=>{ location.hash = ltHref('', wsId); };
   const C = $('#content'); const anchor = C.querySelector('.ws-board-directory, .card.empty');
   if(anchor) anchor.parentNode.insertBefore(sec, anchor); else C.appendChild(sec);
 }
