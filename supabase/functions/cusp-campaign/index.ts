@@ -1,5 +1,8 @@
 // cusp-campaign: the Listing Tracker's read-only bridge to CUSP (spec §6).
 // POST {action:'lookup', id} | {action:'skus', id} | {action:'sync'}
+// sync = refresh the campaigns already logged, then DISCOVER: every recent CUSP campaign whose name starts with
+// a ticket's ID (its DONE ticket number, or its "monday ID" field) is logged on that ticket automatically;
+// campaigns that match no ticket are listed in listing_sync_log.unmatched (match.mjs).
 // Auth (gateway JWT check is OFF; the function verifies the bearer itself, like bot-api v6 user mode):
 //   - a Supabase user JWT whose DONE profile is active staff (admin / internal / management), or
 //   - the project's service-role key (treated as staff, no company restriction), or
@@ -13,6 +16,7 @@
 //   tools/listing_sync/sync_via_mcp.md (same SQL as below).
 // DONE: postgres.js on SUPABASE_DB_URL (no signed-in user), so lt_sync_apply always gets company_id.
 import postgres from "https://deno.land/x/postgresjs@v3.4.5/mod.js";
+import { matchCampaigns, ticketIndex } from "./match.mjs";
 
 const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 2, prepare: false, idle_timeout: 20, connect_timeout: 10 });
 const SB_URL = Deno.env.get("SUPABASE_URL")!;
@@ -129,6 +133,30 @@ async function skus(id: number) {
 }
 
 const SYNC_BUDGET_MS = 120_000;   // stop well before the edge wall-clock limit
+const DISCOVER_MAX = 80;          // new setups linked per run; the rest wait for the next run
+const UNMATCHED_KEEP = 200;       // rows kept in listing_sync_log.unmatched
+
+// Tickets a campaign may be linked to: every unarchived ticket of the last 180 days on a listing board,
+// with its ticket number, its "monday ID" field and its assignee (the PIC of an auto-logged setup).
+async function linkableTickets(company: string | null) {
+  return await sql`
+    select t.id as task_id, t.company_id, t.ticket_no, coalesce(t.assignee_id, t.assignee_ids[1]) as assignee,
+           (select nullif(trim(t.custom->>(f.id::text)), '') from public.project_fields f
+             where f.project_id = t.project_id and lower(trim(f.label)) = 'monday id' limit 1) as monday_id
+      from public.tasks t join public.projects p on p.id = t.project_id
+     where p.field_config->>'listing_tracker' = 'true' and coalesce(p.status,'') <> 'archived'
+       and t.archived_at is null and t.created_at >= now() - interval '180 days'
+       and (${company}::uuid is null or t.company_id = ${company}::uuid)`;
+}
+// CUSP campaigns still relevant: not draft / cancelled, ending no earlier than a week ago.
+async function recentCampaigns() {
+  // deno-lint-ignore no-explicit-any
+  return await cusp<any[]>((c) => c`
+    select c.id, c.name, c.begin, c."end", c.state, s.name as seller
+      from catalog_campaign c left join catalog_seller s on s.id = c.seller_id
+     where c."end" >= now() - interval '7 days' and c.state not in ('draft','cancelled')
+     order by c.id desc limit 4000`);
+}
 
 // sync refreshes CUSP facts only (name, seller, begin/end, state, skus, sku_count). platform / ctype are
 // never sent: lt_sync_apply overwrites any key present, and those two belong to the client.
@@ -144,12 +172,16 @@ async function sync(caller: Caller) {
   // every company that has Listing Tracker rows at all.
   const companies: string[] = company ? [company]
     // deno-lint-ignore no-explicit-any
-    : (await sql`select distinct company_id from public.listing_campaigns`).map((x: any) => x.company_id as string);
+    : (await sql`select company_id from public.listing_campaigns
+                 union select company_id from public.projects where field_config->>'listing_tracker' = 'true'`).map((x: any) => x.company_id as string);
   const errors: { cusp_campaign_id: number | null; message: string }[] = [];
-  const per = new Map<string, { campaigns: number; overlaps: number; errors: string[] }>();
-  for (const c of companies) per.set(c, { campaigns: 0, overlaps: 0, errors: [] });
+  // deno-lint-ignore no-explicit-any
+  type Acc = { campaigns: number; overlaps: number; errors: string[]; matched: number; unmatched: any[] | null };
+  const blank = (): Acc => ({ campaigns: 0, overlaps: 0, errors: [], matched: 0, unmatched: null });
+  const per = new Map<string, Acc>();
+  for (const c of companies) per.set(c, blank());
   const accOf = (k: string) => {
-    if (!per.has(k)) per.set(k, { campaigns: 0, overlaps: 0, errors: [] });
+    if (!per.has(k)) per.set(k, blank());
     return per.get(k)!;
   };
   const fail = (k: string, id: number, message: string) => {
@@ -158,7 +190,7 @@ async function sync(caller: Caller) {
   };
   // deno-lint-ignore no-explicit-any
   const failRest = (from: number, message: string) => { for (const r of rows.slice(from) as any[]) fail(r.company_id, r.cusp_campaign_id, message); };
-  let campaigns = 0, overlaps = 0;
+  let campaigns = 0, overlaps = 0, matched = 0, unmatchedN = 0;
   let down: ApiError | null = null;
   try {
     try { await cusp((c) => c`select 1`); } catch (e) {   // CUSP down → 503 (after the log rows below)
@@ -193,19 +225,67 @@ async function sync(caller: Caller) {
         fail(k, r.cusp_campaign_id, e instanceof Error ? e.message : String(e));
       }
     }
+    // ---- discover: CUSP campaigns named after a ticket that are not logged yet ----
+    if (!down && Date.now() - t0 < SYNC_BUDGET_MS) {
+      try {
+        const tickets = await linkableTickets(company);
+        const recent = await recentCampaigns();
+        // deno-lint-ignore no-explicit-any
+        const loggedRows = await sql`select company_id, cusp_campaign_id from public.listing_campaigns` as any[];
+        // deno-lint-ignore no-explicit-any
+        for (const k of new Set<string>([...per.keys(), ...tickets.map((t: any) => t.company_id as string)])) {
+          const acc = accOf(k);
+          const logged = new Set<number>(loggedRows.filter((x) => x.company_id === k).map((x) => Number(x.cusp_campaign_id)));
+          // deno-lint-ignore no-explicit-any
+          const { links, unmatched } = matchCampaigns(recent, ticketIndex(tickets.filter((t: any) => t.company_id === k)), logged);
+          // deno-lint-ignore no-explicit-any
+          acc.unmatched = unmatched.slice(0, UNMATCHED_KEEP).map((u: any) => ({ id: u.id, name: u.name, seller: u.seller, begin: u.begin, end: u.end, state: u.state, why: u.why }));
+          unmatchedN += unmatched.length;
+          let done = 0;
+          for (const ln of links) {
+            if (done >= DISCOVER_MAX || Date.now() - t0 > SYNC_BUDGET_MS) { acc.errors.push(`${links.length - done} matched campaigns wait for the next run`); break; }
+            const id = Number(ln.campaign.id);
+            try {
+              const l = await lookup(id);
+              if (!l) throw new Error("not found in CUSP");
+              const s = await skus(id);
+              const payload = {
+                company_id: k, task_id: ln.ticket.task_id, cusp_campaign_id: id,
+                cusp_name: l.name, cusp_seller_id: l.seller_id, cusp_seller: l.seller,
+                platform: ln.platform || l.shops[0]?.platform || "Other", ctype: ln.ctype,
+                begin_at: l.begin, end_at: l.end, cusp_state: l.state, sku_count: l.sku_count, skus: s,
+                logged_by: ln.ticket.assignee || null, logged_at: new Date().toISOString(),
+              };
+              const [res] = await sql`select public.lt_sync_apply((${JSON.stringify(payload)}::text)::jsonb) as r`;
+              const n = Number(res?.r?.new_overlaps) || 0;
+              acc.campaigns++; acc.matched++; acc.overlaps += n; campaigns++; matched++; overlaps += n; done++;
+            } catch (e) {
+              if (e instanceof ApiError && e.code === "cusp_unavailable") { acc.errors.push(e.message); break; }
+              fail(k, id, e instanceof Error ? e.message : String(e));
+            }
+          }
+        }
+      } catch (e) {
+        const msg = `matching by ticket ID failed: ${e instanceof Error ? e.message : String(e)}`;
+        errors.push({ cusp_campaign_id: null, message: msg });
+        for (const a of per.values()) a.errors.push(msg);
+      }
+    }
   } finally {
-    for (const [company_id, a] of per) {
+    // "CUSP link not set up yet" is a standing fact, not a run: no log row every night until it exists.
+    for (const [company_id, a] of down?.code === "cusp_not_configured" ? [] : per) {
       try {
         await sql`
-          insert into public.listing_sync_log (company_id, ran_at, scope, campaigns, "overlaps", errors)
-          values (${company_id}, now(), 'open', ${a.campaigns}, ${a.overlaps}, ${a.errors.length ? a.errors.join("\n") : null})`;
+          insert into public.listing_sync_log (company_id, ran_at, scope, campaigns, "overlaps", errors, matched, unmatched)
+          values (${company_id}, now(), 'open', ${a.campaigns}, ${a.overlaps}, ${a.errors.length ? a.errors.join("\n") : null},
+                  ${a.matched}, ${a.unmatched ? JSON.stringify(a.unmatched) : null}::jsonb)`;
       } catch (e) {
         errors.push({ cusp_campaign_id: null, message: `sync log not written for ${company_id}: ${e instanceof Error ? e.message : String(e)}` });
       }
     }
   }
   if (down) throw down;
-  return { campaigns, overlaps, errors };
+  return { campaigns, overlaps, matched, unmatched: unmatchedN, errors };
 }
 
 function campaignId(b: Record<string, unknown>): number {

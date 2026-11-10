@@ -145,3 +145,29 @@ row from it:
    Double any single quote inside the JSON (`'` → `''`). `result.already` set means the campaign
    is already logged on another ticket (nothing was moved); tell the PIC which one. Otherwise the
    row now shows under "Campaign setups" on the ticket with the PIC as the person who logged it.
+
+## 0. New campaigns by ticket ID (added 10 Nov 2026)
+
+The edge function's `sync` now also *discovers* setups: every recent CUSP campaign whose name starts
+with a ticket's ID is logged on that ticket (`supabase/functions/cusp-campaign/match.mjs`). The ID is the
+DONE ticket number (`CFR-0412 SHP …`) or the ticket's **Monday ID** field (`13512634613 SHP …`).
+By hand, until `CUSP_DB_URL` exists:
+
+1. Supabase — the tickets and their IDs:
+```sql
+select t.id as task_id, t.company_id, t.ticket_no, coalesce(t.assignee_id, t.assignee_ids[1]) as assignee,
+       (select nullif(trim(t.custom->>(f.id::text)), '') from public.project_fields f
+         where f.project_id = t.project_id and lower(trim(f.label)) = 'monday id' limit 1) as monday_id
+  from public.tasks t join public.projects p on p.id = t.project_id
+ where p.field_config->>'listing_tracker' = 'true' and t.archived_at is null
+   and t.created_at >= now() - interval '180 days';
+```
+2. CUSP — campaigns named after them (put the IDs in the list; 100 rows per call):
+```sql
+select c.id, c.name, c.state from catalog_campaign c
+ where c."end" >= now() - interval '7 days' and c.state not in ('draft','cancelled')
+   and split_part(trim(c.name), ' ', 1) in ('CFR-0412', '13512634613')
+ order by c.id;
+```
+3. For each id not yet in `listing_campaigns`, run steps 2–3 below with `task_id`, `platform`, `ctype`
+   (parsed from the name), `logged_by` = the ticket's assignee and `logged_at` = now in the payload.
