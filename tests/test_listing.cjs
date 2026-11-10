@@ -296,6 +296,23 @@ const driver5=String.raw`window.__run5=async function(){const r={};const tick=()
  const cards=f=>{ host.innerHTML=ltBrandCardsHTML(rows,2026,10,f||{chip:'all',q:''},opt); return [...host.querySelectorAll('.lt-bcard')]; };
  const names=f=>cards(f).map(c=>txt(c.querySelector('h3'))).join(',');
  r.order=names();
+ // a submitted ticket shows straight away: placed by its Brand / Platform / Campaign dates fields
+ { const F=[{id:'fb',project_id:'p1',label:'Brand',ftype:'brand'},{id:'fp',project_id:'p1',label:'Platform',ftype:'select'},{id:'fs',project_id:'p1',label:'Campaign Start Date',ftype:'date'},{id:'fe',project_id:'p1',label:'Campaign End Date',ftype:'date'},{id:'fk',project_id:'p1',label:'Campaign Requests',ftype:'select'}];
+   const mk=(id,no,c)=>({id,ticket_no:no,title:'x',project_id:'p1',...ltReqInfo({project_id:'p1',custom:c},F)});
+   const q1=mk('q1','CFR-0950',{fb:'Omega',fp:'Shopee',fs:'2026-10-27',fe:'2026-10-29',fk:'Add Frame'});   // new brand, starts in 6 days
+   const q2=mk('q2','CFR-0951',{fb:'zeta',fp:'Central',fs:'2026-10-22',fe:'2026-10-22'});                 // existing brand (case-insensitive), starts tomorrow
+   const q3=mk('q3','CFR-0952',{fb:'Omega'});                                                              // no dates: stays in the amber list
+   r.reqInfo=JSON.stringify([q1.req_brand,q1.req_platform,q1.requested,q1.begin_at,q1.end_at,q2.req_platform,q3.requested,ltReqType(q1)]);
+   host.innerHTML=ltBrandCardsHTML(rows,2026,10,{chip:'all',q:''},{noIdTasks:[q1,q2,q3],now:NOW});
+   const card=n=>[...host.querySelectorAll('.lt-bcard')].find(c=>txt(c.querySelector('h3'))===n);
+   const om=card('Omega'), ze=card('Zeta');
+   r.reqSeg=om&&om.querySelector('a.lt-seg.req')?om.querySelector('a.lt-seg.req').getAttribute('href')+'|'+txt(om.querySelector('a.lt-seg.req')):null;
+   r.reqItem=om?txt(om.querySelector('.lt-plist')):null; r.reqFoot=om?txt(om.querySelector('.lt-bfoot.amber')):null;
+   r.reqHead=om?txt(om.querySelector('.lt-bhead')):null;
+   r.reqZeta=ze?[ze.querySelectorAll('a.lt-seg.req').length,/Needs attention/.test(txt(ze.querySelector('.lt-bhead'))),/Other/.test(txt(ze))].join(','):null;
+   host.innerHTML=ltBrandCardsHTML(rows,2026,10,{chip:'all',q:''},{noIdTasks:[q1],now:NOW});
+   r.reqCalm=txt(card('Omega').querySelector('.lt-bhead'));
+   r.reqSum=JSON.stringify([ltSummary([],2026,11,[{...q1,begin_at:'2026-11-03T00:00:00+07:00',end_at:'2026-11-04T23:59:59+07:00'}],NOW).noId, ltSummary([],2026,11,[q3],NOW).noId]); }
  r.attention=names({chip:'attention',q:''}); r.live=names({chip:'live',q:''}); r.soon=names({chip:'soon',q:''});
  r.qBrand=names({chip:'all',q:'ALP'}); r.qTicket=names({chip:'all',q:'cfr-0501'}); r.qNone=txt(host);
  names({chip:'all',q:'zzz'}); r.qNone=txt(host);
@@ -595,7 +612,7 @@ check('text: exact paragraph', m.text==='3 brands ran 6 campaigns in October: 2 
 check('text: no problems -> "Every campaign has a ticket and a PIC." and no "problem"', /Every campaign has a ticket and a PIC\./.test(m.textOk||'') && !/problem/i.test(m.textOk||'') && m.sumOk.overlaps===0 && m.sumOk.noId===0);
 check('ltLoadMonth returns {rows, noIdTasks, openTasks, openTasksError, lastSynced, month}', m.gotShape===J(['lastSynced','month','noIdTasks','openTasks','openTasksError','rows']));
 check('ltLoadMonth: lt_month(2026,10), 6 rows, no-id = open tasks minus logged, last synced = max', m.loadCall===J({name:'lt_month',args:{p_year:2026,p_month:10}}) && m.loadN===6 && m.LTnoId==='t9' && m.LTsync==='2026-10-21T02:30:00Z' && m.LTmonth===J({y:2026,m:10}));
-check('page: h1 "Listing Tracker · October 2026", prev/next month links', m.h1==='Listing Tracker · October 2026' && (m.hrefs||[]).includes('#/listing/2026-09') && (m.hrefs||[]).includes('#/listing/2026-11'));
+check('page: h1 "Listing Tracker · October 2026", prev/next month links', m.h1==='Listing Tracker · October 2026' && (m.hrefs||[]).includes('#/ws/w1/listing/2026-09') && (m.hrefs||[]).includes('#/ws/w1/listing/2026-11'));
 check('page: heading + six numbers with labels', /This month in one paragraph/.test(m.page||'') && J(m.nums)===J(['6 campaigns this month','2 live right now','2 set, starting soon','1 SKU overlap to resolve','1 ticket without a CUSP ID','83% logged within SLA']));
 check('page: paragraph, cards placeholder, Last synced footer', /ran 6 campaigns/.test(m.page||'') && m.cards && /Last synced/.test(m.page||''));
 check('page: ⇩ Excel calls the export (downloadXLSX with a Log sheet)', m.xlCall===true);
@@ -613,7 +630,7 @@ check('ltYM wraps years', J(m.ym)===J(['2025-12','2027-01','2026-10']));
 check('lt_no_id_tasks error -> no paragraph, error text shown', !m.niPara && /Could not load the Listing Tracker/.test(m.niErr||'') && /permission denied for function lt_no_id_tasks/.test(m.niErr||''));
 check('workspace section: load error -> one-line .lt-err, no numbers', /permission denied for function lt_no_id_tasks/.test(m.wsErr||'') && m.wsErrNums===0);
 check('month boundary row counts in October and November', m.edgeOct===1 && m.edgeNov===1);
-check('workspace section: numbers + Open report on the listing workspace, before the boards', m.ws && m.wsBefore && m.wsNums===6 && m.wsOpen && m.wsHash==='#/listing');
+check('workspace section: numbers + Open report on the listing workspace, before the boards', m.ws && m.wsBefore && m.wsNums===6 && m.wsOpen && m.wsHash==='#/ws/w1/listing');
 check('workspace section: absent on a workspace without a listing board', m.ws2===false);
 return w.eval('window.__run5()').then(c=>{ r=c;
 const P=v=>((v-1)/31*100).toFixed(3)+'%', W=(s,e,d)=>((e-s+1)/(d||31)*100).toFixed(3)+'%';
@@ -631,6 +648,11 @@ check('Alpha: one row per platform (Shopee, Lazada)', c.aPlats==='SShopee,LLazad
 check('overlap: both segments ringed "ov", second lane at top 30px, strip 60px; one lane 34px', c.aSegs==='lt-seg pdp live ov|lt-seg both set ov' && c.aTops==='4px|30px' && c.aH==='60px' && c.zH==='34px');
 check('three overlapping segments -> three distinct tops, strip 86px', c.lanes==='4px|30px|56px' && c.lanesH==='86px');
 check('brand match: "IN" vs "Listing update" no; longest brand wins; unmatched -> catch-all card', c.bmIN==='CFR-3' && c.bmDove==='CFR-4' && c.bmDMC==='CFR-2' && c.bmCatch==='CFR-1');
+check('requested ticket: brand, platform and Bangkok dates read from the ticket fields', c.reqInfo===J(['Omega','Shopee',true,'2026-10-27T00:00:00+07:00','2026-10-29T23:59:59+07:00','Other',false,'frame']));
+check('requested ticket: hatched bar on its brand card links to the ticket; listed as requested', /\|Requested$/.test(c.reqSeg||'') && /Add Frame 27–29 Oct · requested, no CUSP ID yet · CFR-0950/.test(c.reqItem||'') && /CFR-0952/.test(c.reqFoot||'') && !/CFR-0950/.test(c.reqFoot||''));
+check('requested ticket: joins the existing brand card; needs attention once it starts within 48 hours', c.reqZeta==='1,true,true');
+check('requested ticket: a calm chip while there is still time', /1 requested/.test(c.reqCalm||'') && !/Needs attention/.test(c.reqCalm||''));
+check('requested ticket: counted in the month of its dates; undated ones only in the current month', c.reqSum===J([1,null]));
 check('catch-all card: last among problem cards, own header', c.bmOrder==='Dove,Dove Men+Care,IN,Tickets without a CUSP ID,Zed' && c.bmCatchHead==='Tickets without a CUSP ID 1 ticket · no brand matched in the title Needs attention');
 check('Needs attention keeps the catch-all card when no brand matches', c.bmAtt==='Tickets without a CUSP ID');
 check('ltBrandMatch: word boundaries, short-name token rule, regex chars escaped, Unicode', c.bmFn==='false,true,false,true,false,true');
