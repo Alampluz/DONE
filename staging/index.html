@@ -1150,7 +1150,7 @@ body.modal-open{overflow:hidden}
 .kb-more{padding:10px;font-size:12px;color:var(--ink3);text-align:center}
 </style>
 <script>
-/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · 11b3a98</div> so a dark-theme user never sees a flash of the light app. The real
+/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · 501c494</div> so a dark-theme user never sees a flash of the light app. The real
    preference lives in profiles.nav_prefs.theme and is applied again at boot; this is only
    the fast local echo of it. 'system' follows the OS. */
 (function(){
@@ -12062,6 +12062,10 @@ function obImportPreview(parsed, fileName){
 .lt-it i.req{background:var(--amber)}
 .lt-it .st.req{color:var(--amber)}
 .lt-st.req{background:var(--amber-soft);color:var(--amber)}
+.lt-um{margin:14px 0;border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:10px 14px}
+.lt-um summary{cursor:pointer}
+.lt-um-list{display:grid;gap:6px;max-height:320px;overflow:auto;margin-top:8px}
+.lt-um-it{display:flex;gap:4px 12px;flex-wrap:wrap;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px solid var(--line-2)}
 .lt-src{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--ink2);margin:-6px 0 14px}
 .lt-src a{color:var(--accent);text-decoration:none;font-weight:600}
 .lt-seg:hover{filter:brightness(1.08)}
@@ -12151,7 +12155,7 @@ function ltParseName(name){
 
 /* CUSP campaign state -> tracker bucket */
 function ltStatus(cuspState){
-  return ({approved:'set', active:'live', ended:'done'})[String(cuspState==null ? '' : cuspState).toLowerCase()] || 'other';
+  return ({approved:'set', active:'live', ended:'done', finished:'done', finishing:'done'})[String(cuspState==null ? '' : cuspState).toLowerCase()] || 'other';
 }
 
 /* Day-of-month span (1-based, Asia/Bangkok = UTC+7, no DST) of row.begin_at..end_at inside year/month (month 1-12); null if outside. */
@@ -12538,7 +12542,7 @@ function ltParseYM(sub){
   return m>=1 && m<=12 ? {y, m} : null;
 }
 const ltListingBoards = () => (S.projects||[]).filter(p=> p.field_config?.listing_tracker===true && p.status!=='archived');
-const ltRowStatus = r => r.status || ltStatus(r.cusp_state);
+const ltRowStatus = r => (r.status && r.status!=='other' ? r.status : null) || ltStatus(r.cusp_state);   // CUSP says "finished"; older rows stored it as other
 
 /* Loads one month into LT: rows from lt_month, open listing tickets with no setup logged in
    any month (noIdTasks, oldest first, server-side via lt_no_id_tasks), open listing tickets for
@@ -12578,7 +12582,11 @@ async function ltLoadMonth(y, m){
     const {data:lg} = await db.from('listing_sync_log').select('ran_at,campaigns,errors').is('errors', null).gte('campaigns', 1).order('ran_at', {ascending:false}).limit(1);
     lastSynced = maxOf((lg||[]).filter(x=> x.errors==null && Number(x.campaigns) > 0), 'ran_at');
   }
-  const out = {rows, month:{y, m}, noIdTasks, openTasks, openTasksError, lastSynced};
+  /* CUSP campaigns the last sync could not put on a ticket (no ticket ID in the name, or no such ticket). */
+  let unmatched = null;
+  try{ const {data:um} = await db.from('listing_sync_log').select('ran_at,matched,unmatched').not('unmatched','is',null).order('ran_at', {ascending:false}).limit(1);
+    if(um && um[0] && Array.isArray(um[0].unmatched)) unmatched = {ran_at:um[0].ran_at, items:um[0].unmatched}; }catch(e){}
+  const out = {rows, month:{y, m}, noIdTasks, openTasks, openTasksError, lastSynced, unmatched};
   Object.assign(LT, out, {loaded:true});
   return out;   // callers render from this object; LT is shared with the workspace section
 }
@@ -12905,6 +12913,15 @@ function ltLogHTML(items, rows){
 }
 
 /* Footer: "Last synced <time>", with "— CUSP not reachable since" when older than 26 h; "Not synced yet" when CUSP was never reached. */
+/* "In CUSP, not on a ticket": what the last sync found but could not match by ticket ID. Collapsed; the
+   fix is in CUSP (start the name with the ticket number) or on the ticket (fill "monday ID" / log it by hand). */
+function ltUnmatchedHTML(u){
+  if(!u || !(u.items||[]).length) return '';
+  const n = u.items.length;
+  return `<details class="lt-um"><summary><b>${n}</b> CUSP ${n===1 ? 'campaign is' : 'campaigns are'} not on any ticket <span class="hint">as of ${esc(fmtDateTime(u.ran_at))}</span></summary>
+    <p class="hint">A campaign is put on its ticket automatically when its CUSP name starts with the ticket number (CFR-0412 …) or with the ticket's monday ID. Rename it in CUSP, fill "monday ID" on the ticket, or log it on the ticket by hand.</p>
+    <div class="lt-um-list">${u.items.map(c=>`<div class="lt-um-it"><span><b>${esc(c.id)}</b> ${esc(c.name||'')}</span><span class="hint">${esc(c.seller||'')}${c.begin && c.end ? ' · '+esc(ltDayRange(c.begin, c.end)) : ''} · ${esc(c.why||'')}</span></div>`).join('')}</div></details>`;
+}
 function ltFootHTML(lastSynced, now){
   if(!lastSynced) return `<div class="lt-foot lt-stale">Not synced yet</div>`;
   const stale = (now==null ? Date.now() : Number(now)) - Date.parse(lastSynced) > 26*3600e3;
@@ -13179,6 +13196,7 @@ async function renderListingTracker(sub, wsId){
     <div id="lt-cards">${ltBrandCardsHTML(rows, y, m, f, {noIdTasks:data.noIdTasks, now, freeze})}</div>
     <div class="lt-two"><section class="lt-box" aria-label="Who set what">${ltPeopleHTML(rows)}</section>
       <section class="lt-box" aria-label="Activity"><h3>What happened, latest first</h3><p class="hint">Setups, CUSP status changes, overlaps and the nightly check.</p><div id="lt-logbox"><div class="lt-empty">Loading…</div></div></section></div>
+    ${ltUnmatchedHTML(data.unmatched)}
     ${ltFootHTML(data.lastSynced, now)}</div>`;
   C.querySelector('#lt-xl').onclick = ()=> ltExport(y, m);
   C.querySelector('#lt-log').onclick = ltPickTicket;
