@@ -8,6 +8,11 @@ set local session_replication_role = replica;
 create table if not exists brand_merge_backup_brands as select now() as backed_up_at, b.* from brands b;
 create table if not exists brand_merge_backup_autos as select now() as backed_up_at, id, conditions from custom_automations;
 create table if not exists brand_merge_backup_tasks(task_id uuid, field_id text, old_value text, new_value text, changed_at timestamptz default now());
+-- Backups are private: RLS on, no policy, no API grants (see 2026-11-11_brand_merge_backups_lockdown.sql).
+alter table brand_merge_backup_brands enable row level security;
+alter table brand_merge_backup_autos enable row level security;
+alter table brand_merge_backup_tasks enable row level security;
+revoke all on brand_merge_backup_brands, brand_merge_backup_autos, brand_merge_backup_tasks from anon, authenticated, public;
 alter table brands add column if not exists aliases text[] not null default '{}', add column if not exists merged_into uuid references brands(id) on delete set null,
   add column if not exists cusp_shop text, add column if not exists cusp_country text, add column if not exists service_model text, add column if not exists category text;
 create table if not exists brand_suggestions(id uuid primary key default gen_random_uuid(), company_id uuid references companies(id) on delete cascade,
