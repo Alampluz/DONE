@@ -18,6 +18,7 @@ cat "$root"/src/part1_head.html \
     "$root"/src/part5_requests.html \
     "$root"/src/part6_dash_admin.html \
     "$root"/src/part7_campaigns.html \
+    "$root"/src/part7b_tracker.html \
     "$root"/src/part8_onboarding.html \
     "$root"/src/part9_listing.html > "$out.tmp"
 

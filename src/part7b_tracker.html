@@ -1,0 +1,336 @@
+<style>
+/* ============================================================================
+   CAMPAIGN TRACKER — the campaign planning sheet, live (Nov 2026) + brand directory
+   ============================================================================ */
+.cpt-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
+.cpt-bar select,.cpt-bar input[type=search]{font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--line-strong,var(--line));border-radius:8px;background:var(--panel);color:var(--ink);max-width:190px}
+.cpt-bar .grow{flex:1}
+.cpt-sum{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.cpt-sum .b{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:120px}
+.cpt-sum .b b{display:block;font-size:20px;line-height:1.2}
+.cpt-sum .b span{font-size:12px;color:var(--ink3)}
+.cpt-sum .b.red b{color:var(--red)} .cpt-sum .b.green b{color:var(--green)}
+.cpt-wrap{overflow:auto;max-height:calc(100vh - 300px);min-height:260px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+table.cpt{border-collapse:separate;border-spacing:0;font-size:12px}
+.cpt th,.cpt td{border-right:1px solid var(--line-2,var(--line));border-bottom:1px solid var(--line-2,var(--line));padding:0;white-space:nowrap;height:30px}
+.cpt tbody td{line-height:18px}
+.cpt .hint{display:inline;margin:0;font-size:11px}
+.cpt thead th{position:sticky;top:0;z-index:3;background:var(--panel-2,var(--panel));font-weight:600;text-align:left;vertical-align:bottom}
+.cpt thead tr.r2 th{top:30px}
+.cpt .fx{position:sticky;z-index:2;background:var(--panel)}
+.cpt thead .fx{z-index:4;background:var(--panel-2,var(--panel))}
+.cpt .c0{left:0;min-width:170px;max-width:170px;padding:0 8px;overflow:hidden;text-overflow:ellipsis}
+.cpt .c1{left:170px;min-width:70px;max-width:70px;padding:0 6px}
+.cpt .c2{left:240px;min-width:76px;max-width:76px;padding:0 6px;overflow:hidden;text-overflow:ellipsis}
+.cpt .c3{left:316px;min-width:54px;max-width:54px;padding:0 6px;text-align:right;border-right:2px solid var(--line-strong,var(--line))}
+.cpt .eh{padding:0 8px;cursor:pointer;text-transform:uppercase;letter-spacing:.04em;font-size:11px;color:var(--ink2);border-right:2px solid var(--line-strong,var(--line))}
+.cpt .eh:hover{color:var(--accent)}
+.cpt .sh{min-width:96px;max-width:96px;height:44px;padding:3px 6px;white-space:normal;line-height:1.15;font-weight:500;font-size:11px;cursor:pointer;overflow:hidden}
+.cpt .sh small{display:block;color:var(--ink3);font-weight:400}
+.cpt .sh.late small{color:var(--red)}
+.cpt .ge{border-right:2px solid var(--line-strong,var(--line))}
+.cpt td.cc{min-width:96px;max-width:96px;text-align:center;cursor:pointer;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+.cpt td.cc:hover{filter:brightness(.96);outline:1px solid var(--accent);outline-offset:-1px}
+.cpt td.done{background:var(--green-soft);color:var(--green)}
+.cpt td.inprog{background:var(--blue-soft,#e0ecff);color:var(--blue,#1d4ed8)}
+.cpt td.pend{background:var(--amber-soft);color:var(--amber)}
+.cpt td.na{color:var(--ink3);background:var(--gray-soft)}
+.cpt td.info{color:var(--ink2)}
+.cpt td.late{box-shadow:inset 0 0 0 2px var(--red);font-weight:600}
+.cpt td.gs{min-width:110px;text-align:center;cursor:pointer;color:var(--ink2)}
+.cpt td.gs.bad{color:var(--red);font-weight:600}
+.cpt td.gs.ok{color:var(--green)}
+.cpt-menu{position:fixed;z-index:1000;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:6px;display:grid;gap:2px;min-width:170px}
+.cpt-menu button{all:unset;cursor:pointer;padding:7px 10px;border-radius:7px;font-size:13px}
+.cpt-menu button:hover,.cpt-menu button:focus{background:var(--gray-soft)}
+.cpt-menu .hd{font-size:11.5px;color:var(--ink3);padding:4px 10px 6px;max-width:240px;white-space:normal}
+.cpd-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.cpd-tbl th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
+.cpd-tbl td{padding:3px 6px;border-bottom:1px solid var(--line-2,var(--line))}
+.cpd-tbl td:first-child{padding-left:10px;font-weight:600}
+.cpd-tbl input{font:inherit;font-size:13px;width:100%;min-width:90px;box-sizing:border-box;border:1px solid transparent;border-radius:6px;padding:5px 7px;background:transparent;color:var(--ink)}
+.cpd-tbl input:hover{border-color:var(--line)} .cpd-tbl input:focus{outline:none;border-color:var(--accent);background:var(--panel)}
+.cpd-tbl input.empty{background:var(--amber-soft)}
+</style>
+<script>
+/* ---------- state ---------- */
+const CPT = { trackers:null, cur:null, steps:[], lines:[], fold:null, f:{svc:'', brand:'', kam:'', lead:'', q:'', late:false} };
+const CPT_OPEN = ['pending','in progress','brand review'];          // still to do
+const CPT_CHOICES = ['Done','In Progress','Pending','Brand Review','n/a'];
+
+/* ---------- pure helpers (tests/test_tracker.cjs) ---------- */
+/* Excel serial, Date or text → 'YYYY-MM-DD' (or '') */
+function cptDate(v){
+  if(v==null || v==='') return '';
+  if(v instanceof Date) return isNaN(v) ? '' : new Date(v.getTime() - v.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  if(typeof v==='number') return v > 20000 && v < 80000 ? new Date(Math.round((v - 25569)*86400000)).toISOString().slice(0,10) : '';
+  const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[0] : '';
+}
+const cptTxt = v => v==null ? '' : typeof v==='number' ? String(Math.round(v*100)/100) : String(v).replace(/\s+/g,' ').trim();
+/* The planning sheet as rows of cells (SheetJS header:1) → {name, dday, steps, lines}. The header row is the
+   one that starts Country | Brand; steps are the named columns right of "Completion": section (6 rows up,
+   carried right), name (5 up), how-to (4 up), D- offset (1 up), due date (header row). */
+function cptParseSheet(rows){
+  rows = rows || [];
+  const h = rows.findIndex(r=> r && cptTxt(r[0]).toLowerCase()==='country' && cptTxt(r[1]).toLowerCase()==='brand');
+  if(h < 6) throw new Error('This does not look like the campaign planning sheet: no "Country | Brand" header row.');
+  const H = rows[h].map(v=> cptTxt(v).toLowerCase());
+  const col = (...names) => { for(const n of names){ const i = H.indexOf(n); if(i>=0) return i; } return -1; };
+  const cComp = col('completion'); if(cComp < 0) throw new Error('No "Completion" column in the header row.');
+  const R = k => rows[h-k] || [];
+  const dday = cptDate(R(5)[1]); if(!dday) throw new Error('No D-day date next to "Dday".');
+  const steps = []; let sec = '';
+  for(let c = cComp+1; c < Math.max(R(5).length, rows[h].length); c++){
+    if(cptTxt(R(6)[c])) sec = cptTxt(R(6)[c]);
+    const name = cptTxt(R(5)[c]); if(!name) continue;
+    const off = parseInt(cptTxt(R(1)[c]), 10);
+    steps.push({col:c, position:steps.length, element:sec, name, how:cptTxt(R(4)[c]), d_offset:isNaN(off) ? null : off, due:cptDate(rows[h][c]) || null});
+  }
+  if(!steps.length) throw new Error('No steps found right of the "Completion" column.');
+  const cs = {country:col('country'), brand:col('brand'), lead:col('lead'), kam:col('kam/pic','kam'), asso:col('asso','associate'), plat:col('platform'), cat:col('category'), svc:col('service type','service'),
+              teasing:col('teasing date start'), mkt:col('mkt start date'), presale:col('presale start'), presale_mkt:col('presale mkt start date')};
+  const g = (r, i) => i < 0 ? '' : cptTxt(r[i]);
+  const lines = [];
+  for(let i = h+1; i < rows.length; i++){
+    const r = rows[i]; if(!r || !g(r, cs.brand)) continue;
+    const cells = {}; steps.forEach(s=>{ const v = cptTxt(r[s.col]); if(v) cells[s.position] = v; });
+    const dates = {}; ['teasing','mkt','presale','presale_mkt'].forEach(k=>{ const d = cs[k] < 0 ? '' : cptDate(r[cs[k]]); if(d) dates[k] = d; });
+    lines.push({position:lines.length, country:g(r,cs.country), brand_name:g(r,cs.brand), lead:g(r,cs.lead), kam:g(r,cs.kam), associate:g(r,cs.asso),
+                platform:g(r,cs.plat), category:g(r,cs.cat), service_type:g(r,cs.svc), dates, cells});
+  }
+  if(!lines.length) throw new Error('No brand rows under the header.');
+  return {name: cptTxt((rows[h-6]||[])[1]) || 'Campaign tracker', dday, steps:steps.map(({col, ...s})=>s), lines};
+}
+/* A cell's kind: na (n/a or empty) · pend · prog · done (Done, Yes, an amount, any other answer) */
+function cptKind(v){
+  const k = String(v==null ? '' : v).trim().toLowerCase();
+  if(!k || k==='n/a' || k==='na') return 'na';
+  if(k==='pending' || k==='brand review') return 'pend';
+  if(k==='in progress') return 'inprog';
+  return k==='done' ? 'done' : 'info';
+}
+const cptIsOpen = v => CPT_OPEN.includes(String(v==null ? '' : v).trim().toLowerCase());
+const cptIsLate = (step, v, today) => !!(step && step.due && step.due < today && cptIsOpen(v));
+function cptLabel(v){
+  const s = String(v==null ? '' : v).trim(), k = s.toLowerCase();
+  if(!s) return ''; if(k==='n/a' || k==='na') return '—'; if(k==='done') return '✓'; if(k==='in progress') return 'In progress';
+  const n = Number(s); if(s!=='' && !isNaN(n) && Math.abs(n) >= 1000) return (Math.round(n/100)/10)+'k';
+  return s;
+}
+/* {applicable, done, open, late} over a line's cells for the given steps */
+function cptStats(line, steps, today){
+  const o = {applicable:0, done:0, open:0, late:0};
+  (steps||[]).forEach(s=>{ const v = (line.cells||{})[s.position], k = cptKind(v); if(k==='na') return;
+    o.applicable++; if(cptIsOpen(v)){ o.open++; if(cptIsLate(s, v, today)) o.late++; } else o.done++; });
+  return o;
+}
+function cptFiltered(lines, f, steps, today){
+  const q = String(f.q||'').trim().toLowerCase();
+  return (lines||[]).filter(l=> (!f.svc || l.service_type===f.svc) && (!f.brand || l.brand_name===f.brand) && (!f.kam || l.kam===f.kam || l.associate===f.kam) && (!f.lead || l.lead===f.lead)
+    && (!q || [l.brand_name,l.platform,l.kam,l.associate,l.lead].some(x=> String(x||'').toLowerCase().includes(q)))
+    && (!f.late || cptStats(l, steps, today).late > 0));
+}
+const cptToday = () => new Date(Date.now() + 7*3600e3).toISOString().slice(0,10);   // Bangkok date
+const cptElements = steps => { const out = []; (steps||[]).forEach(s=>{ let g = out[out.length-1]; if(!g || g.name!==s.element){ g = {name:s.element||'Steps', steps:[]}; out.push(g); } g.steps.push(s); }); return out; };
+
+/* ---------- data ---------- */
+async function cptLoad(trackerId){
+  const {data:tr, error} = await db.from('campaign_trackers').select('*').is('archived_at', null).order('dday', {ascending:false});
+  if(error) throw new Error(error.message);
+  CPT.trackers = tr || [];
+  CPT.cur = CPT.trackers.find(t=>t.id===trackerId) || CPT.trackers.find(t=> CPT.cur && t.id===CPT.cur.id) || CPT.trackers[0] || null;
+  CPT.steps = []; CPT.lines = [];
+  if(!CPT.cur) return;
+  const [st, ln] = await Promise.all([
+    db.from('campaign_tracker_steps').select('*').eq('tracker_id', CPT.cur.id).order('position').limit(1000),
+    db.from('campaign_tracker_lines').select('*').eq('tracker_id', CPT.cur.id).order('position').limit(2000)]);
+  if(st.error || ln.error) throw new Error((st.error || ln.error).message);
+  CPT.steps = st.data || []; CPT.lines = ln.data || [];
+  if(!CPT.fold || CPT.foldFor!==CPT.cur.id){ CPT.fold = {}; cptElements(CPT.steps).forEach((g,i)=>{ if(i>0) CPT.fold[g.name] = 1; }); CPT.foldFor = CPT.cur.id; }
+}
+
+/* ---------- the sheet ---------- */
+function cptSheetHTML(lines, steps, fold, today){
+  const groups = cptElements(steps);
+  let h1 = `<th class="fx c0" rowspan="2">Brand</th><th class="fx c1" rowspan="2">Platform</th><th class="fx c2" rowspan="2">KAM</th><th class="fx c3" rowspan="2">Done</th>`, h2 = '';
+  groups.forEach((g, gi)=>{
+    const f = !!fold[g.name];
+    h1 += `<th class="eh" data-el="${gi}" colspan="${f ? 1 : g.steps.length}" ${f ? 'rowspan="2"' : ''} title="${f ? 'Show' : 'Hide'} the ${g.steps.length} steps">${f ? '▸' : '▾'} ${esc(g.name)} <span class="hint">${g.steps.length}</span></th>`;
+    if(!f) g.steps.forEach((s, i)=>{ h2 += `<th class="sh${s.due && s.due < today ? ' late' : ''}${i===g.steps.length-1 ? ' ge' : ''}" data-step="${s.position}" title="${esc(s.name)}">${esc(s.name.length > 34 ? s.name.slice(0,32)+'…' : s.name)}<small>${s.d_offset!=null ? 'D-'+s.d_offset : ''}${s.due ? ' · '+esc(fmtDate(s.due)) : ''}</small></th>`; });
+  });
+  const body = lines.map(l=>{
+    const st = cptStats(l, steps, today);
+    let tds = `<td class="fx c0" title="${esc(l.brand_name)}">${esc(l.brand_name)} <span class="hint">${esc(l.country||'')}</span></td><td class="fx c1">${esc(l.platform||'')}</td><td class="fx c2" title="${esc([l.kam, l.associate, l.lead].filter(Boolean).join(' · '))}">${esc(l.kam||'')}</td><td class="fx c3">${st.applicable ? Math.round(100*st.done/st.applicable)+'%' : '—'}</td>`;
+    groups.forEach((g, gi)=>{
+      if(fold[g.name]){ const s = cptStats(l, g.steps, today);
+        tds += `<td class="gs ge${s.late ? ' bad' : s.applicable && !s.open ? ' ok' : ''}" data-el="${gi}">${s.applicable ? `${s.done}/${s.applicable}${s.late ? ` · ${s.late} late` : ''}` : '—'}</td>`; return; }
+      g.steps.forEach((s, i)=>{ const v = (l.cells||{})[s.position];
+        tds += `<td class="cc ${cptKind(v)}${cptIsLate(s, v, today) ? ' late' : ''}${i===g.steps.length-1 ? ' ge' : ''}" data-line="${l.id}" data-step="${s.position}" title="${esc(v||'')}">${esc(cptLabel(v))}</td>`; });
+    });
+    return `<tr>${tds}</tr>`;
+  }).join('');
+  return `<table class="cpt"><thead><tr>${h1}</tr><tr class="r2">${h2}</tr></thead><tbody>${body}</tbody></table>`;
+}
+function cptSumHTML(lines, steps, today){
+  const t = {applicable:0, done:0, open:0, late:0}; lines.forEach(l=>{ const s = cptStats(l, steps, today); Object.keys(t).forEach(k=> t[k] += s[k]); });
+  const brands = new Set(lines.map(l=>l.brand_name)).size;
+  return `<div class="cpt-sum"><div class="b"><b>${brands}</b><span>brands · ${lines.length} lines</span></div>
+    <div class="b green"><b>${t.applicable ? Math.round(100*t.done/t.applicable) : 0}%</b><span>${t.done} of ${t.applicable} steps done</span></div>
+    <div class="b"><b>${t.open}</b><span>still open</span></div><div class="b${t.late ? ' red' : ''}"><b>${t.late}</b><span>past their due date</span></div></div>`;
+}
+const cptOpts = (vals, cur, all) => `<option value="">${all}</option>` + [...new Set(vals.filter(Boolean))].sort((a,b)=>a.localeCompare(b)).map(v=>`<option${v===cur ? ' selected' : ''}>${esc(v)}</option>`).join('');
+
+async function cptMount(){
+  const _nav = S.nav, root = document.getElementById('cpt-root'); if(!root) return;
+  try{ await cptLoad(CPT.cur && CPT.cur.id); }catch(e){ if(!navStale(_nav)) root.innerHTML = `<div class="card empty">Could not load the tracker: ${esc(e.message)}</div>`; return; }
+  if(navStale(_nav) || !document.getElementById('cpt-root')) return;
+  if(!CPT.cur){ root.innerHTML = `<div class="card empty">No campaign tracker yet.${canEdit() ? ' Import the planning sheet (.xlsx) to start.<br><br><button class="btn btn-primary" id="cpt-imp">Import tracker (.xlsx)</button>' : ''}</div>`;
+    const b = root.querySelector('#cpt-imp'); if(b) b.onclick = cptImportPick; return; }
+  const f = CPT.f, L = CPT.lines;
+  root.innerHTML = `<div class="cpt-bar">
+      <select id="cpt-tr" aria-label="Campaign">${CPT.trackers.map(t=>`<option value="${t.id}"${t.id===CPT.cur.id ? ' selected' : ''}>${esc(t.name)} · D-day ${esc(fmtDate(t.dday))}</option>`).join('')}</select>
+      <select data-f="svc" aria-label="Service type">${cptOpts(L.map(l=>l.service_type), f.svc, 'All services')}</select>
+      <select data-f="brand" aria-label="Brand">${cptOpts(L.map(l=>l.brand_name), f.brand, 'All brands')}</select>
+      <select data-f="kam" aria-label="KAM or associate">${cptOpts(L.flatMap(l=>[l.kam, l.associate]), f.kam, 'All KAMs')}</select>
+      <select data-f="lead" aria-label="Category lead">${cptOpts(L.map(l=>l.lead), f.lead, 'All leads')}</select>
+      <input type="search" id="cpt-q" placeholder="Find…" aria-label="Find a brand or person" value="${esc(f.q)}">
+      <label style="font-size:13px;display:flex;gap:5px;align-items:center"><input type="checkbox" id="cpt-late"${f.late ? ' checked' : ''}> Late only</label>
+      <span class="grow"></span>
+      <button class="btn btn-ghost btn-sm" id="cpt-fold">Fold all</button>
+      <button class="btn btn-ghost btn-sm" id="cpt-xl">⇩ Excel</button>
+      ${canEdit() ? '<button class="btn btn-ghost btn-sm" id="cpt-imp">Import tracker (.xlsx)</button>' : ''}</div>
+    <div id="cpt-sum"></div><div class="cpt-wrap" id="cpt-sheet"></div>
+    <div class="hint" style="margin-top:8px">Click a cell to change it. Click a section name to show or hide its steps, and a step name for its how-to. Red outline = past its due date and not done.</div>`;
+  const draw = () => { const today = cptToday(), rows = cptFiltered(CPT.lines, CPT.f, CPT.steps, today);
+    root.querySelector('#cpt-sum').innerHTML = cptSumHTML(rows, CPT.steps, today);
+    root.querySelector('#cpt-sheet').innerHTML = rows.length ? cptSheetHTML(rows, CPT.steps, CPT.fold, today) : '<div class="empty">No lines match these filters.</div>'; };
+  draw(); CPT.draw = draw;
+  root.querySelector('#cpt-tr').onchange = e => { CPT.cur = {id:e.target.value}; CPT.fold = null; cptMount(); };
+  root.querySelectorAll('[data-f]').forEach(s=>{ s.onchange = ()=>{ CPT.f[s.dataset.f] = s.value; draw(); }; });
+  root.querySelector('#cpt-q').oninput = e => { CPT.f.q = e.target.value; draw(); };
+  root.querySelector('#cpt-late').onchange = e => { CPT.f.late = e.target.checked; draw(); };
+  root.querySelector('#cpt-fold').onclick = ()=>{ const g = cptElements(CPT.steps), all = g.every(x=>CPT.fold[x.name]); CPT.fold = {}; if(!all) g.forEach(x=>{ CPT.fold[x.name] = 1; }); draw(); };
+  root.querySelector('#cpt-xl').onclick = cptExport;
+  const imp = root.querySelector('#cpt-imp'); if(imp) imp.onclick = cptImportPick;
+  root.querySelector('#cpt-sheet').onclick = e => {
+    const eh = e.target.closest('[data-el]'); if(eh){ const g = cptElements(CPT.steps)[+eh.dataset.el]; if(CPT.fold[g.name]) delete CPT.fold[g.name]; else CPT.fold[g.name] = 1; draw(); return; }
+    const sh = e.target.closest('th[data-step]'); if(sh) return cptStepModal(+sh.dataset.step);
+    const td = e.target.closest('td.cc'); if(td) cptCellMenu(td);
+  };
+}
+function cptMenuClose(){ const m = document.getElementById('cpt-menu'); if(m) m.remove(); document.removeEventListener('mousedown', cptMenuAway, true); }
+function cptMenuAway(e){ if(!e.target.closest('#cpt-menu')) cptMenuClose(); }
+function cptCellMenu(td){
+  cptMenuClose();
+  const line = CPT.lines.find(l=>l.id===td.dataset.line), step = CPT.steps.find(s=>s.position===+td.dataset.step); if(!line || !step) return;
+  const cur = (line.cells||{})[step.position] || '';
+  if(!canEdit()){ toast(`${step.name}: ${cur || 'empty'}`); return; }
+  const m = el(`<div class="cpt-menu" id="cpt-menu" role="menu"><div class="hd"><b>${esc(line.brand_name)} · ${esc(line.platform||'')}</b><br>${esc(step.name)}${step.due ? ' · due '+esc(fmtDate(step.due)) : ''}</div>
+    ${CPT_CHOICES.map(c=>`<button role="menuitem" data-v="${c}">${c===cur ? '● ' : ''}${c}</button>`).join('')}<button role="menuitem" data-other>Other value…</button><button role="menuitem" data-v="">Clear</button></div>`);
+  document.body.appendChild(m);
+  const r = td.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left, innerWidth - m.offsetWidth - 8))+'px'; m.style.top = Math.max(8, Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 8))+'px';
+  m.onclick = e => { const b = e.target.closest('button'); if(!b) return;
+    let v = b.dataset.v; if(b.hasAttribute('data-other')){ v = prompt('Value for this cell (an amount, "Yes", "MKT set" …)', cur); if(v==null) return cptMenuClose(); }
+    cptMenuClose(); cptSetCell(line, step, v, td); };
+  setTimeout(()=> document.addEventListener('mousedown', cptMenuAway, true), 0);
+}
+async function cptSetCell(line, step, value, td){
+  const old = (line.cells||{})[step.position], v = String(value||'').trim();
+  if((old||'')===v) return;
+  line.cells = {...(line.cells||{})}; if(v) line.cells[step.position] = v; else delete line.cells[step.position];
+  const today = cptToday();
+  if(td && td.isConnected){ td.className = `cc ${cptKind(v)}${cptIsLate(step, v, today) ? ' late' : ''}${td.classList.contains('ge') ? ' ge' : ''}`; td.textContent = cptLabel(v); td.title = v; }
+  const {error} = await db.rpc('cp_tracker_set_cell', {p_line:line.id, p_step:step.position, p_value:v});
+  if(error){ line.cells = {...line.cells}; if(old) line.cells[step.position] = old; else delete line.cells[step.position]; toast('Not saved: '+error.message, true); if(CPT.draw) CPT.draw(); return; }
+  const rows = cptFiltered(CPT.lines, CPT.f, CPT.steps, today), sum = document.getElementById('cpt-sum'); if(sum) sum.innerHTML = cptSumHTML(rows, CPT.steps, today);
+  const tr = td && td.closest('tr'), pc = tr && tr.querySelector('.c3'); if(pc){ const st = cptStats(line, CPT.steps, today); pc.textContent = st.applicable ? Math.round(100*st.done/st.applicable)+'%' : '—'; }
+}
+function cptStepModal(pos){
+  const s = CPT.steps.find(x=>x.position===pos); if(!s) return;
+  const today = cptToday(), c = {done:0, open:0, late:0, na:0};
+  CPT.lines.forEach(l=>{ const v = (l.cells||{})[pos], k = cptKind(v); if(k==='na') c.na++; else if(cptIsOpen(v)){ c.open++; if(cptIsLate(s, v, today)) c.late++; } else c.done++; });
+  const late = CPT.lines.filter(l=> cptIsLate(s, (l.cells||{})[pos], today));
+  modal(`<div class="modal-head"><h2>${esc(s.name)}</h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div>
+    <div class="modal-body"><p class="muted">${esc(s.element||'')}${s.d_offset!=null ? ` · D-${s.d_offset}` : ''}${s.due ? ` · due ${esc(fmtDate(s.due))}` : ''}</p>
+      ${s.how ? `<div class="section-title">How to</div><p>${esc(s.how)}</p>` : '<p class="muted">No how-to written for this step.</p>'}
+      <p><b>${c.done}</b> done · <b>${c.open}</b> open${c.late ? ` · <b style="color:var(--red)">${c.late} late</b>` : ''} · ${c.na} not applicable</p>
+      ${late.length ? `<div class="section-title">Late</div><p>${late.map(l=>`${esc(l.brand_name)} ${esc(l.platform||'')} <span class="hint">${esc(l.kam||'')}</span>`).join('<br>')}</p>` : ''}</div>`);
+}
+function cptExport(){
+  const steps = CPT.steps, rows = cptFiltered(CPT.lines, CPT.f, steps, cptToday()), meta = ['Country','Brand','Lead','KAM/PIC','Asso','Platform','Category','Service Type'];
+  const pad = meta.map(()=> '');
+  const aoa = [pad.concat(steps.map((s,i)=> i===0 || steps[i-1].element!==s.element ? s.element : '')), pad.concat(steps.map(s=>s.name)), pad.concat(steps.map(s=>s.how||'')),
+    pad.slice(0,-1).concat(['D-']).concat(steps.map(s=> s.d_offset==null ? '' : s.d_offset)), meta.concat(steps.map(s=>s.due||''))]
+    .concat(rows.map(l=> [l.country, l.brand_name, l.lead, l.kam, l.associate, l.platform, l.category, l.service_type].concat(steps.map(s=> (l.cells||{})[s.position] || ''))));
+  downloadXLSX(xlsxFilename(CPT.cur.name), aoa, null, 'Tracker');
+}
+
+/* ---------- import ---------- */
+function cptImportPick(){
+  if(typeof XLSX==='undefined') return toast('The Excel reader has not loaded. Check the connection and reload.', true);
+  const i = document.createElement('input'); i.type = 'file'; i.accept = '.xlsx,.xls'; i.style.display = 'none'; document.body.appendChild(i);
+  i.onchange = async ()=>{ const file = i.files && i.files[0]; i.remove(); if(!file) return;
+    try{ const wb = XLSX.read(await file.arrayBuffer(), {type:'array'});
+      let parsed = null, err = null;
+      for(const n of wb.SheetNames){ try{ parsed = cptParseSheet(XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:true, defval:null})); break; }catch(e){ err = err || e; } }
+      if(!parsed) throw err || new Error('No sheet found.');
+      cptImportConfirm(parsed, file.name);
+    }catch(e){ toast('Could not read the file: '+e.message, true); } };
+  i.click();
+}
+function cptImportConfirm(p, fileName){
+  const brands = new Set(p.lines.map(l=>l.brand_name)).size, cells = p.lines.reduce((n,l)=> n + Object.keys(l.cells).length, 0);
+  const same = (CPT.trackers||[]).find(t=> t.name===p.name && t.dday===p.dday);
+  const m = modal(`<div class="modal-head"><h2>Import the tracker</h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div>
+    <div class="modal-body"><label>Name<input id="cpt-in" value="${esc(p.name)}"></label>
+      <p>D-day <b>${esc(fmtDate(p.dday))}</b> · <b>${p.steps.length}</b> steps in ${cptElements(p.steps).length} sections · <b>${brands}</b> brands on <b>${p.lines.length}</b> lines · ${cells} filled cells.</p>
+      ${same ? `<p style="color:var(--amber)"><b>A tracker with this name and D-day already exists.</b> Importing adds a second copy; it does not update the first.</p>` : ''}
+      <p class="muted">Brands are matched to the DONE brand list by name. Empty KAM, associate and category lead in the brand directory are filled from the sheet.</p></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="cpt-go">Import</button></div>`);
+  m.querySelector('#cpt-go').onclick = async e => { const b = e.target; b.disabled = true; b.textContent = 'Importing…';
+    try{ const res = await cptImport({...p, name: m.querySelector('#cpt-in').value.trim() || p.name}, fileName);
+      closeModals(); toast(`Imported ${p.lines.length} lines${res.unlinked.length ? ` · ${res.unlinked.length} brand names not in the brand list` : ''}`);
+      if(res.unlinked.length) modal(`<div class="modal-head"><h2>Brand names not in the brand list</h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div><div class="modal-body"><p class="muted">These lines are in the tracker but not tied to a DONE brand. Add the name as an alias of the right brand in Admin → Brands, then import again or leave them as they are.</p><p>${res.unlinked.map(esc).join('<br>')}</p></div>`);
+      CPT.cur = {id:res.id}; CPT.fold = null; cptMount();
+    }catch(err){ b.disabled = false; b.textContent = 'Import'; toast('Import failed: '+err.message, true); } };
+}
+async function cptImport(p, fileName){
+  const {data:t, error} = await db.from('campaign_trackers').insert({name:p.name, dday:p.dday, source_file:fileName||null}).select().single();
+  if(error) throw new Error(error.message);
+  const fail = async msg => { await db.from('campaign_trackers').delete().eq('id', t.id); throw new Error(msg); };   // no half-imported tracker
+  const s = await db.from('campaign_tracker_steps').insert(p.steps.map(x=>({...x, tracker_id:t.id})));
+  if(s.error) await fail(s.error.message);
+  for(let i = 0; i < p.lines.length; i += 50){
+    const r = await db.from('campaign_tracker_lines').insert(p.lines.slice(i, i+50).map(x=>({...x, tracker_id:t.id})));
+    if(r.error) await fail(r.error.message);
+  }
+  const lk = await db.rpc('cp_tracker_link_brands', {p_tracker:t.id});
+  if(!lk.error){ const {data:bs} = await db.from('brands').select('*').order('name'); if(bs) S.brands = bs; }   // the directory may have been filled
+  return {id:t.id, unlinked: lk.error ? [] : ((lk.data && lk.data.unlinked) || [])};
+}
+
+/* ---------- brand directory ---------- */
+const CPD_COLS = [['service_model','Service'],['category','Category'],['category_lead','Category lead'],['kam','KAM'],['associate','Associate'],['cs_owner','CS owner']];
+function cpdRowsHTML(brands, q, edit){
+  const k = String(q||'').trim().toLowerCase();
+  const list = (brands||[]).filter(b=> !b.merged_into && b.active!==false && (!k || [b.name, b.kam, b.associate, b.category_lead, b.category, b.service_model].some(x=> String(x||'').toLowerCase().includes(k))));
+  if(!list.length) return '<tr><td colspan="7" class="empty">No brands match.</td></tr>';
+  return list.map(b=>`<tr><td>${esc(b.name)}${b.cusp_country ? ` <span class="hint">${esc(b.cusp_country)}</span>` : ''}</td>${CPD_COLS.map(([f, label])=>
+    edit ? `<td><input data-brand="${b.id}" data-f="${f}" value="${esc(b[f]||'')}" aria-label="${esc(label)} of ${esc(b.name)}" class="${b[f] ? '' : (f==='kam' || f==='category_lead' ? 'empty' : '')}" list="cpd-${f}"></td>` : `<td>${esc(b[f]||'—')}</td>`).join('')}</tr>`).join('');
+}
+function cpdMount(){
+  const root = document.getElementById('cpd-root'); if(!root) return;
+  const brands = (S.brands||[]).filter(b=> !b.merged_into && b.active!==false), edit = canEdit();
+  const miss = brands.filter(b=> !b.kam || !b.category_lead).length;
+  root.innerHTML = `<div class="cpt-bar"><input type="search" id="cpd-q" placeholder="Find a brand or person…" aria-label="Find a brand or person"><span class="hint">${brands.length} brands${miss ? ` · <b style="color:var(--amber)">${miss} without a KAM or category lead</b>` : ''}</span><span class="grow"></span><span class="hint">${edit ? 'Type in a cell; it saves when you leave it.' : 'Read only'}</span></div>
+    ${CPD_COLS.map(([f])=>`<datalist id="cpd-${f}">${[...new Set(brands.map(b=>b[f]).filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
+    <div class="cpt-wrap"><table class="cpd-tbl"><thead><tr><th>Brand</th>${CPD_COLS.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead><tbody id="cpd-body">${cpdRowsHTML(brands, '', edit)}</tbody></table></div>`;
+  const body = root.querySelector('#cpd-body');
+  root.querySelector('#cpd-q').oninput = e => { body.innerHTML = cpdRowsHTML(brands, e.target.value, edit); };
+  body.addEventListener('change', async e => { const i = e.target.closest('input[data-brand]'); if(!i) return;
+    const b = (S.brands||[]).find(x=>x.id===i.dataset.brand), f = i.dataset.f, v = i.value.trim() || null; if(!b || (b[f]||null)===v) return;
+    const {error} = await db.from('brands').update({[f]:v}).eq('id', b.id);
+    if(error){ i.value = b[f]||''; return toast('Not saved: '+error.message, true); }
+    b[f] = v; i.classList.toggle('empty', !v && (f==='kam' || f==='category_lead')); toast(`${b.name}: saved`); });
+}
+</script>
