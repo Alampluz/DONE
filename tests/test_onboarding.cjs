@@ -90,6 +90,33 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  r.summary = s.done===2 && s.total===6 && s.pct===33 && s.waiting===1 && s.next && s.next.code==='S3';
  await obRenderTracker(o.id); T=document.getElementById('content').innerHTML;
  r.kpiAfter = />33%</.test(T) && /ob-wait">1</.test(T);
+ // 6b. the timeline belongs to its owner: others update progress only; the owner can customise
+ { const me0=S.me, lead0=o.lead_id, cb0=o.created_by, ws0=o.workspace_id;
+   r.ownAdmin = obCanCustomise(o) && /Customise timeline/.test(T) && /obGoLiveModal/.test(T) && /＋ Activity/.test(T);
+   S.me={id:'someone',role:'internal',full_name:'Someone'}; o.lead_id='anch'; o.created_by='april'; o.workspace_id=null;
+   await obRenderTracker(o.id); let N=document.getElementById('content').innerHTML;
+   const row=document.querySelector('tr[data-id="'+by('S3').id+'"]');
+   r.ownNo = !obCanCustomise(o) && !/Customise timeline/.test(N) && !/obGoLiveModal/.test(N) && !/＋ Activity/.test(N) && !/＋ Service/.test(N)
+     && /Only the owner changes the timeline/.test(N) && !row.querySelector('input[type=number]') && !!row.querySelector('select.ob-stsel') && !!row.querySelector('input.ob-remark');
+   o.lead_id='someone'; r.ownLead = obCanCustomise(o); o.lead_id='anch'; o.created_by='someone'; r.ownCreator = obCanCustomise(o); o.created_by='april';
+   S.me={id:'boss',role:'management',full_name:'Boss'}; r.ownMgmt = obCanCustomise(o);
+   S.me=me0; o.lead_id=lead0; o.created_by=cb0; o.workspace_id=ws0;
+   OB.custom[o.id]=true; await obRenderTracker(o.id); N=document.getElementById('content').innerHTML;
+   r.czOn = /Done customising/.test(N) && document.querySelectorAll('td.ob-cz').length===acts.length && document.querySelectorAll('.ob-rn').length>=3 && /<th>Customise<\/th>/.test(N);
+   const before=OB.acts[o.id].map(a=>a.code).join(','); window.__rpc.length=0;
+   await obMoveAct(by('S3').id, 1);
+   const call=window.__rpc.find(c=>c.name==='ob_reorder');
+   r.czMove = !!call && call.args.p_onboarding===o.id && call.args.p_ids.length===acts.length && OB.acts[o.id].map(a=>a.code).join(',')!==before && OB.acts[o.id].every((a,i)=>a.position===i+1);
+   const first=OB.acts[o.id][0]; window.__rpc.length=0; await obMoveAct(first.id, -1); r.czEdge = !window.__rpc.some(c=>c.name==='ob_reorder');
+   await obMoveAct(by('S3').id, -1);   // put it back
+   r.czBack = OB.acts[o.id].map(a=>a.code).join(',')===before;
+   obEditActModal(by('S5').id); const em=document.querySelector('#modal-root');
+   r.czModal = em.querySelector('#oea-title').value===by('S5').title && em.querySelector('#oea-svc').value===by('S5').service_name;
+   em.querySelector('#oea-title').value='Renamed <b>activity</b>'; em.querySelector('#oea-days').value=''; em.querySelector('#oea-date').value='2027-03-03';
+   await em.querySelector('#oea-save').onclick(); await new Promise(x=>setTimeout(x,0));
+   r.czSaved = by('S5').title==='Renamed <b>activity</b>' && by('S5').offset_days===null && by('S5').deadline==='2027-03-03' && !/<b>activity<\/b>/.test(document.getElementById('content').innerHTML);
+   OB.custom[o.id]=false; await obRenderTracker(o.id); T=document.getElementById('content').innerHTML;
+ }
  // 7. D- edit re-dates; moving Shop Live re-dates every activity with a D-
  obSetDays(by('S32').id,'-14'); await new Promise(x=>setTimeout(x,0));
  r.daysEdit = by('S32').offset_days===-14 && by('S32').deadline==='2027-04-12';   // +14 → Thu 15 Apr, Songkran 13–15 → Mon 12 Apr
@@ -148,6 +175,11 @@ check('overdue only for open activities with a past deadline', r.overdue);
 check('tracker listed on its workspace page above the boards, not on others', r.wsSection && r.wsOther);
 check('list shows go-live, overdue and waiting counts', r.listRow);
 check('Excel export has one row per activity', r.exportOk);
+check('timeline owner: admin, management, lead and creator may customise', r.ownAdmin && r.ownLead && r.ownCreator && r.ownMgmt);
+check('timeline owner: other staff see no timeline controls but keep status, remark, PIC', r.ownNo);
+check('customise mode: row controls, rename on phases and sections', r.czOn);
+check('customise mode: move stays inside the phase and saves the whole order in one call', r.czMove && r.czEdge && r.czBack);
+check('customise mode: edit an activity, fixed deadline when D- is empty, text escaped', r.czModal && r.czSaved);
 check('share link token generated; brand page hides PIC, team and remarks; bad token refused', r.tokenLen===36 && r.shareUrl && r.pubOk && r.pubBad && r.navShare);
 check('My Work shows my open onboarding activities', r.homeSection);
 check('checklist page edits with a default PIC column; add row works', r.checklist && r.addRow);
