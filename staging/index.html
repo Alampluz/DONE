@@ -365,6 +365,10 @@ tr.tv-arch .tv-name .tv-open{text-decoration:line-through}
 .mention{background:var(--accent-soft);color:var(--accent-ink);font-weight:700;border-radius:5px;padding:0 3px}
 /* ---- notification bell ---- */
 #bell-wrap{position:relative;margin-left:6px;flex:none}
+#tb-refresh{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;border:0;border-radius:9px;background:transparent;color:var(--ink2);cursor:pointer}
+#tb-refresh:hover{background:var(--gray-soft);color:var(--ink)}
+#tb-refresh.spin svg{animation:tbspin .7s linear infinite}
+@keyframes tbspin{to{transform:rotate(360deg)}}
 #bell{position:relative;display:flex;align-items:center;justify-content:center;width:34px;height:34px;
   border-radius:10px;color:var(--ink3);transition:color .16s ease,background .16s ease}
 #bell svg{width:19px;height:19px;display:block}
@@ -1150,7 +1154,7 @@ body.modal-open{overflow:hidden}
 .kb-more{padding:10px;font-size:12px;color:var(--ink3);text-align:center}
 </style>
 <script>
-/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · 8e88846</div> so a dark-theme user never sees a flash of the light app. The real
+/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · f2dbf83</div> so a dark-theme user never sees a flash of the light app. The real
    preference lives in profiles.nav_prefs.theme and is applied again at boot; this is only
    the fast local echo of it. 'system' follows the OS. */
 (function(){
@@ -1211,6 +1215,10 @@ body.modal-open{overflow:hidden}
           <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
         </svg><span>Search everything</span><kbd id="gs-kbd">⌘K</kbd></button>
       <div class="topbar-right" id="topbar-actions"></div>
+      <button id="tb-refresh" type="button" title="Refresh this page with the latest data" aria-label="Refresh" onclick="appRefresh(this)">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 11a8 8 0 1 0-2.3 5.7"/><polyline points="20 4 20 11 13 11"/>
+        </svg></button>
       <div id="bell-wrap"><button id="bell" title="Notifications" aria-label="Notifications" onclick="toggleNotifPanel(event)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M18 8.4A6 6 0 1 0 6 8.4c0 4.55-1.6 5.86-2.05 6.26a.62.62 0 0 0 .42 1.09h15.26a.62.62 0 0 0 .42-1.09C19.6 14.26 18 12.95 18 8.4Z"/>
@@ -2127,6 +2135,16 @@ async function _boot(){
   renderSidebar();
   startNotifPolling();
   navigate(location.hash || '#/home');
+}
+/* Topbar ↻: re-read the shared lists (people, boards, brands…) and redraw the page you are on, without
+   reloading the app. Unsaved text in an open form on the page is lost, like a browser reload would. */
+let appRefreshing = false;
+async function appRefresh(btn){
+  if(appRefreshing) return;
+  appRefreshing = true; if(btn) btn.classList.add('spin');
+  try{ await refreshCore(); renderSidebar(); if(typeof refreshNotifs==='function') refreshNotifs(); navigate(location.hash || '#/home'); toast('Refreshed'); }
+  catch(e){ toast('Could not refresh: '+(e && e.message || e), true); }
+  finally{ appRefreshing = false; if(btn) setTimeout(()=> btn.classList.remove('spin'), 400); }
 }
 async function refreshCore(){
   const [pr, ws, pj, rt, br, co, bo, wo, tm, tmm] = await Promise.all([
@@ -11572,7 +11590,7 @@ async function cptImport(p, fileName){
     if(r.error) await fail(r.error.message);
   }
   const lk = await db.rpc('cp_tracker_link_brands', {p_tracker:t.id});
-  if(!lk.error){ const {data:bs} = await db.from('brands').select('*').order('name'); if(bs) S.brands = bs; }   // the directory may have been filled
+  if(!lk.error){ const {data:bs} = await db.from('brands').select('*').order('name'); if(bs) S.brandsList = bs; }   // the directory may have been filled
   return {id:t.id, unlinked: lk.error ? [] : ((lk.data && lk.data.unlinked) || [])};
 }
 
@@ -11587,7 +11605,7 @@ function cpdRowsHTML(brands, q, edit){
 }
 function cpdMount(){
   const root = document.getElementById('cpd-root'); if(!root) return;
-  const brands = (S.brands||[]).filter(b=> !b.merged_into && b.active!==false), edit = canEdit();
+  const brands = (S.brandsList||[]).filter(b=> !b.merged_into && b.active!==false), edit = canEdit();
   const miss = brands.filter(b=> !b.kam || !b.category_lead).length;
   root.innerHTML = `<div class="cpt-bar"><input type="search" id="cpd-q" placeholder="Find a brand or person…" aria-label="Find a brand or person"><span class="hint">${brands.length} brands${miss ? ` · <b style="color:var(--amber)">${miss} without a KAM or category lead</b>` : ''}</span><span class="grow"></span><span class="hint">${edit ? 'Type in a cell; it saves when you leave it.' : 'Read only'}</span></div>
     ${CPD_COLS.map(([f])=>`<datalist id="cpd-${f}">${[...new Set(brands.map(b=>b[f]).filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
@@ -11595,7 +11613,7 @@ function cpdMount(){
   const body = root.querySelector('#cpd-body');
   root.querySelector('#cpd-q').oninput = e => { body.innerHTML = cpdRowsHTML(brands, e.target.value, edit); };
   body.addEventListener('change', async e => { const i = e.target.closest('input[data-brand]'); if(!i) return;
-    const b = (S.brands||[]).find(x=>x.id===i.dataset.brand), f = i.dataset.f, v = i.value.trim() || null; if(!b || (b[f]||null)===v) return;
+    const b = (S.brandsList||[]).find(x=>x.id===i.dataset.brand), f = i.dataset.f, v = i.value.trim() || null; if(!b || (b[f]||null)===v) return;
     const {error} = await db.from('brands').update({[f]:v}).eq('id', b.id);
     if(error){ i.value = b[f]||''; return toast('Not saved: '+error.message, true); }
     b[f] = v; i.classList.toggle('empty', !v && (f==='kam' || f==='category_lead')); toast(`${b.name}: saved`); });
