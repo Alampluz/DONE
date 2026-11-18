@@ -1154,7 +1154,7 @@ body.modal-open{overflow:hidden}
 .kb-more{padding:10px;font-size:12px;color:var(--ink3);text-align:center}
 </style>
 <script>
-/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · 5d32dc7</div> so a dark-theme user never sees a flash of the light app. The real
+/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · 6c7e891</div> so a dark-theme user never sees a flash of the light app. The real
    preference lives in profiles.nav_prefs.theme and is applied again at boot; this is only
    the fast local echo of it. 'system' follows the OS. */
 (function(){
@@ -11666,6 +11666,9 @@ async function cpdMount(){
 .ob-tbl tr.ph td{background:var(--gray-soft);font-weight:700;color:var(--ink2);font-size:12px;cursor:pointer;user-select:none}
 .ob-tbl tr.ph td .n{font-weight:500;color:var(--ink3)}
 .ob-tbl tr.over td.dl{color:var(--red);font-weight:700}
+.ob-tbl td.ob-cz{white-space:nowrap}
+.ob-tbl td.ob-cz .btn{padding:2px 7px;font-size:12px}
+.ob-tbl .ob-rn{padding:1px 8px;font-size:11.5px;font-weight:500;margin-left:8px;text-transform:none;letter-spacing:0}
 .ob-tbl td.ed{background:var(--gray-soft);border-left:2px solid var(--accent-soft)}
 .ob-tbl td.ed input,.ob-tbl td.ed select{width:100%;min-width:0;padding:4px 6px;font-size:12.5px;border:1px solid transparent;background:transparent;border-radius:6px;color:var(--ink)}
 .ob-tbl td.ed input:hover,.ob-tbl td.ed select:hover{border-color:var(--line);background:var(--panel)}
@@ -11938,6 +11941,15 @@ function obActivitiesFromChecklists(o, typeIds, startPos){
 }
 
 /* ======================= TRACKER ======================= */
+/* Who may change a tracker's timeline: its owner (lead), whoever created it, an owner of its workspace,
+   admin / management. Everyone else on staff updates progress only. The database enforces the same rule
+   (migrations/2026-11-18_onboarding_timeline_owner.sql). */
+function obCanCustomise(o){
+  if(!o || !S.me) return false;
+  return isAdmin() || S.me.role==='management' || o.lead_id===S.me.id || o.created_by===S.me.id || !!(o.workspace_id && canManageWs(o.workspace_id));
+}
+const obOwnerName = o => { const p=(S.profiles||[]).find(x=>x.id===(o.lead_id||o.created_by)); return p? p.full_name : ''; };
+OB.custom = OB.custom || {};   /* onboarding id -> "Customise timeline" is on */
 async function obRenderTracker(oid){
   const _nav = S.nav; const C=$('#content');
   const o = OB.onboardings.find(x=>x.id===oid); if(!o){ C.innerHTML='<div class="card empty">Tracker not found</div>'; return; }
@@ -11948,6 +11960,7 @@ async function obRenderTracker(oid){
   const s = obSummary(o, acts);
   const services=[...new Set(acts.map(a=>a.service_name))];
   const col = OB.collapsed[oid]=OB.collapsed[oid]||{};
+  const own = obCanCustomise(o), cz = own && !!OB.custom[oid], cols = cz? 12 : 11;
   let lastSvc=null, lastPh=null, svcIdx=0;
   const rowHTML = a => `<tr data-id="${a.id}" class="${obOverdue(a)?'over':''}">
       <td class="muted">${esc(a.code||'')}</td>
@@ -11956,19 +11969,20 @@ async function obRenderTracker(oid){
       <td class="muted ob-desc">${esc(a.brand_provides||'')}</td>
       <td class="ed"><select class="ob-team" onchange="obSetAct('${a.id}',{team_id:this.value||null})"><option value="">—</option>${(S.teams||[]).map(t=>`<option value="${t.id}" ${t.id===a.team_id?'selected':''}>${esc(obTeamShort(t.id))}</option>`).join('')}</select></td>
       <td class="ed"><select onchange="obSetAct('${a.id}',{assignee_id:this.value||null},false)">${obPeopleOptions(a.team_id, a.assignee_id)}</select></td>
-      <td class="ed"><input type="number" value="${a.offset_days==null?'':a.offset_days}" placeholder="—" title="Days before go-live (negative = after)" onchange="obSetDays('${a.id}',this.value)"></td>
+      ${own? `<td class="ed"><input type="number" value="${a.offset_days==null?'':a.offset_days}" placeholder="—" title="Days before go-live (negative = after)" onchange="obSetDays('${a.id}',this.value)"></td>` : `<td class="muted" title="Only the tracker owner changes the timeline">${a.offset_days==null?'—':a.offset_days}</td>`}
       <td class="dl">${a.deadline? fmtDate(a.deadline):'<span class="muted">—</span>'}${obOverdue(a)?' ⚠':''}</td>
       <td class="ed"><input type="date" value="${a.done_date||''}" onchange="obSetDone('${a.id}',this.value)"></td>
       <td class="ed"><select class="ob-stsel ${a.status}" onchange="obSetStatus('${a.id}',this.value)">${OB_STATUS.map(st=>`<option value="${st.k}" ${st.k===a.status?'selected':''}>${st.label}</option>`).join('')}</select></td>
       <td class="ed"><input class="ob-remark" value="${esc(a.remark||'')}" placeholder="…" onchange="obSetAct('${a.id}',{remark:this.value.trim()||null},false)"></td>
+      ${cz? `<td class="ob-cz"><button class="btn btn-ghost btn-sm" title="Move up" aria-label="Move ${esc(a.title)} up" onclick="obMoveAct('${a.id}',-1)">↑</button><button class="btn btn-ghost btn-sm" title="Move down" aria-label="Move ${esc(a.title)} down" onclick="obMoveAct('${a.id}',1)">↓</button><button class="btn btn-ghost btn-sm" title="Edit this activity" onclick="obEditActModal('${a.id}')">Edit</button><button class="btn btn-ghost btn-sm" title="Remove this activity" style="color:var(--red)" onclick="obDeleteAct('${a.id}')">✕</button></td>`:''}
     </tr>`;
   let body='';
   acts.forEach(a=>{
     if(a.service_name!==lastSvc){ lastSvc=a.service_name; lastPh=null; svcIdx++; const sv=s.byService[a.service_name]||{n:0,d:0}; const svActs=acts.filter(x=>x.service_name===a.service_name);
-      body+=`<tr class="svc"><td colspan="11">${String.fromCharCode(64+svcIdx)} · ${esc(a.service_name.toUpperCase())}<span class="sp">${svActs.length} activities · ${[...new Set(svActs.map(x=>x.phase).filter(Boolean))].length} phases · ${sv.d}/${sv.n} done</span></td></tr>`; }
+      body+=`<tr class="svc"><td colspan="${cols}">${String.fromCharCode(64+svcIdx)} · ${esc(a.service_name.toUpperCase())}${cz? ` <button class="btn btn-ghost btn-sm ob-rn" data-svc="${esc(a.service_name)}" onclick="event.stopPropagation();obRenameGroup('${oid}','service_name',this.dataset.svc,null)">Rename</button>`:''}<span class="sp">${svActs.length} activities · ${[...new Set(svActs.map(x=>x.phase).filter(Boolean))].length} phases · ${sv.d}/${sv.n} done</span></td></tr>`; }
     const key=a.service_name+'|'+(a.phase||'');
     if((a.phase||'')!==lastPh){ lastPh=a.phase||''; const n=acts.filter(x=>x.service_name===a.service_name && (x.phase||'')===lastPh); const d=n.filter(x=>x.status==='done').length;
-      body+=`<tr class="ph" data-key="${esc(key)}" onclick="obTogglePhase('${oid}',this.dataset.key)"><td colspan="11">${col[key]?'▸':'▾'} ${esc(lastPh||'Activities')} <span class="n">· ${d}/${n.length} done${col[key]? ' · collapsed':''}</span></td></tr>`; }
+      body+=`<tr class="ph" data-key="${esc(key)}" onclick="obTogglePhase('${oid}',this.dataset.key)"><td colspan="${cols}">${col[key]?'▸':'▾'} ${esc(lastPh||'Activities')}${cz? ` <button class="btn btn-ghost btn-sm ob-rn" data-svc="${esc(a.service_name)}" data-ph="${esc(lastPh)}" onclick="event.stopPropagation();obRenameGroup('${oid}','phase',this.dataset.ph,this.dataset.svc)">Rename</button>`:''} <span class="n">· ${d}/${n.length} done${col[key]? ' · collapsed':''}</span></td></tr>`; }
     if(!col[key]) body+=rowHTML(a);
   });
   const unit=(acts[0]||{}).offset_unit||'calendar';
@@ -11976,13 +11990,16 @@ async function obRenderTracker(oid){
     <div class="ob-head"><h1>${esc(o.name)}</h1>
       ${o.status&&o.status!=='active'? `<span class="chip" style="background:var(--gray-soft);color:var(--ink2)">${esc(o.status.replace('_',' '))}</span>`:''}
       <span class="sp"></span>
-      <button class="btn btn-ghost" onclick="obGoLiveModal('${oid}')">Shop Live: <b>${fmtDate(o.go_live)||'not set'}</b> ✎</button>
+      ${own? `<button class="btn btn-ghost" onclick="obGoLiveModal('${oid}')">Shop Live: <b>${fmtDate(o.go_live)||'not set'}</b> ✎</button>
+      <button class="btn ${cz?'btn-primary':'btn-ghost'}" id="ob-cz-btn" aria-pressed="${cz}" title="Rename, reorder, edit or remove activities, phases and sections" onclick="OB.custom['${oid}']=!OB.custom['${oid}'];obRenderTracker('${oid}')">${cz? 'Done customising':'Customise timeline'}</button>
       <button class="btn btn-ghost" onclick="obAddServiceModal('${oid}')">＋ Service</button>
-      <button class="btn btn-ghost" onclick="obAddActivityModal('${oid}')">＋ Activity</button>
+      <button class="btn btn-ghost" onclick="obAddActivityModal('${oid}')">＋ Activity</button>`
+      : `<span class="chip" style="background:var(--gray-soft);color:var(--ink2)">Shop Live: <b>${fmtDate(o.go_live)||'not set'}</b></span>`}
       <button class="btn btn-ghost" onclick="obExport('${oid}')">Export Excel</button>
       <button class="btn btn-ghost" onclick="obShareModal('${oid}')">${o.share_token? 'Shared with brand':'Share with brand'}</button>
       <button class="btn btn-ghost" onclick="obTrackerMenu(this,'${oid}')" aria-label="More">⋯</button>
     </div>
+    <div class="ob-owner muted" style="margin:-6px 0 12px;font-size:13px">Timeline owner: <b>${esc(obOwnerName(o)||'not set')}</b>${own? (cz? ' · You are customising: use Edit, ↑ ↓ and ✕ on a row, Rename on a phase or section.' : '') : ' · Only the owner changes the timeline (dates, activities, order). You can update team, PIC, done date, status and remarks.'}</div>
     <div class="ob-sum">
       <div class="ob-kpi"><b>Overall</b><div class="v">${s.pct}%</div><div class="ob-bar"><i style="width:${s.pct}%"></i></div></div>
       ${services.map(n=>{ const sv=s.byService[n]; const p=sv.n? Math.round(sv.d/sv.n*100):0; return `<div class="ob-kpi"><b>${esc(n.replace(/ — .*$/,''))}</b><div class="v">${p}%</div><div class="ob-bar"><i style="width:${p}%"></i></div></div>`; }).join('')}
@@ -11993,8 +12010,8 @@ async function obRenderTracker(oid){
       <div class="ob-kpi"><b>Days to go-live</b><div class="v">${s.days==null?'—': s.days<0? `<small>live ${-s.days}d ago</small>` : s.days}</div></div>
     </div>
     <div class="card"><div style="overflow:auto"><table class="ob-tbl ${obShowDetails()?'':'ob-compact'}">
-      <thead><tr><th style="width:40px">#</th><th style="min-width:200px">Activity</th><th class="ob-desc" style="min-width:140px">What CREA delivers</th><th class="ob-desc" style="min-width:140px">What brand provides</th><th>Team</th><th>PIC</th><th title="Days before go-live">D-</th><th>Deadline</th><th>Done</th><th>Status</th><th>Remark</th></tr></thead>
-      <tbody>${body || '<tr><td colspan="11" class="empty">No activities yet — add a service or an activity.</td></tr>'}</tbody></table></div>
+      <thead><tr><th style="width:40px">#</th><th style="min-width:200px">Activity</th><th class="ob-desc" style="min-width:140px">What CREA delivers</th><th class="ob-desc" style="min-width:140px">What brand provides</th><th>Team</th><th>PIC</th><th title="Days before go-live">D-</th><th>Deadline</th><th>Done</th><th>Status</th><th>Remark</th>${cz? '<th>Customise</th>':''}</tr></thead>
+      <tbody>${body || '<tr><td colspan="'+cols+'" class="empty">No activities yet — add a service or an activity.</td></tr>'}</tbody></table></div>
       <div class="ob-legend"><button class="btn btn-ghost btn-sm" onclick="OB.details=!obShowDetails();obRenderTracker('${oid}')">${obShowDetails()? 'Hide':'Show'} CREA / brand columns</button><span>Shaded cells save as you leave them.</span><span>Deadline = Shop Live minus D- (${unit==='working'?'working days':'calendar days, moved back to a working day'}); negative D- = after go-live.</span><span>Click a phase row to collapse it.</span></div>
     </div>`;
 }
@@ -12083,19 +12100,105 @@ function obAddActivityModal(oid){
     const row={onboarding_id:oid, service_type_id:(last||{}).service_type_id||null, service_name:svc, code:'', phase:m.querySelector('#oaa-phase').value.trim()||null, title,
       crea_delivers:m.querySelector('#oaa-del').value.trim()||null, brand_provides:m.querySelector('#oaa-brand').value.trim()||null, responsibility:m.querySelector('#oaa-resp').value,
       team_id:m.querySelector('#oaa-team').value||null, assignee_id:m.querySelector('#oaa-pic').value||null, offset_days:days, offset_unit:unit, deadline:(days!=null && o.go_live)? obAnchor(o.go_live, days, unit):null, status:'not_started',
-      position:(last? last.position : Math.max(0,...acts.map(a=>a.position)))+0.5};
+      position:(last? last.position : Math.max(0,...acts.map(a=>a.position)))};
     const {data, error} = await db.from('onboarding_activities').insert(row).select().single(); if(error) return toast(error.message, true);
-    OB.acts[oid]=acts.concat([data]).sort((a,b)=>a.position-b.position); closeModals(); toast('Activity added'); obRenderTracker(oid);
+    const list=acts.slice(); list.splice(last? list.indexOf(last)+1 : list.length, 0, data);   // right after the last row of its section
+    closeModals(); await obSaveOrder(oid, list); toast('Activity added'); obRenderTracker(oid);
+  };
+}
+/* ---------- customise the timeline (owner only) ---------- */
+/* Store the given order (positions 1..n) in one call and keep the cache in step. */
+async function obSaveOrder(oid, list){
+  const {error} = await db.rpc('ob_reorder', {p_onboarding:oid, p_ids:list.map(a=>a.id)});
+  if(error){ toast(error.message, true); return false; }
+  list.forEach((a,i)=>{ a.position=i+1; }); OB.acts[oid]=list; return true;
+}
+/* Move an activity one place up or down among the rows of its own section and phase. */
+async function obMoveAct(aid, dir){
+  const a=obFindAct(aid); if(!a) return; const oid=a.onboarding_id, list=(OB.acts[oid]||[]).slice();
+  const i=list.indexOf(a), same=x=> x && x.service_name===a.service_name && (x.phase||'')===(a.phase||'');
+  const j=i+dir; if(!same(list[j])) return toast(dir<0? 'Already first in its phase' : 'Already last in its phase');
+  list[i]=list[j]; list[j]=a;
+  if(await obSaveOrder(oid, list)) obRenderTracker(oid);
+}
+async function obDeleteAct(aid){
+  const a=obFindAct(aid); if(!a || !confirm(`Remove "${a.title}" from this tracker?\nIts status, dates and remark go with it.`)) return;
+  const {error}=await db.from('onboarding_activities').delete().eq('id',aid); if(error) return toast(error.message, true);
+  OB.acts[a.onboarding_id]=(OB.acts[a.onboarding_id]||[]).filter(x=>x.id!==aid);
+  logActivity('onboarding', a.onboarding_id, 'activity_removed', {title:a.title}); toast('Activity removed'); obRenderTracker(a.onboarding_id);
+}
+/* Rename a phase (within one section) or a whole section: every activity in it moves with the name. */
+async function obRenameGroup(oid, field, from, svc){
+  const what = field==='phase'? 'phase' : 'section';
+  const to=(prompt(`New name for this ${what}:`, from||'')||'').trim(); if(!to || to===(from||'')) return;
+  let q=db.from('onboarding_activities').update({[field]:to}).eq('onboarding_id',oid);
+  q = field==='phase'? (from? q.eq('phase',from) : q.is('phase',null)).eq('service_name',svc) : q.eq('service_name',from);
+  const {error}=await q; if(error) return toast(error.message, true);
+  (OB.acts[oid]||[]).forEach(a=>{ if(field==='phase'? (a.service_name===svc && (a.phase||'')===(from||'')) : a.service_name===from) a[field]=to; });
+  toast(`Renamed the ${what}`); obRenderTracker(oid);
+}
+/* Edit everything about one activity. A D- value dates it from Shop Live; leave D- empty to give it a fixed date. */
+function obEditActModal(aid){
+  const a=obFindAct(aid); if(!a) return; const oid=a.onboarding_id, o=OB.onboardings.find(x=>x.id===oid), acts=OB.acts[oid]||[];
+  const services=[...new Set(acts.map(x=>x.service_name))], phases=[...new Set(acts.map(x=>x.phase).filter(Boolean))];
+  const m = modal(`<div class="modal-head"><h2>Edit activity</h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div>
+    <div class="modal-body">
+      <div class="ob-grid2">
+        <div><label>Section</label><input id="oea-svc" list="oea-svcs" value="${esc(a.service_name||'')}"><datalist id="oea-svcs">${services.map(s=>`<option value="${esc(s)}">`).join('')}</datalist></div>
+        <div><label>Phase</label><input id="oea-phase" list="oea-phases" value="${esc(a.phase||'')}"><datalist id="oea-phases">${phases.map(p=>`<option value="${esc(p)}">`).join('')}</datalist></div>
+        <div><label>No.</label><input id="oea-code" value="${esc(a.code||'')}" placeholder="S1, L4 …"></div>
+        <div><label>Responsibility</label><select id="oea-resp">${['CREA','Brand','Brand x CREA'].map(r=>`<option ${r===a.responsibility?'selected':''}>${r}</option>`).join('')}</select></div>
+      </div>
+      <label>Activity <span class="req">*</span></label><input id="oea-title" value="${esc(a.title||'')}">
+      <label>What CREA delivers</label><textarea id="oea-del" rows="2">${esc(a.crea_delivers||'')}</textarea>
+      <label>What brand provides</label><textarea id="oea-brand" rows="2">${esc(a.brand_provides||'')}</textarea>
+      <div class="ob-grid2">
+        <div><label>Days before Shop Live (D-)</label><input id="oea-days" type="number" value="${a.offset_days==null?'':a.offset_days}" placeholder="empty = fixed date"></div>
+        <div><label>Counted in</label><select id="oea-unit"><option value="calendar" ${a.offset_unit!=='working'?'selected':''}>Calendar days</option><option value="working" ${a.offset_unit==='working'?'selected':''}>Working days</option></select></div>
+        <div><label>Fixed deadline (used when D- is empty)</label><input id="oea-date" type="date" value="${a.offset_days==null? (a.deadline||'') : ''}"></div>
+      </div>
+      <p class="muted">With a D- value the deadline follows the Shop Live date. Negative = after go-live.</p>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="oea-save">Save</button></div>`, true);
+  m.querySelector('#oea-save').onclick = async ()=>{
+    const v=id=>m.querySelector(id).value.trim();
+    const title=v('#oea-title'); if(!title) return toast('Activity is required', true);
+    const svc=v('#oea-svc'); if(!svc) return toast('Section is required', true);
+    const d=v('#oea-days'), days=d===''? null : parseInt(d,10); if(d!=='' && isNaN(days)) return toast('D- must be a number', true);
+    const unit=v('#oea-unit');
+    const patch={service_name:svc, phase:v('#oea-phase')||null, code:v('#oea-code')||null, responsibility:v('#oea-resp'), title,
+      crea_delivers:v('#oea-del')||null, brand_provides:v('#oea-brand')||null, offset_days:days, offset_unit:unit,
+      deadline: days!=null? (o && o.go_live? obAnchor(o.go_live, days, unit) : null) : (v('#oea-date')||null)};
+    const moved = svc!==a.service_name || (patch.phase||'')!==(a.phase||'');
+    const {data, error} = await db.from('onboarding_activities').update(patch).eq('id',aid).select().single(); if(error) return toast(error.message, true);
+    Object.assign(a, data);
+    if(moved){ const list=(OB.acts[oid]||[]).filter(x=>x!==a); let k=-1; list.forEach((x,i)=>{ if(x.service_name===a.service_name && (x.phase||'')===(a.phase||'')) k=i; });
+      if(k<0) list.forEach((x,i)=>{ if(x.service_name===a.service_name) k=i; });
+      list.splice(k<0? list.length : k+1, 0, a); await obSaveOrder(oid, list); }   // lands at the end of its new phase
+    closeModals(); toast('Activity saved'); obRenderTracker(oid);
+  };
+}
+function obOwnerModal(oid){
+  const o=OB.onboardings.find(x=>x.id===oid); if(!o) return;
+  const people=(S.profiles||[]).filter(p=>p.active!==false && ['admin','management','internal'].includes(p.role)).sort((a,b)=>String(a.full_name||'').localeCompare(String(b.full_name||'')));
+  const m = modal(`<div class="modal-head"><h2>Timeline owner</h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div>
+    <div class="modal-body"><p class="muted">The owner can change the Shop Live date and customise the timeline. Workspace owners and admins can too.</p>
+      <label>Owner</label><select id="oow-who">${people.map(p=>`<option value="${p.id}" ${p.id===(o.lead_id||o.created_by)?'selected':''}>${esc(p.full_name||p.email||'')}</option>`).join('')}</select></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="oow-save">Save</button></div>`);
+  m.querySelector('#oow-save').onclick = async ()=>{
+    const id=m.querySelector('#oow-who').value; const {error}=await db.from('onboardings').update({lead_id:id}).eq('id',oid); if(error) return toast(error.message, true);
+    o.lead_id=id; logActivity('onboarding', oid, 'owner_changed', {to:id}); closeModals(); toast('Owner changed'); obRenderTracker(oid);
   };
 }
 function obTrackerMenu(btn, oid){
   const o=OB.onboardings.find(x=>x.id===oid); if(!o) return;
   const items=[['Mark as live','live'],['Put on hold','on_hold'],['Back to in progress','active'],['Cancel onboarding','cancelled']].filter(([,st])=>st!==o.status);
+  if(obCanCustomise(o)) items.unshift(['Change timeline owner…','__owner']);
   const m=document.createElement('div'); m.style.cssText='position:fixed;z-index:200;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;min-width:200px';
   m.innerHTML=items.map(([l,st])=>`<div role="button" tabindex="0" style="padding:8px 10px;border-radius:7px;cursor:pointer" data-st="${st}" onkeydown="kbActivate(event)">${l}</div>`).join('');
   const r=btn.getBoundingClientRect(); m.style.top=(r.bottom+4)+'px'; m.style.left=Math.max(8,r.right-200)+'px';
   m.addEventListener('mousedown', e=>e.stopPropagation());
-  m.querySelectorAll('[data-st]').forEach(x=>{ x.onclick=async()=>{ const st=x.dataset.st; if(st==='cancelled' && !confirm('Cancel this onboarding? The tracker is kept under All.')) return;
+  m.querySelectorAll('[data-st]').forEach(x=>{ x.onclick=async()=>{ const st=x.dataset.st; if(st==='__owner'){ m.remove(); return obOwnerModal(oid); } if(st==='cancelled' && !confirm('Cancel this onboarding? The tracker is kept under All.')) return;
     const {error}=await db.from('onboardings').update({status:st}).eq('id',oid); if(error) return toast(error.message,true); o.status=st; m.remove(); logActivity('onboarding', oid, 'status', {status:st}); toast('Onboarding '+st.replace('_',' ')); obRenderTracker(oid); }; });
   document.body.appendChild(m);
   const off=e=>{ if(!m.contains(e.target)){ m.remove(); document.removeEventListener('mousedown',off); } }; setTimeout(()=>document.addEventListener('mousedown',off),0);
