@@ -52,6 +52,10 @@ const driver=`window.__run=function(){const r={};
  host.innerHTML='<table><tbody>'+cpdRowsHTML(B,'',true)+'</tbody></table>';
  r.dir=JSON.stringify([host.querySelectorAll('tr').length,host.querySelectorAll('input').length,host.querySelectorAll('input.empty').length,host.querySelector('input[data-brand="b1"][data-f="kam"]').value]);
  host.innerHTML='<table><tbody>'+cpdRowsHTML(B,'mint',false)+'</tbody></table>'; r.dirRO=JSON.stringify([host.querySelectorAll('tr').length,host.querySelectorAll('input').length,/Zed/.test(host.textContent)]);
+ host.innerHTML='<table><tbody>'+cpdRowsHTML(B,'',true,{b1:['TikTok','Shopee','Lazada','Shopee']},true)+'</tbody></table>';
+ const pl=[...host.querySelectorAll('td.cpd-pl')].map(t=>t.textContent), rn=host.querySelectorAll('[data-rename]').length;
+ host.innerHTML='<table><tbody>'+cpdRowsHTML(B,'',true,{},false)+'</tbody></table>';
+ r.dirPl=JSON.stringify([pl[0],pl[1],rn,host.querySelectorAll('[data-rename]').length]);
  const REAL=${real}; if(REAL){ const q=cptParseSheet(REAL); r.real=JSON.stringify([q.name,q.dday,q.steps.length,q.lines.length,new Set(q.lines.map(l=>l.brand_name)).size,q.lines.reduce((n,l)=>n+Object.keys(l.cells).length,0),cptElements(q.steps).length]); }
  return Promise.resolve(JSON.stringify(r)); };`;
 w.eval(scripts.join('\n')+'\n'+driver);
@@ -81,5 +85,6 @@ check('sheet: brand names are escaped', r.esc===true);
 check('summary numbers', r.sum==='2brands · 3 lines 70%7 of 10 steps done 3still open3past their due date', r.sum);
 check('directory: active, unmerged brands; editable cells; missing KAM / lead highlighted', r.dir===J([2,12,1,'Yves']), r.dir);
 check('directory: search and read-only', r.dirRO===J([1,0,true]), r.dirRO);
+check('directory: platforms we manage per brand, in a fixed order; Rename only when allowed', r.dirPl===J(['Shopee · Lazada · TikTok','not in the managed list',2,0]), r.dirPl);
 if(r.real) console.log('REAL FILE', r.real);
 if(!ok) process.exit(1); });
