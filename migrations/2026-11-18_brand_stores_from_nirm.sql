@@ -1,0 +1,11 @@
+-- Active brands and the platforms CREA manages for them, from NiRM (screenshots from April, 18 Nov 2026).
+-- Data: 2026-11-18_brand_stores_from_nirm.json = [[NiRM name, group, [platforms]]]; a platform is listed when
+-- NiRM shows a cell for it, including 0 ("we have that platform, no chat yet").
+-- Each NiRM name is matched to the brand list by name or alias (then by the name without its
+-- "-IN / - CMG / - Amore / … PVH" suffix), added as an alias where it was not one, and stored as one
+-- brand_stores row per platform: launch_state 'live', source 'NiRM 18 Nov 2026'.
+-- Applied 18 Nov 2026: 81 of 87 names → 174 stores on 77 brands. Not loaded, waiting for April:
+--   Dettolwash - IN, Veet Laundry - IN, Durex Feel Good Love-IN (which brand?),
+--   AMUSE - CMG, MISE en SCENE - Amore, Vanish - IN (not in the brand list yet).
+alter table public.brand_stores add column if not exists source text;
+-- The insert itself was run with the JSON inlined (see the Supabase migration brand_stores_from_nirm).
