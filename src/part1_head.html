@@ -365,6 +365,10 @@ tr.tv-arch .tv-name .tv-open{text-decoration:line-through}
 .mention{background:var(--accent-soft);color:var(--accent-ink);font-weight:700;border-radius:5px;padding:0 3px}
 /* ---- notification bell ---- */
 #bell-wrap{position:relative;margin-left:6px;flex:none}
+#tb-refresh{display:flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;border:0;border-radius:9px;background:transparent;color:var(--ink2);cursor:pointer}
+#tb-refresh:hover{background:var(--gray-soft);color:var(--ink)}
+#tb-refresh.spin svg{animation:tbspin .7s linear infinite}
+@keyframes tbspin{to{transform:rotate(360deg)}}
 #bell{position:relative;display:flex;align-items:center;justify-content:center;width:34px;height:34px;
   border-radius:10px;color:var(--ink3);transition:color .16s ease,background .16s ease}
 #bell svg{width:19px;height:19px;display:block}

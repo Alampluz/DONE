@@ -305,7 +305,7 @@ async function cptImport(p, fileName){
     if(r.error) await fail(r.error.message);
   }
   const lk = await db.rpc('cp_tracker_link_brands', {p_tracker:t.id});
-  if(!lk.error){ const {data:bs} = await db.from('brands').select('*').order('name'); if(bs) S.brands = bs; }   // the directory may have been filled
+  if(!lk.error){ const {data:bs} = await db.from('brands').select('*').order('name'); if(bs) S.brandsList = bs; }   // the directory may have been filled
   return {id:t.id, unlinked: lk.error ? [] : ((lk.data && lk.data.unlinked) || [])};
 }
 
@@ -320,7 +320,7 @@ function cpdRowsHTML(brands, q, edit){
 }
 function cpdMount(){
   const root = document.getElementById('cpd-root'); if(!root) return;
-  const brands = (S.brands||[]).filter(b=> !b.merged_into && b.active!==false), edit = canEdit();
+  const brands = (S.brandsList||[]).filter(b=> !b.merged_into && b.active!==false), edit = canEdit();
   const miss = brands.filter(b=> !b.kam || !b.category_lead).length;
   root.innerHTML = `<div class="cpt-bar"><input type="search" id="cpd-q" placeholder="Find a brand or person…" aria-label="Find a brand or person"><span class="hint">${brands.length} brands${miss ? ` · <b style="color:var(--amber)">${miss} without a KAM or category lead</b>` : ''}</span><span class="grow"></span><span class="hint">${edit ? 'Type in a cell; it saves when you leave it.' : 'Read only'}</span></div>
     ${CPD_COLS.map(([f])=>`<datalist id="cpd-${f}">${[...new Set(brands.map(b=>b[f]).filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
@@ -328,7 +328,7 @@ function cpdMount(){
   const body = root.querySelector('#cpd-body');
   root.querySelector('#cpd-q').oninput = e => { body.innerHTML = cpdRowsHTML(brands, e.target.value, edit); };
   body.addEventListener('change', async e => { const i = e.target.closest('input[data-brand]'); if(!i) return;
-    const b = (S.brands||[]).find(x=>x.id===i.dataset.brand), f = i.dataset.f, v = i.value.trim() || null; if(!b || (b[f]||null)===v) return;
+    const b = (S.brandsList||[]).find(x=>x.id===i.dataset.brand), f = i.dataset.f, v = i.value.trim() || null; if(!b || (b[f]||null)===v) return;
     const {error} = await db.from('brands').update({[f]:v}).eq('id', b.id);
     if(error){ i.value = b[f]||''; return toast('Not saved: '+error.message, true); }
     b[f] = v; i.classList.toggle('empty', !v && (f==='kam' || f==='category_lead')); toast(`${b.name}: saved`); });

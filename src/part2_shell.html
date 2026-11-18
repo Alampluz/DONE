@@ -46,6 +46,10 @@
           <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
         </svg><span>Search everything</span><kbd id="gs-kbd">⌘K</kbd></button>
       <div class="topbar-right" id="topbar-actions"></div>
+      <button id="tb-refresh" type="button" title="Refresh this page with the latest data" aria-label="Refresh" onclick="appRefresh(this)">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 11a8 8 0 1 0-2.3 5.7"/><polyline points="20 4 20 11 13 11"/>
+        </svg></button>
       <div id="bell-wrap"><button id="bell" title="Notifications" aria-label="Notifications" onclick="toggleNotifPanel(event)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M18 8.4A6 6 0 1 0 6 8.4c0 4.55-1.6 5.86-2.05 6.26a.62.62 0 0 0 .42 1.09h15.26a.62.62 0 0 0 .42-1.09C19.6 14.26 18 12.95 18 8.4Z"/>
@@ -962,6 +966,16 @@ async function _boot(){
   renderSidebar();
   startNotifPolling();
   navigate(location.hash || '#/home');
+}
+/* Topbar ↻: re-read the shared lists (people, boards, brands…) and redraw the page you are on, without
+   reloading the app. Unsaved text in an open form on the page is lost, like a browser reload would. */
+let appRefreshing = false;
+async function appRefresh(btn){
+  if(appRefreshing) return;
+  appRefreshing = true; if(btn) btn.classList.add('spin');
+  try{ await refreshCore(); renderSidebar(); if(typeof refreshNotifs==='function') refreshNotifs(); navigate(location.hash || '#/home'); toast('Refreshed'); }
+  catch(e){ toast('Could not refresh: '+(e && e.message || e), true); }
+  finally{ appRefreshing = false; if(btn) setTimeout(()=> btn.classList.remove('spin'), 400); }
 }
 async function refreshCore(){
   const [pr, ws, pj, rt, br, co, bo, wo, tm, tmm] = await Promise.all([
