@@ -1,8 +1,47 @@
 # DONE — Project Handoff
 
-*Last updated: 7 Sep 2026 — automation engine v2, dropdown/UX pass, per-board standard fields, board sharing (no public link). Previous: 6 Sep 2026 (DONE rebrand + repo renamed to `Alampluz/DONE` → live at alampluz.github.io/DONE/ (case-sensitive), Forgot password + scanner-proof reset link, second concurrent-edit incident, sign-ups no longer seeded with CREA forms, monday import — 3,040 CS inquiries, big-board paging/chunking, tasks_select policy; 4 Sep: edit presets, email delivery, My calendar, View dropdown, owner visibility fix, BD ownership; 2 Sep: Calendar views; 1 Sep: CI, sweep guard, SLA fix)*
+*Last updated: 13 Oct 2026 — onboarding trackers v2, staging preview, brand share link fix (see first section). Before that: 7 Sep 2026 — automation engine v2, dropdown/UX pass, per-board standard fields, board sharing (no public link). Previous: 6 Sep 2026 (DONE rebrand + repo renamed to `Alampluz/DONE` → live at alampluz.github.io/DONE/ (case-sensitive), Forgot password + scanner-proof reset link, second concurrent-edit incident, sign-ups no longer seeded with CREA forms, monday import — 3,040 CS inquiries, big-board paging/chunking, tasks_select policy; 4 Sep: edit presets, email delivery, My calendar, View dropdown, owner visibility fix, BD ownership; 2 Sep: Calendar views; 1 Sep: CI, sweep guard, SLA fix)*
 
 > **Note:** this file was truncated to 0 bytes by something outside the app on 31 Aug 06:07 and rebuilt from the version pasted into the working session plus the changes made after it. The narrative sections are faithful; if a detail looks off against the code, trust the code.
+
+## Start here (13 Oct 2026) — Onboarding trackers + staging
+
+**Goal:** CX Onboarding runs each brand's go-live from one live tracker per brand (the Excel "Store Live Tracker", but in DONE): activities copied from per-service checklists, deadlines counted back from the Shop Live date, a PIC per row that shows on their My Work, and a read-only link the brand can open without an account. Everything goes through **staging first**, then Staging → `main`.
+
+### Where things are
+- **Working clone:** `C:\Users\April\OneDrive - Crea Co. Ltd\Documents\GitHub\DONE-live` (shows in GitHub Desktop as repo **DONE**, branch **Staging** — capital S). April commits and pushes herself from GitHub Desktop; do not push for her unless she asks.
+- **Staging preview:** https://alampluz.github.io/DONE/staging/ — same Supabase DB as production (UI preview, not a data sandbox). Built by `.github/workflows/staging.yml` (on `main`), which only auto-triggers on a branch named lowercase `staging`, so after every push to `Staging` run **Actions → Staging build → Run workflow → branch Staging**. Bundle carries a "STAGING · <sha>" ribbon.
+- **Open PR:** #4 Staging → `main` (April opened it). Merge once staging is approved. Old PRs #1–#3 (cursor/* branches: cloud-agent env, Creative Queue assign, Campaign targets slice 1) were **closed 13 Oct** unmerged; branches kept. #2's DB migrations (`creative_assign_guard*`, `creative_queue_formulas`) are applied in Supabase even though its UI never shipped; #3's are not.
+- **Module:** `src/part8_onboarding.html` (state `OB`). Hooks: router entry `onboarding:renderOnboarding` in part2 (no top-level menu item — trackers live inside the existing *Onboarding* workspace, listed by `obWorkspaceSection(wsId)` from `renderWorkspace` in part3); `obHomeSection()` hook line after `renderHomeTasksBody();` in part3 (My Work → "My onboarding activities"); public share handled in part6 INIT + part2 `navigate`.
+- **Routes:** `#/onboarding` list · `#/onboarding/<id>` tracker · `#/onboarding/checklists[/<typeId>]` checklists · `#/share/<token>` brand read-only view (old `#/t/<36-hex>` links still resolve; `#/t/<ticket no>` stays the task short link).
+- **Schema (applied):** migrations `onboarding_registry`, `onboarding_templates_tiktok` (v1, now unused by the UI), `onboarding_tracker_v2`, `onboarding_platforms_array`, `onboarding_public_tracker_id`. Tables `onboardings` (brand, platforms text[], go_live, lead_id, workspace_id, share_token) and `onboarding_activities` (team_id, assignee_id = PIC, offset_days, offset_unit, deadline, done_date, status, remark). `template_tasks.default_assignee_id` = checklist default PIC. RPC `ob_public_tracker(token)` is granted to `anon` and returns no PIC/team/remark; it now also returns `id` for the "Sign in to edit" link. File: `migrations/2026-10-13_onboarding_tracker.sql`.
+- **Deadline rule (`obAnchor`):** calendar → go-live − N days, then last working day on/before; working → count working days back (forward when N negative). Uses `sla_holidays` + `sla_settings.work_days`.
+- **Tests:** `tests/test_onboarding.cjs` (~22 checks). Full run 67/67 PASS on 13 Oct.
+
+### Done
+v2 tracker (KPIs, service bands, collapsible phases, inline Team/PIC/D-/Done/Status/Remark, go-live re-dating, add service/activity, export, share/revoke), checklist editor with Default PIC + .xlsx import, multi-platform tick boxes with "Add a platform…" (no "Other"), My Work section, workspace section. Platform change is pushed and live on staging (build b479052).
+
+### Uncommitted in DONE-live right now (13 Oct) — brand share-link fix
+5 files changed, **not yet committed/pushed**: `src/part2_shell.html`, `src/part6_dash_admin.html`, `src/part8_onboarding.html`, `tests/test_onboarding.cjs`, `migrations/2026-10-13_onboarding_tracker.sql`. DB side already applied. Fixes: (a) link opened for nobody — INIT called `renderPublicTracker` via `setTimeout(0)` before the later part8 `<script>` was parsed ("renderPublicTracker is not defined"), leaving the sign-in screen; now waits for DOMContentLoaded/polls. (b) `#/t/` collided with task short links, so signed-in users got the app/Home; new links use `#/share/`, and `navigate()` renders the brand view for signed-in users (restores app + theme when leaving). (c) Footer "CREA team? Sign in to edit →" reloads into `#/onboarding/<id>`.
+
+### What worked
+- Editing on April's machine with `device_bash` in `$HOME/mnt/DONE-live`, then building/testing in `$HOME/icbuild` (copy `src/` + `tests/` in, `bash b.sh`, `bash run_tests.sh`). The working tree is CRLF (Windows) while git HEAD is LF; the VM's git has no autocrlf, so `git diff` there shows whole files changed — use `git diff --ignore-cr-at-eol`. Patch with a Python read-modify-write that preserves CRLF; `run_tests.sh` copied from the clone needs `sed -i 's/\r$//'`.
+- Checking anonymous behaviour in the desktop app's built-in browser (not signed in) and its console; checking the RPC as anon with `set local role anon;` in SQL.
+- Closing PRs through Claude in Chrome (April's signed-in GitHub).
+
+### What didn't work / watch out
+- Cloud container cannot reach github.io, GitHub API for this repo, or supabase.co REST (proxy 403); `gh` has no token. Use the device shell, Chrome, or the Supabase MCP.
+- Supabase MCP hangs on SQL containing the literal word for dropping/deleting tables in some contexts — strip no-op drop lines.
+- Lints in the suite: navrace needs exactly `const _nav = S.nav;` + `navStale(_nav)` after awaits; darkmode lint forbids greyscale hex outside its allowlist; paging lint reads `renderHome` source, so add hook lines, not wrappers. DONE replaces `<select>` with `.sel-pick` buttons — size the button.
+- `device_commit_files` reusing a path wrote stale bytes once — use fresh names and check md5.
+- In Chrome, GitHub's comment box once picked up a stray "1." before Close; clear it before closing.
+
+### Next steps
+1. April: in GitHub Desktop commit the 5 files above to **Staging** → Push → Actions → Staging build → Run workflow (Staging) → open the share link in a private window to confirm it shows without sign-in, and signed-in.
+2. When staging looks right: merge PR #4 (Staging → `main`); production CI deploys.
+3. Optional: add `Staging` to `staging.yml` `branches:` so pushes build without the manual run (offered, not done).
+4. Housekeeping: hide the illustrative v1 checklists (RETAIL/LISTING/CREATIVE/LIVE/CAMPAIGN); import the other service sheets from the Onboarding Checklist Template; add lunar holidays to `sla_holidays`; eventually drop the v1 onboarding tables.
+5. Later, if April wants them: rebase `cursor/creative-queue-assign-e850` (#2) and `cursor/campaign-targets-slice1-f331` (#3) onto `main` and send them through Staging.
 
 ## Start here (7 Sep 2026)
 
@@ -205,3 +244,8 @@ A second Claude session working on the DONE logo overwrote `src/part1_head.html`
 
 ## Data-loss incident — 31 Aug 06:07
 Five files in the folder **root** were truncated to 0 bytes in the same minute: `HANDOFF.md`, `run_tests.sh`, `run_tests.ps1`, `NiRM_One_Feature_Blueprint_v2_1547.xlsx`, `sandbox.html`. Nothing in `src/`, `app/`, `tests/` or `migrations/` was affected, and `roadmap.html` survived. All five have been restored. Cause unidentified — no write was issued to four of them at that time. If it recurs, suspect whatever syncs or scans this folder, and note that only root-level files were hit.
+
+## Listing Tracker
+- **Go-live is blocked on:** IT issuing the read-only CUSP user as the `CUSP_DB_URL` secret (+ a network path from Supabase edge to CUSP's Postgres); Task 6 import of the 2026 Excel; April confirming CUSP's campaign page URL (`LT_CUSP_URL`, null until then, hides "Open in CUSP ↗").
+- CUSP bridge: edge function `cusp-campaign` (lookup / skus / sync); answers 503 `cusp_not_configured` until IT issues a read-only CUSP user and it is set as the `CUSP_DB_URL` secret (503 `cusp_unavailable` when set but unreachable). Until then new setups are logged by hand: "Log a new setup by hand" in `tools/listing_sync/sync_via_mcp.md`.
+- Until then, run the nightly sync by hand through the MCP: `tools/listing_sync/sync_via_mcp.md`.

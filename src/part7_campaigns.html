@@ -646,8 +646,8 @@ function renderCampaigns(id, tab){
   cpLoad(); cpLoadCalendar();
   if(id && cpById(id)) return cpRenderOne(cpById(id), tab||'overview');
   /* Strategy (management/admin) lands on the month; everyone else on their own brand lines. */
-  if(!cpTab) cpTab = cpIsSuper()? 'months' : 'brands';
-  setTopbar('Campaigns', canEdit()? `<button class="btn btn-primary btn-sm" onclick="cpPlanMonth()">＋ Plan a month</button>`:'');
+  if(!cpTab) cpTab = 'tracker';   // the live tracker (part7b); the tabs after "Brands" are still sample data
+  setTopbar('Campaigns', canEdit() && cpTab!=='tracker' && cpTab!=='directory'? `<button class="btn btn-primary btn-sm" onclick="cpPlanMonth()">＋ Plan a month</button>`:'');
   const C = $('#content');
   const body = cpTab==='months'   ? cpViewMonths()
              : cpTab==='lanes'    ? cpViewLane()
@@ -656,19 +656,27 @@ function renderCampaigns(id, tab){
              : cpTab==='list'     ? cpViewList()
              : cpTab==='targets'  ? cpViewTargets()
              : cpTab==='assets'   ? cpViewAssets()
+             : cpTab==='tracker'  ? '<div id="cpt-root"><div class="empty">Loading…</div></div>'
+             : cpTab==='directory'? '<div id="cpd-root"></div>'
              :                      cpViewTimeline();
+  const real = cpTab==='tracker' || cpTab==='directory';
   C.innerHTML = `
     <div class="page-head"><h1>Campaigns</h1>
       <div class="tabs" style="max-width:100%;overflow-x:auto">
+        ${[['tracker','Tracker'],['directory','Brands']].map(([k,l])=>`<button class="tab ${cpTab===k?'active':''}" style="flex:none" onclick="cpTab='${k}';renderCampaigns()">${l}</button>`).join('')}
+        <span style="flex:none;align-self:center;padding:0 8px;font-size:11.5px;color:var(--ink3)" title="These views still run on sample data. They become real in the next steps.">Samples ›</span>
         ${[['months','Months'],['timeline','Timeline'],['list','All campaigns'],['lanes','Team lanes'],['brands','Brand lines'],['grid','Tracker grid'],['targets','Targets & budget'],['assets','Asset approvals']]
           .map(([k,l])=>`<button class="tab ${cpTab===k?'active':''}" style="flex:none" onclick="cpTab='${k}';renderCampaigns()">${l}</button>`).join('')}
       </div>
-      <div class="actions">
+      ${real ? '' : `<div class="actions">
         <button class="btn btn-ghost" onclick="cpExportCSV()">Export Excel</button>
         ${canEdit()? `<button class="btn btn-primary" onclick="cpPlanMonth()">＋ Plan a month</button>`:''}
-      </div>
+      </div>`}
     </div>
+    ${real ? '' : '<div class="card" style="padding:8px 14px;margin-bottom:12px;background:var(--amber-soft);color:var(--amber);font-size:13px">Sample data. This view is a preview of what is planned; only Tracker and Brands hold real data.</div>'}
     ${body}`;
+  if(cpTab==='tracker' && typeof cptMount==='function') cptMount();
+  if(cpTab==='directory' && typeof cpdMount==='function') cpdMount();
 }
 
 /* ---------- the planning window ---------- */

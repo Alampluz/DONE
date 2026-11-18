@@ -113,6 +113,7 @@ async function openTask(id){
   const attsHTML = sectionOn(t.project_id,'attachments')? `<section class="tv-sec"><label>Attachments</label>
             <div id="tv-atts">${attListHTML(atts, edit)}</div>
             ${canCreate()? attachZoneHTML('tv-drop') : ''}</section>`:'';
+  const ltHTML = (typeof ltTaskSectionHTML==='function')? ltTaskSectionHTML(t) : '';
   const m = modal(`<div class="modal-head tv-head">
       <div class="task-heading">
         <div class="task-context">${esc(ws?.name||'')}${ws?' <span aria-hidden="true">/</span> ':''}<b>${esc(p?.name||'Task')}</b></div>
@@ -149,6 +150,7 @@ async function openTask(id){
             <div id="tv-chk">${(chk||[]).map(c=>chkRow(c)).join('')}</div>
             ${edit? `<div class="tv-add"><input id="tv-chk-new" placeholder="Add checklist item…"><button class="btn btn-ghost btn-sm" id="tv-chk-add">Add</button></div>`:''}</section>`:''}
           ${tabOn.subtasks? '' : subsHTML}
+          ${ltHTML}
         </div>
         <div class="tv-side">
           ${tabOn.files? '' : attsHTML}
@@ -204,6 +206,7 @@ async function openTask(id){
   // Paste a whole list -> one subtask / checklist item per line
   wireListPaste(m.querySelector('#tv-sub-new'), lines=> addSubtasksBulk(t.id, lines, m));
   wireListPaste(m.querySelector('#tv-chk-new'), lines=> addChecklistBulk(t.id, lines, m));
+  if(typeof ltTaskSectionWire==='function') ltTaskSectionWire(t, m);
   wireAttachZone(m, 'tv-drop', 'task', t.id, m.querySelector('#tv-atts'));
   const cIn = m.querySelector('#tv-comment');
   if(cIn){

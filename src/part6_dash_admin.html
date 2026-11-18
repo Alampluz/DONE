@@ -387,7 +387,7 @@ async function exportWidgetCSV(id){
   const cfg = w.config||{};
   if(w.wtype==='list'||w.wtype==='stat'){
     const rows = await widgetTaskRows(cfg, w.wtype, 500);
-    if(cfg.entity==='requests') return downloadXLSX(xlsxFilename(w.title||'Widget'), [['Ticket','Title','Status','Created'], ...rows.map(r=>['WO-'+(r.ticket_no||''), r.title, r.status, (r.created_at||'').slice(0,10)])]);
+    if(cfg.entity==='requests') return downloadXLSX(xlsxFilename(w.title||'Widget'), [['Ticket','Title','Status','Created'], ...rows.map(r=>[reqNo(r), r.title, r.status, (r.created_at||'').slice(0,10)])]);
     return downloadXLSX(xlsxFilename(w.title||'Widget'), [['Ticket','Task','Board','Status','Priority','Due','Assignee'],
       ...rows.map(t=>[t.ticket_no||'', t.title, (projById(t.project_id)||{}).name||'', statusLabel(t.status), prioLabel(t.priority), t.due_date||'', assigneeNames(t)])]);
   }
@@ -605,7 +605,7 @@ const ADMIN_HELP = {
   workspaces:'Internal staff only see workspaces they are members of; admin and management see everything. <b>Partners and freelancers are never workspace members</b> — they are added to one Shareable board at a time from Board members. Deleting a workspace also deletes its boards and tasks, so you will be asked to type the name to confirm.',
   teams:'A team is a saved group of people, a shortcut when picking workspace or board members. <b>Being in a team grants no access on its own</b>: adding someone here does not put them on any workspace, and removing them takes nothing away.',
   brands:'Seeded from the CS brand master list. Only active brands appear in request forms.',
-  types:'Turn on “Public form link” to get a shareable URL — anyone can submit a ticket through it without an account. Submissions land in the Requests queue with a WO number and SLA timer.',
+  types:'Turn on “Public form link” to get a shareable URL — anyone can submit a ticket through it without an account. Submissions land in the Requests queue with a WO number and SLA timer. Pick a board under “Creates tasks on board” and each submission also becomes a task there — the same form can be opened from the board’s <b>Form</b> button.',
   sla:'These settings decide how every ticket deadline is counted. “Apply to open tickets” recalculates the ones already running.',
   automations:'Switching a built-in rule off stops it for the scope shown above. Timed rules run every 15 minutes on their own.',
 };
@@ -627,6 +627,7 @@ async function renderAdmin(){
         <button class="tab ${adminTab==='types'?'active':''}" onclick="adminTab='types';renderAdmin()">Request types</button>
         <button class="tab ${adminTab==='sla'?'active':''}" onclick="adminTab='sla';renderAdmin()">SLA</button>
         <button class="tab ${adminTab==='automations'?'active':''}" onclick="adminTab='automations';renderAdmin()">Automations</button>
+        ${typeof ltAdminTabButton==='function'? ltAdminTabButton(adminTab):''}
       </div>
       <div class="actions">${adminTab==='users'? '<button class="btn btn-primary" onclick="inviteUserModal()">＋ Add user</button>':''}
         ${adminTab==='workspaces'? '<button class="btn btn-primary" onclick="newWorkspaceModal()">＋ Add workspace</button>':''}
@@ -720,6 +721,7 @@ async function renderAdmin(){
   }
   if(adminTab==='automations'){ await renderAutomationsTab(B); }
   if(adminTab==='sla'){ await renderSlaTab(B); }
+  if(adminTab==='listing' && typeof ltRenderAdminTab==='function'){ await ltRenderAdminTab(B); }
   if(adminTab==='types'){
     const {data:allTypes} = await db.from('request_types').select('*').order('position');
     window._allTypes = allTypes||[];
@@ -730,7 +732,7 @@ async function renderAdmin(){
         const link = location.origin + location.pathname + '#/f/' + rt.public_token;
         return `<tr><td style="font-weight:600">${esc(rt.name)}<div style="font-size:11.5px;color:var(--ink3);font-weight:400">${(rt.fields||[]).length} fields</div></td>
         <td>${rt.sla_hours}h</td><td>${rt.approval_required?'Required':'—'}</td>
-        <td style="color:var(--ink2)">${w? esc(w.name):'All staff'}</td>
+        <td style="color:var(--ink2)">${w? esc(w.name):'All staff'}${rt.default_project_id? `<div style="font-size:11.5px;color:var(--ink3)">→ board: ${esc((projById(rt.default_project_id)||{}).name||'(board missing)')}</div>`:''}</td>
         <td>${rt.public_enabled? `<button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${link}').then(()=>toast('Form link copied'))">Copy link</button>`:'<span style="color:var(--ink3)">Off</span>'}</td>
         <td><span class="chip" style="background:${rt.active?'var(--green-soft);color:var(--green)':'var(--gray-soft);color:var(--ink3)'}">${rt.active?'active':'inactive'}</span></td>
         <td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="editTypeModal('${rt.id}')">Edit</button></td></tr>`;}).join('')}</tbody></table></div>`;
@@ -1487,7 +1489,7 @@ function inviteUserModal(){
     }catch(e){ toast(e.message, true); btn.disabled=false; btn.textContent='Create account'; }
   };
 }
-function editTypeModal(id, wsDefault){
+function editTypeModal(id, wsDefault, boardDefault){
   const t = id? (window._allTypes||[]).find(x=>x.id===id) : null;
   const FT=['text','textarea','number','date','select','multiselect','brand'];
   const wsOpts = (sel)=>'<option value="">— all staff (no routing) —</option>'+S.workspaces.map(w=>`<option value="${w.id}" ${w.id===sel?'selected':''}>${esc(w.name)}</option>`).join('');
@@ -1498,14 +1500,22 @@ function editTypeModal(id, wsDefault){
     <label style="display:flex;align-items:center;gap:4px;margin:0;font-size:11px">Req<input type="checkbox" data-fr="required" ${f?.required?'checked':''} style="width:14px;height:14px"></label>
     <button onclick="this.parentElement.remove()" style="color:var(--ink3)">✕</button></div>`;
   window._tyFieldRow = fieldRow;
+  const rowKey = r => r.dataset.key || (r.querySelector('[data-fr=label]').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,''));
+  window._tyRowKey = rowKey;
   const m = modal(`<div class="modal-head"><h2>${t?'Edit':'New'} request type</h2><button class="x" onclick="closeModals()">✕</button></div>
     <div class="modal-body">
       <label>Name <span class="req">*</span></label><input id="ty-name" value="${esc(t?.name||'')}">
       <label>Description</label><input id="ty-desc" value="${esc(t?.description||'')}">
       <div class="field-grid">
         <div><label>SLA (hours)</label><input id="ty-sla" type="number" value="${t?.sla_hours??48}"></div>
-        <div><label>Routes to workspace</label><select id="ty-ws">${wsOpts(t? t.default_workspace_id : (wsDefault||null))}</select></div>
+        <div><label>Routes to workspace</label><select id="ty-ws" onchange="tyBoardOpts()">${wsOpts(t? t.default_workspace_id : (wsDefault||null))}</select></div>
       </div>
+      <label>Creates tasks on board ${helpIcon('Pick a board and every submission of this form becomes a task in its first group. Map the form fields to the board\'s columns below; unmapped answers still land in the task description.')}</label>
+      <div class="field-grid">
+        <div><select id="ty-board" onchange="tyMapDraw()"></select></div>
+        <div><select id="ty-group" aria-label="Lands in group" title="Which group of the board new tasks land in"></select></div>
+      </div>
+      <div id="ty-map" style="margin-top:8px"></div>
       <div style="display:flex;gap:22px;margin-top:14px;flex-wrap:wrap">
         <label style="display:flex;align-items:center;gap:7px;margin:0;color:var(--ink)"><input type="checkbox" id="ty-appr" ${t?.approval_required?'checked':''} style="width:15px;height:15px">Requires approval</label>
         <label style="display:flex;align-items:center;gap:7px;margin:0;color:var(--ink)"><input type="checkbox" id="ty-pub" ${t?.public_enabled?'checked':''} style="width:15px;height:15px">Public form link</label>
@@ -1520,6 +1530,52 @@ function editTypeModal(id, wsDefault){
       <button class="btn btn-ghost" onclick="closeModals()">Cancel</button>
       <button class="btn btn-primary" id="ty-save">Save</button></div>`, true);
   m.querySelector('#ty-addf').onclick = ()=> m.querySelector('#ty-fields').insertAdjacentHTML('beforeend', fieldRow(null));
+  /* Board link: the picker follows the workspace (all boards when no workspace); the mapping lists the
+     form's fields against the chosen board's columns. Loaded once per board; selections survive redraws. */
+  let _mapCols = {}, _mapGroups = {}; let _mapSel = Object.assign({}, (t && t.field_map && !Array.isArray(t.field_map))? t.field_map : {});
+  let _groupSel = t? (t.default_group_id||'') : '';
+  window.tyBoardOpts = function(keep){
+    const ws = m.querySelector('#ty-ws').value; const sel = m.querySelector('#ty-board');
+    const cur = keep!==undefined? keep : sel.value;
+    const boards = (S.projects||[]).filter(p=> p.status!=='archived' && (!ws || p.workspace_id===ws)).sort((a,b)=>a.name.localeCompare(b.name));
+    sel.innerHTML = '<option value="">— no board (stays in Requests) —</option>' + boards.map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.name)}${!ws? ' · '+esc((wsById(p.workspace_id)||{}).name||''):''}</option>`).join('');
+    if(cur && !boards.some(p=>p.id===cur)) sel.value='';
+    tyMapDraw();
+  };
+  window.tyMapDraw = async function(){
+    const pid = m.querySelector('#ty-board').value; const box = m.querySelector('#ty-map'); const gsel = m.querySelector('#ty-group');
+    if(!pid){ box.innerHTML=''; gsel.innerHTML=''; gsel.style.display='none'; return; }
+    if(!_mapCols[pid]){
+      box.innerHTML = '<div class="ca-hint">Loading board columns…</div>';
+      const [{data},{data:groups}] = await Promise.all([
+        db.from('project_fields').select('id,label,ftype').eq('project_id',pid).order('position'),
+        db.from('project_groups').select('id,name').eq('project_id',pid).order('position')]);
+      _mapCols[pid] = data||[]; _mapGroups[pid] = groups||[];
+      if(m.querySelector('#ty-board').value!==pid) return;
+    }
+    gsel.style.display=''; const gs=_mapGroups[pid]||[];
+    gsel.innerHTML = `<option value="">Lands in: ${gs.length? esc(gs[0].name)+' (first group)':'first group'}</option>` + gs.slice(1).map(g=>`<option value="${g.id}" ${g.id===_groupSel?'selected':''}>Lands in: ${esc(g.name)}</option>`).join('');
+    gsel.onchange = ()=>{ _groupSel = gsel.value; };
+    if(_groupSel && !gs.some(g=>g.id===_groupSel)) _groupSel='';
+    const cols = _mapCols[pid].filter(c=>c.ftype!=='formula');
+    const opt = (k)=> '<option value="">— description only —</option>' + cols.map(c=>`<option value="${c.id}" ${_mapSel[k]===c.id?'selected':''}>${esc(c.label)} (${esc(c.ftype)})</option>`).join('');
+    const rows = [...m.querySelectorAll('.tf-row')].map(r=>({key:rowKey(r), label:r.querySelector('[data-fr=label]').value.trim()})).filter(r=>r.label);
+    const line = (k,label,hint)=>`<div class="ty-map-row" style="display:flex;gap:8px;align-items:center;margin-bottom:5px"><span style="flex:1;font-size:12.5px">${esc(label)}${hint? ` <span class="ca-opt">${hint}</span>`:''}</span><span style="color:var(--ink3)">→</span><select data-mk="${esc(k)}" style="flex:1.3;width:auto" onchange="this.value? window._tyMapSet(this.dataset.mk,this.value) : window._tyMapSet(this.dataset.mk,null)">${opt(k)}</select></div>`;
+    box.innerHTML = `<div class="card" style="padding:10px 12px"><div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);margin-bottom:8px">Form field → board column</div>
+      ${rows.length? rows.map(r=>line(r.key, r.label)).join('') : '<div class="ca-hint">Add form fields below, then map them here.</div>'}
+      ${line('_requester_email','Requester email','who submitted the form')}
+      ${line('_status','Status column','set to “Open” on each new task')}</div>`;
+  };
+  window._tyMapSet = (k,v)=>{ if(v) _mapSel[k]=v; else delete _mapSel[k]; };
+  m.querySelector('#ty-fields').addEventListener('input', e=>{ if(e.target.dataset.fr==='label') tyMapDraw(); });
+  m.querySelector('#ty-fields').addEventListener('click', e=>{ if(e.target.tagName==='BUTTON') setTimeout(tyMapDraw,0); });
+  const _addf = m.querySelector('#ty-addf').onclick; m.querySelector('#ty-addf').onclick = ()=>{ _addf(); tyMapDraw(); };
+  tyBoardOpts(t? t.default_project_id : (boardDefault||''));
+  window._tyMapSel = ()=>{
+    const pid = m.querySelector('#ty-board').value; if(!pid) return {};
+    const keys = new Set([...m.querySelectorAll('.tf-row')].map(rowKey).concat(['_requester_email','_status']));
+    const out = {}; for(const k of Object.keys(_mapSel)) if(keys.has(k)) out[k]=_mapSel[k]; return out;
+  };
   m.querySelector('#ty-toggle')?.addEventListener('click', async ()=>{
     const {error} = await db.from('request_types').update({active:!t.active}).eq('id',t.id);
     if(error) return toast(error.message, true);
@@ -1540,13 +1596,16 @@ function editTypeModal(id, wsDefault){
     }).filter(Boolean);
     const payload = {name, description:m.querySelector('#ty-desc').value.trim(), sla_hours:parseInt(m.querySelector('#ty-sla').value)||48,
       default_workspace_id:m.querySelector('#ty-ws').value||null, approval_required:m.querySelector('#ty-appr').checked,
-      public_enabled:m.querySelector('#ty-pub').checked, fields};
+      public_enabled:m.querySelector('#ty-pub').checked, fields,
+      default_project_id:m.querySelector('#ty-board').value||null, field_map:window._tyMapSel(),
+      default_group_id:(m.querySelector('#ty-board').value && _groupSel)||null};
     let error;
     if(t) ({error} = await db.from('request_types').update(payload).eq('id',t.id));
     else ({error} = await db.from('request_types').insert(Object.assign({}, payload, {position:100})));
     if(error) return toast(error.message, true);
     closeModals(); toast('Request type saved'); await refreshCore();
     if(S.route.view==='admin') renderAdmin();
+    else if(S.route.view==='project') renderProject(S.route.id);
   };
 }
 async function toggleBrand(id, active){
@@ -1735,6 +1794,12 @@ async function savePlatformCo(id){
 /* ================= INIT ================= */
 (async ()=>{
   if(location.hash.startsWith('#/f/')){ renderPublicForm(location.hash.slice(4).split('?')[0]); return; }
+  /* Brand's read-only onboarding tracker: #/share/<token> (older links: #/t/<36-hex token>; a
+     task short link #/t/BD-… never matches that). Works signed in or not. part8 is a later
+     <script>, so wait until it has been parsed before calling into it. */
+  { const h=location.hash.split('?')[0], m=h.match(/^#\/share\/([^/]+)$/) || h.match(/^#\/t\/([0-9a-f]{36})$/);
+    if(m){ const go=()=> typeof renderPublicTracker==='function'? renderPublicTracker(m[1]) : setTimeout(go, 30);
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', go); else go(); return; } }
   const {data:{session}} = await db.auth.getSession();
   S.session = session;
   if(session) await boot();
