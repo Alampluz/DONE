@@ -1,20 +1,20 @@
 // Ticket ↔ CUSP campaign matching for the Listing Tracker sync (pure, no I/O; tests/test_listing_match.cjs).
 // CUSP campaign names start with the ticket's ID: "<ticket> <platform> <dates> (<type>)", e.g.
-//   "CFR-0412 SHP 11-13 NOV 2026 (PDP)"      — the DONE ticket number
+//   "CFR-261119-001 SHP 11-13 NOV 2026 (PDP)" — the DONE ticket number (<board code>-<YYMMDD>-<n>)
 //   "13512634613 LZD 11-13 NOV 2026 (Frame)" — the monday item id (the ticket's "monday ID" field)
 
 const PLAT = { shp: "Shopee", shopee: "Shopee", lzd: "Lazada", lazada: "Lazada", tt: "TikTok", tiktok: "TikTok" };
 
 /** "cfr-0412 " → "CFR-0412"; "13512634613" → "13512634613"; anything else → null */
 export function ticketKey(v) {
-  const m = String(v == null ? "" : v).trim().match(/^([A-Za-z]{2,5}-\d+|\d{4,})$/);
+  const m = String(v == null ? "" : v).trim().match(/^([A-Za-z][A-Za-z0-9]{1,5}-\d+(?:-\d+)?|\d{4,})$/);
   return m ? m[1].toUpperCase() : null;
 }
 
 /** The parts of a CUSP campaign name. ticket = its first token when that looks like a ticket ID. */
 export function parseName(name) {
   const s = String(name == null ? "" : name);
-  const t = s.match(/^\s*([A-Za-z]{2,5}-\d+|\d{4,})(?=\s|$)/);
+  const t = s.match(/^\s*([A-Za-z][A-Za-z0-9]{1,5}-\d+(?:-\d+)?|\d{4,})(?=\s|$)/);
   const p = s.match(/(?:^|[^A-Za-z0-9])(SHP|SHOPEE|LZD|LAZADA|TT|TIKTOK)(?![A-Za-z0-9])/i);
   const g = s.match(/\(([^()]*)\)/g) || [];
   const kinds = g.map((x) => x.slice(1, -1).toLowerCase().replace(/\s+/g, ""));
