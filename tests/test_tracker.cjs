@@ -78,6 +78,21 @@ const driver=`window.__run=function(){const r={};
  host.innerHTML=cptTicketsHTML(cptTixFor(L2[0],vS,by,BR)); r.tkList=JSON.stringify([host.querySelectorAll('a.tk').length, host.querySelector('a.tk').getAttribute('href'), /VCH-1.*Regular Vouchers.*done/.test(host.textContent), !host.querySelector('t')]);
  host.innerHTML=cptTicketsHTML(cptTixFor(L2[0],cS,by,BR)); r.tkNone=/No ticket found/.test(host.textContent) && host.querySelectorAll('a.tk').length===0;
  r.tkNoRule=cptTicketsHTML(cptTixFor(L2[0],nS,by,BR))==='';
+ const MS=cptMissing(L2,S2,chk);
+ r.miss=JSON.stringify(MS.map(x=>[x.line.id,x.rule.boards.join('+'),x.steps.length,x.step.name.slice(0,6)]));
+ r.missDup=cptMissing([LN('TikTok',{1:'Pending',9:'Pending'})],[vS,ST('Platform mechanics and Voucher Submission','Submit Regular voucher',9)],chk).map(x=>x.steps.length).join(',');
+ const FD=[{id:'fb',label:'Brand',ftype:'brand',options:[]},{id:'fp',label:'Platform',ftype:'select',options:['Lazada','Shopee','Tiktok','Lazada, Shopee']},{id:'fk',label:'Request For',ftype:'select',options:['Co-Fund','Regular Vouchers','New buyer / Follower','FreeShipping']},
+   {id:'fc',label:'Country',ftype:'select',options:['TH','SG']},{id:'fs',label:'Start Date',ftype:'date'},{id:'fe',label:'End Date',ftype:'date'},{id:'fx',label:'Monday Status',ftype:'select'}];
+ const RO=cptRoles(FD), TR={name:'10.10 <Plan>',dday:'2026-10-10'}, lt={...LN('TikTok',{}),country:'TH'};
+ r.roles=JSON.stringify(Object.keys(RO).map(k=>RO[k]&&RO[k].id));
+ const d1=cptDraft(lt,cS,cptRule(cS),TR,RO,BR), d2=cptDraft(lt,vS,cptRule(vS),TR,RO,BR);
+ r.draft=JSON.stringify([d1.brand,d1.title,d1.platform,d1.kind,d1.country,d1.start,d1.end,d2.kind,d2.kinds]);
+ r.pick=JSON.stringify([cptPickOpt(['Thailand','Singapore'],'TH','thailand'),cptPickOpt(['Lazada'],'TikTok'),cptPickOpt(null,'x')]);
+ r.row=JSON.stringify(cptTicketRow({id:'P'},RO,{...d1,description:'d',country:''},'G',7,'me'));
+ host.innerHTML=cptTicketsHTML(cptTixFor(L2[0],cS,by,BR),true); r.mkNone=host.querySelector('[data-mk]').textContent;
+ host.innerHTML=cptTicketsHTML(cptTixFor(L2[0],vS,by,BR),true); r.mkSome=host.querySelector('[data-mk]').textContent;
+ host.innerHTML=cptMissingHTML(MS,true); r.missH=JSON.stringify([host.querySelectorAll('tr').length,host.querySelectorAll('[data-mk]').length,host.querySelectorAll('.section-title').length]);
+ host.innerHTML=cptMissingHTML(MS,false); r.missRO=host.querySelectorAll('[data-mk]').length; r.missNone=/Nothing is missing/.test(cptMissingHTML([],true));
  const REAL=${real}; if(REAL){ const q=cptParseSheet(REAL); r.real=JSON.stringify([q.name,q.dday,q.steps.length,q.lines.length,new Set(q.lines.map(l=>l.brand_name)).size,q.lines.reduce((n,l)=>n+Object.keys(l.cells).length,0),cptElements(q.steps).length]); }
  return Promise.resolve(JSON.stringify(r)); };`;
 w.eval(scripts.join('\n')+'\n'+driver);
@@ -114,5 +129,12 @@ check('sheet: cells carry the ticket state and count', r.tkCells===J(['tk-none',
 check('summary: steps with no ticket, not finished, backed', /2steps with no ticket.*1tickets not finished.*3backed by a ticket/.test(r.tkSum), r.tkSum);
 check('filter: no ticket only', r.tkMiss==='xLazada,xTikTok', r.tkMiss);
 check('cell menu: tickets link to the team board ticket, escaped; says so when none; nothing for steps without a rule', r.tkList===J([1,'#/t/VCH-1',true,true]) && r.tkNone && r.tkNoRule, [r.tkList,r.tkNone,r.tkNoRule]);
+check('missing tickets: one row per ticket needed; steps asking for the same ticket fold into one', r.miss===J([['xLazada','VCH',1,'Submit'],['xTikTok','VCH',1,'Join V']]) && r.missDup==='2', [r.miss,r.missDup]);
+check('new ticket: board fields found by label', r.roles===J(['fb','fp','fk','fs','fe','fc']), r.roles);
+check('new ticket: draft uses the master brand, the board spelling of platform and country, the one matching kind, D-day dates', r.draft===J(['Crocs','Crocs TikTok – Submit Cofund Voucher (10.10 <Plan>)','Tiktok','Co-Fund','TH','2026-10-10','2026-10-10','',['Regular Vouchers','New buyer / Follower']]), r.draft);
+check('new ticket: option picking (alias, no match, no options)', r.pick===J(['Thailand','','']), r.pick);
+check('new ticket: the row sent to the board, empty values left out', r.row===J({project_id:'P',group_id:'G',title:'Crocs TikTok – Submit Cofund Voucher (10.10 <Plan>)',description:'d',status:'todo',priority:'normal',created_by:'me',position:7,custom:{fb:'Crocs',fp:'Tiktok',fk:'Co-Fund',fs:'2026-10-10',fe:'2026-10-10'}}), r.row);
+check('cell menu: Create button names the board', /Create the ticket on VCH/.test(r.mkNone) && /Create another ticket on VCH/.test(r.mkSome), [r.mkNone,r.mkSome]);
+check('missing list: a row and a Create button each, grouped by board; no buttons read-only; empty state', r.missH===J([2,2,1]) && r.missRO===0 && r.missNone, [r.missH,r.missRO]);
 if(r.real) console.log('REAL FILE', r.real);
 if(!ok) process.exit(1); });
