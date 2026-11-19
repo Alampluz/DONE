@@ -56,6 +56,45 @@ table.cpt{border-collapse:separate;border-spacing:0;font-size:12px}
 .cpt-menu button{all:unset;cursor:pointer;padding:7px 10px;border-radius:7px;font-size:13px}
 .cpt-menu button:hover,.cpt-menu button:focus{background:var(--gray-soft)}
 .cpt-menu .hd{font-size:11.5px;color:var(--ink3);padding:4px 10px 6px;max-width:240px;white-space:normal}
+.cpt-bar select{width:auto;flex:none}
+.cpt-bar input[type=search]{width:150px;flex:none}
+.cpt-bar label{white-space:nowrap}
+/* DONE swaps every <select> for a .sel-pick button: size those, not the select */
+.cpt-bar .sel-pick{width:auto;min-width:0;max-width:230px;height:34px;font-size:13px;flex:none}
+.cpt-bar .sel-pick.cpt-trsel{max-width:360px;font-weight:600}
+.cpl td.st .sel-pick{height:30px;min-width:0;width:100%;font-size:13px;padding:0 8px;border-radius:7px}
+.cpl .sel-pick.done{background:var(--green-soft);color:var(--green);border-color:transparent} .cpl .sel-pick.pend{background:var(--amber-soft);color:var(--amber);border-color:transparent} .cpl .sel-pick.inprog{background:var(--blue-soft,#e0ecff);color:var(--blue,#1d4ed8);border-color:transparent}
+.cpt-view{display:inline-flex;border:1px solid var(--line-strong,var(--line));border-radius:8px;overflow:hidden;flex:none}
+.cpt-view button{all:unset;cursor:pointer;font-size:13px;padding:6px 12px;color:var(--ink2)}
+.cpt-view button.on{background:var(--ink);color:var(--panel)}
+table.cpo{width:100%;border-collapse:collapse;font-size:13px}
+.cpo th{position:sticky;top:0;z-index:2;background:var(--panel-2,var(--panel));text-align:left;font-size:11px;color:var(--ink3);font-weight:600;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.cpo td{padding:7px 10px;border-bottom:1px solid var(--line-2,var(--line));white-space:nowrap}
+.cpo tbody tr{cursor:pointer}
+.cpo tbody tr:hover td{background:var(--gray-soft)}
+.cpo tr.first td{border-top:1px solid var(--line)}
+.cpo .cpo-b{font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.cpo .cpo-pct{font-variant-numeric:tabular-nums;text-align:right;color:var(--ink2)}
+.cpo-c{min-width:74px}
+.cpo-c .bar{display:inline-block;width:34px;height:6px;border-radius:3px;background:var(--gray-soft);vertical-align:middle;margin-right:7px;overflow:hidden}
+.cpo-c .bar i{display:block;height:100%;background:var(--amber);border-radius:3px}
+.cpo-c.ok .bar i{background:var(--green)}
+.cpo-c .n{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.cpo-c.ok .n{color:var(--green)}
+.cpo-c.none{color:var(--ink3)}
+.cpo-chip{display:inline-block;font-size:12px;border-radius:999px;padding:2px 9px;background:var(--amber-soft);color:var(--amber);font-weight:600}
+.cpo-chip.ok{background:var(--green-soft);color:var(--green)}
+.cpl-sec{margin:14px 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);font-weight:600;display:flex;gap:8px;align-items:baseline}
+table.cpl{width:100%;border-collapse:collapse;font-size:13px}
+.cpl td{padding:6px 8px;border-bottom:1px solid var(--line-2,var(--line));vertical-align:middle}
+.cpl td.nm{white-space:normal} .cpl td.nm small{display:block;color:var(--ink3);font-size:11.5px}
+.cpl td.nm small.late{color:var(--red)}
+.cpl td.st{width:150px} .cpl td.st select{font:inherit;font-size:13px;padding:4px 6px;border-radius:7px;border:1px solid var(--line);width:100%;background:var(--panel);color:var(--ink)}
+.cpl select.done{background:var(--green-soft);color:var(--green)} .cpl select.pend{background:var(--amber-soft);color:var(--amber)} .cpl select.inprog{background:var(--blue-soft,#e0ecff);color:var(--blue,#1d4ed8)}
+.cpl td.tk{width:230px;white-space:normal;font-size:12.5px}
+.cpl td.tk a{color:var(--accent);font-weight:600;text-decoration:none;margin-right:8px}
+.cpl td.tk .no{color:var(--amber)}
+.cpl tr.na td{color:var(--ink3)}
 .cpd-tbl{width:100%;border-collapse:collapse;font-size:13px}
 .cpt-bar .btn.warn{border-color:var(--amber);color:var(--amber)}
 .cpt-miss{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px}
@@ -374,6 +413,57 @@ function cptSumHTML(lines, steps, today, chk){
     <div class="b"><b>${t.open}</b><span>still open</span></div><div class="b${t.late ? ' red' : ''}"><b>${t.late}</b><span>past their due date</span></div>${chk ? (()=>{ let none = 0, open = 0, ok = 0; lines.forEach(l=> steps.forEach(s=>{ const c = chk(l, s); if(!c) return; if(c.state==='none') none++; else if(c.state==='open') open++; else ok++; }));
       return `<div class="b${none ? ' red' : ''}"><b>${none}</b><span>steps with no ticket</span></div><div class="b"><b>${open}</b><span>tickets not finished</span></div><div class="b green"><b>${ok}</b><span>backed by a ticket</span></div>`; })() : ''}</div>`;
 }
+/* ---------- overview: one row per brand line, one cell per section (the default view) ----------
+   The sheet has ~90 columns; this answers "is anything open or missing for this brand" at a glance.
+   Click a row for that line's checklist (cptLineModal). */
+function cptOverviewHTML(lines, steps, today, chk){
+  const groups = cptElements(steps);
+  const short = n => { let s = String(n||'').toLowerCase().replace(/(^|\s)\S/g, c=>c.toUpperCase()); s = s.replace(/^Platform Mechanics.*/,'Mechanics & Vouchers').replace(/^Marketing \((\w+).*/,'Mkt $1').replace('Target & Budgeting','Target & Budget'); return s.length > 22 ? s.slice(0,20)+'…' : s; };
+  let prev = null;
+  const body = lines.map(l=>{
+    const st = cptStats(l, steps, today), first = l.brand_name!==prev; prev = l.brand_name;
+    const cells = groups.map((g, gi)=>{ const s = cptStats(l, g.steps, today);
+      if(!s.applicable) return `<td class="cpo-c none" data-g="${gi}">—</td>`;
+      return `<td class="cpo-c${s.open ? '' : ' ok'}" data-g="${gi}" title="${esc(g.name)}: ${s.done} of ${s.applicable} done${s.late ? ', '+s.late+' past due' : ''}"><span class="bar"><i style="width:${Math.round(100*s.done/s.applicable)}%"></i></span><span class="n">${s.open ? s.done+'/'+s.applicable : '✓'}</span></td>`; }).join('');
+    let tk = '';
+    if(chk){ let none = 0, any = 0; const seen = {}; steps.forEach(s=>{ const c = chk(l, s); if(!c) return; any++; if(c.state==='none'){ const k = c.rule.boards.join('+')+'|'+(c.rule.kind ? c.rule.kind.source : ''); if(!seen[k]){ seen[k] = 1; none++; } } });
+      tk = `<td>${none ? `<span class="cpo-chip">${none} missing</span>` : any ? '<span class="cpo-chip ok">all raised</span>' : ''}</td>`; }
+    return `<tr data-ov="${l.id}"${first ? ' class="first"' : ''}><td class="cpo-b" title="${esc(l.brand_name)}">${first ? esc(l.brand_name)+` <span class="hint">${esc(l.country||'')}</span>` : ''}</td><td>${esc(l.platform||'')}</td><td>${esc(l.kam||'')}</td><td class="cpo-pct">${st.applicable ? Math.round(100*st.done/st.applicable)+'%' : '—'}</td>${tk}${cells}</tr>`;
+  }).join('');
+  return `<table class="cpo"><thead><tr><th>Brand</th><th>Platform</th><th>KAM</th><th style="text-align:right">Done</th>${chk ? '<th>Tickets</th>' : ''}${groups.map(g=>`<th title="${esc(g.name)} · ${g.steps.length} steps">${esc(short(g.name))}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`;
+}
+/* One line's checklist: its steps by section, each with a status to change and its tickets (or Create). */
+function cptLineHTML(line, steps, today, by, brands, edit, showNa, hasTix){
+  return cptElements(steps).map((g, gi)=>{
+    const s = cptStats(line, g.steps, today), rows = g.steps.filter(x=> showNa || cptKind((line.cells||{})[x.position])!=='na');
+    if(!rows.length) return '';
+    return `<div class="cpl-sec" id="cpl-g${gi}"><span>${esc(g.name)}</span><span class="hint">${s.done}/${s.applicable} done</span></div><table class="cpl"><tbody>${rows.map(x=>{
+      const v = (line.cells||{})[x.position] || '', k = cptKind(v), tk = hasTix ? cptTixFor(line, x, by, brands) : null;
+      const opts = CPT_CHOICES.concat(v && !CPT_CHOICES.some(c=>c.toLowerCase()===v.toLowerCase()) ? [v] : []);
+      const stc = edit ? `<select class="${k}" data-step="${x.position}" aria-label="Status of ${esc(x.name)}"><option value="">—</option>${opts.map(c=>`<option${c.toLowerCase()===v.toLowerCase() ? ' selected' : ''}>${esc(c)}</option>`).join('')}<option value="__other">Other value…</option></select>` : esc(v || '—');
+      const tkc = !tk || k==='na' ? '' : tk.list.length ? tk.list.slice(0,4).map(t=>`<a href="${esc(taskHash({id:t.task_id, ticket_no:t.ticket_no}))}" title="${esc((t.kind||'')+' · '+(cptTkDone(t) ? 'done' : t.team_status || t.status || ''))}">${esc(t.ticket_no||'ticket')}${cptTkDone(t) ? ' ✓' : ''}</a>`).join('')+(tk.list.length > 4 ? `<span class="hint">+${tk.list.length-4}</span>` : '')
+        : `<span class="no">No ticket</span>${edit ? ` <button class="btn btn-ghost btn-sm" data-mk="${x.position}">＋ Create on ${esc(tk.rule.boards[0])}</button>` : ''}`;
+      return `<tr class="${k==='na' ? 'na' : ''}"><td class="nm" title="${esc(x.how||'')}">${esc(x.name)}<small class="${cptIsLate(x, v, today) ? 'late' : ''}">${x.due ? 'due '+esc(fmtDate(x.due)) : ''}${cptIsLate(x, v, today) ? ' · past due' : ''}</small></td><td class="st">${stc}</td><td class="tk">${tkc}</td></tr>`; }).join('')}</tbody></table>`; }).join('') || '<div class="empty">No steps apply to this line.</div>';
+}
+function cptLineModal(lineId, gi){
+  const line = CPT.lines.find(l=>l.id===lineId); if(!line) return;
+  let showNa = false;
+  const m = modal(`<div class="modal-head"><h2>${esc(line.brand_name)} · ${esc(line.platform||'')}</h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div>
+    <div class="modal-body"><p class="muted" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center"><span>${esc([line.country, line.service_type, line.kam && 'KAM '+line.kam, line.associate && line.associate!==line.kam && 'Asso '+line.associate, line.lead && 'Lead '+line.lead].filter(Boolean).join(' · '))}</span>
+      <label style="font-size:13px;display:flex;gap:5px;align-items:center"><input type="checkbox" id="cpl-na"> Show steps marked n/a</label></p>
+      <div id="cpl-body" style="max-height:64vh;overflow:auto"></div></div>`, true);
+  const body = m.querySelector('#cpl-body');
+  const paint = () => { const y = body.scrollTop; body.innerHTML = cptLineHTML(line, CPT.steps, cptToday(), CPT.tixBy, S.brandsList, canEdit(), showNa, !!(CPT.tix && CPT.tixOn)); body.scrollTop = y; };
+  paint();
+  if(gi!=null){ const t = body.querySelector('#cpl-g'+gi); if(t) body.scrollTop = t.offsetTop - body.offsetTop; }
+  m.querySelector('#cpl-na').onchange = e => { showNa = e.target.checked; paint(); };
+  body.onchange = async e => { const s = e.target.closest('select[data-step]'); if(!s) return;
+    const step = CPT.steps.find(x=>x.position===+s.dataset.step); let v = s.value;
+    if(v==='__other'){ v = prompt('Value for this step (an amount, "Yes", "MKT set" …)', (line.cells||{})[step.position] || ''); if(v==null) return paint(); }
+    await cptSetCell(line, step, v, null); paint(); };
+  body.onclick = e => { if(e.target.closest('a')) return closeModals(); const b = e.target.closest('[data-mk]'); if(!b) return;
+    const step = CPT.steps.find(x=>x.position===+b.dataset.mk); closeModals(); cptCreateModal(line, step, ()=> cptLineModal(line.id)); };
+}
 const cptOpts = (vals, cur, all) => `<option value="">${all}</option>` + [...new Set(vals.filter(Boolean))].sort((a,b)=>a.localeCompare(b)).map(v=>`<option${v===cur ? ' selected' : ''}>${esc(v)}</option>`).join('');
 
 async function cptMount(){
@@ -383,8 +473,10 @@ async function cptMount(){
   if(!CPT.cur){ root.innerHTML = `<div class="card empty">No campaign tracker yet.${canEdit() ? ' Import the planning sheet (.xlsx) to start.<br><br><button class="btn btn-primary" id="cpt-imp">Import tracker (.xlsx)</button>' : ''}</div>`;
     const b = root.querySelector('#cpt-imp'); if(b) b.onclick = cptImportPick; return; }
   const f = CPT.f, L = CPT.lines;
+  if(!CPT.view){ CPT.view = 'overview'; try{ if(localStorage.getItem('cpt-view')==='sheet') CPT.view = 'sheet'; }catch(e){} }
   root.innerHTML = `<div class="cpt-bar">
-      <select id="cpt-tr" aria-label="Campaign">${CPT.trackers.map(t=>`<option value="${t.id}"${t.id===CPT.cur.id ? ' selected' : ''}>${esc(t.name)} · D-day ${esc(fmtDate(t.dday))}</option>`).join('')}</select>
+      <span class="cpt-view" role="group" aria-label="View"><button data-view="overview">Overview</button><button data-view="sheet">Full sheet</button></span>
+      <select id="cpt-tr" class="cpt-trsel" aria-label="Campaign">${CPT.trackers.map(t=>`<option value="${t.id}"${t.id===CPT.cur.id ? ' selected' : ''}>${esc(t.name)} · D-day ${esc(fmtDate(t.dday))}</option>`).join('')}</select>
       <select data-f="svc" aria-label="Service type">${cptOpts(L.map(l=>l.service_type), f.svc, 'All services')}</select>
       <select data-f="brand" aria-label="Brand">${cptOpts(L.map(l=>l.brand_name), f.brand, 'All brands')}</select>
       <select data-f="kam" aria-label="KAM or associate">${cptOpts(L.flatMap(l=>[l.kam, l.associate]), f.kam, 'All KAMs')}</select>
@@ -400,16 +492,22 @@ async function cptMount(){
       ${canEdit() ? '<button class="btn btn-ghost btn-sm" id="cpt-imp">Import tracker (.xlsx)</button>' : ''}</div>
     <div id="cpt-sum"></div><div class="cpt-wrap" id="cpt-sheet"></div>
     ${CPT.tix ? `<div class="cpt-lg"><span>${CPT.tix.length} tickets from the team boards match this campaign.</span><span><i style="border-color:var(--green)"></i>backed by a ticket</span><span><i style="border-color:var(--blue,#1d4ed8)"></i>ticket not finished</span><span><i style="border-color:var(--amber)"></i>no ticket found</span><span>The small number is how many tickets. Click the cell to open them.</span></div>` : CPT.tixErr ? `<div class="cpt-lg" style="color:var(--amber)">Tickets could not be loaded (${esc(CPT.tixErr)}); the sheet shows the typed statuses only.</div>` : ''}
-    <div class="hint" style="margin-top:8px">Click a cell to change it. Click a section name to show or hide its steps, and a step name for its how-to. Red outline = past its due date and not done.</div>`;
+    <div class="hint" style="margin-top:8px" id="cpt-help"></div>`;
   const draw = () => { const today = cptToday(), wrap = root.querySelector('#cpt-sheet'), sx = wrap.scrollLeft, sy = wrap.scrollTop;
     const chk = CPT.tix && CPT.tixOn ? (l, s) => cptCheck(l, s, CPT.tixBy, S.brandsList) : null;
     const rows = cptFiltered(CPT.lines, {...CPT.f, chk}, CPT.steps, today);
     root.querySelector('#cpt-sum').innerHTML = cptSumHTML(rows, CPT.steps, today, chk);
-    wrap.innerHTML = rows.length ? cptSheetHTML(rows, CPT.steps, CPT.fold, today, chk) : '<div class="empty">No lines match these filters.</div>';
+    const sheet = CPT.view==='sheet';
+    wrap.innerHTML = rows.length ? (sheet ? cptSheetHTML(rows, CPT.steps, CPT.fold, today, chk) : cptOverviewHTML(rows, CPT.steps, today, chk)) : '<div class="empty">No lines match these filters.</div>';
+    root.querySelectorAll('.cpt-view button').forEach(b=> b.classList.toggle('on', b.dataset.view===CPT.view));
+    root.querySelector('#cpt-fold').style.display = sheet ? '' : 'none'; const lg = root.querySelector('.cpt-lg'); if(lg && !lg.style.color) lg.style.display = sheet ? '' : 'none';
+    root.querySelector('#cpt-help').textContent = sheet ? 'Click a cell to change it. Click a section name to show or hide its steps, and a step name for its how-to. Red outline = past its due date and not done.'
+      : 'Each bar is one part of the campaign plan for that brand and platform. Click a row to open its checklist, change a status, open its tickets or create a missing one.';
     wrap.scrollLeft = sx; wrap.scrollTop = sy;
     const mb = root.querySelector('#cpt-mis'); if(mb && CPT.tix){ const all = (l, s) => cptCheck(l, s, CPT.tixBy, S.brandsList), n = cptMissing(cptFiltered(CPT.lines, {...CPT.f, chk:all}, CPT.steps, today), CPT.steps, all).length;
       mb.textContent = `Missing tickets (${n})`; mb.classList.toggle('warn', n > 0); } };
   draw(); CPT.draw = draw;
+  root.querySelectorAll('.cpt-view button').forEach(b=>{ b.onclick = ()=>{ CPT.view = b.dataset.view; try{ localStorage.setItem('cpt-view', CPT.view); }catch(e){} root.querySelector('#cpt-sheet').scrollTop = 0; draw(); }; });
   root.querySelector('#cpt-tr').onchange = e => { CPT.cur = {id:e.target.value}; CPT.fold = null; cptMount(); };
   root.querySelectorAll('[data-f]').forEach(s=>{ s.onchange = ()=>{ CPT.f[s.dataset.f] = s.value; draw(); }; });
   root.querySelector('#cpt-q').oninput = e => { CPT.f.q = e.target.value; draw(); };
@@ -421,6 +519,7 @@ async function cptMount(){
   const mis = root.querySelector('#cpt-mis'); if(mis) mis.onclick = cptMissingModal;
   const imp = root.querySelector('#cpt-imp'); if(imp) imp.onclick = cptImportPick;
   root.querySelector('#cpt-sheet').onclick = e => {
+    const ov = e.target.closest('tr[data-ov]'); if(ov){ const c = e.target.closest('td[data-g]'); return cptLineModal(ov.dataset.ov, c ? +c.dataset.g : null); }
     const eh = e.target.closest('[data-el]'); if(eh){ const g = cptElements(CPT.steps)[+eh.dataset.el]; if(CPT.fold[g.name]) delete CPT.fold[g.name]; else CPT.fold[g.name] = 1; draw(); return; }
     const sh = e.target.closest('th[data-step]'); if(sh) return cptStepModal(+sh.dataset.step);
     const td = e.target.closest('td.cc'); if(td) cptCellMenu(td);
@@ -463,7 +562,7 @@ async function cptSetCell(line, step, value, td){
   if(td && td.isConnected){ td.className = `cc ${cptKind(v)}${cptIsLate(step, v, today) ? ' late' : ''}${td.classList.contains('ge') ? ' ge' : ''}`; td.textContent = cptLabel(v); td.title = v; }
   const {error} = await db.rpc('cp_tracker_set_cell', {p_line:line.id, p_step:step.position, p_value:v});
   if(error){ line.cells = {...line.cells}; if(old) line.cells[step.position] = old; else delete line.cells[step.position]; toast('Not saved: '+error.message, true); if(CPT.draw) CPT.draw(); return; }
-  if(CPT.tix && CPT.tixOn && CPT.draw){ CPT.draw(); return; }   // ticket marks depend on the cell's value
+  if((!td || (CPT.tix && CPT.tixOn)) && CPT.draw){ CPT.draw(); return; }   // ticket marks depend on the cell's value
   const rows = cptFiltered(CPT.lines, CPT.f, CPT.steps, today), sum = document.getElementById('cpt-sum'); if(sum) sum.innerHTML = cptSumHTML(rows, CPT.steps, today);
   const tr = td && td.closest('tr'), pc = tr && tr.querySelector('.c3'); if(pc){ const st = cptStats(line, CPT.steps, today); pc.textContent = st.applicable ? Math.round(100*st.done/st.applicable)+'%' : '—'; }
 }
