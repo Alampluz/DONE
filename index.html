@@ -9913,6 +9913,18 @@ table.cpt{border-collapse:separate;border-spacing:0;font-size:12px}
 .cpt td.na{color:var(--ink3);background:var(--gray-soft)}
 .cpt td.info{color:var(--ink2)}
 .cpt td.late{box-shadow:inset 0 0 0 2px var(--red);font-weight:600}
+.cpt td.tk-none{border-bottom:3px solid var(--amber)}
+.cpt td.tk-open{border-bottom:3px solid var(--blue,#1d4ed8)}
+.cpt td.tk-done{border-bottom:3px solid var(--green)}
+.cpt td.cc sup{font-size:9.5px;font-weight:600;margin-left:3px;opacity:.75}
+.cpt-menu .tk{display:block;padding:5px 10px;border-radius:7px;font-size:12.5px;color:var(--ink);text-decoration:none;max-width:330px;white-space:normal}
+.cpt-menu .tk:hover{background:var(--gray-soft)}
+.cpt-menu .tk b{color:var(--accent)}
+.cpt-menu .tkh{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);padding:6px 10px 2px}
+.cpt-menu .tkn{font-size:12.5px;color:var(--amber);padding:4px 10px 6px;max-width:300px;white-space:normal}
+.cpt-menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.cpt-lg{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2);margin-top:8px}
+.cpt-lg i{display:inline-block;width:18px;height:0;vertical-align:middle;margin-right:5px;border-bottom:3px solid}
 .cpt td.gs{min-width:110px;text-align:center;cursor:pointer;color:var(--ink2)}
 .cpt td.gs.bad{color:var(--red);font-weight:600}
 .cpt td.gs.ok{color:var(--green)}
@@ -9920,7 +9932,50 @@ table.cpt{border-collapse:separate;border-spacing:0;font-size:12px}
 .cpt-menu button{all:unset;cursor:pointer;padding:7px 10px;border-radius:7px;font-size:13px}
 .cpt-menu button:hover,.cpt-menu button:focus{background:var(--gray-soft)}
 .cpt-menu .hd{font-size:11.5px;color:var(--ink3);padding:4px 10px 6px;max-width:240px;white-space:normal}
+.cpt-bar select{width:auto;flex:none}
+.cpt-bar input[type=search]{width:150px;flex:none}
+.cpt-bar label{white-space:nowrap}
+/* DONE swaps every <select> for a .sel-pick button: size those, not the select */
+.cpt-bar .sel-pick{width:auto;min-width:0;max-width:230px;height:34px;font-size:13px;flex:none}
+.cpt-bar .sel-pick.cpt-trsel{max-width:360px;font-weight:600}
+.cpl td.st .sel-pick{height:30px;min-width:0;width:100%;font-size:13px;padding:0 8px;border-radius:7px}
+.cpl .sel-pick.done{background:var(--green-soft);color:var(--green);border-color:transparent} .cpl .sel-pick.pend{background:var(--amber-soft);color:var(--amber);border-color:transparent} .cpl .sel-pick.inprog{background:var(--blue-soft,#e0ecff);color:var(--blue,#1d4ed8);border-color:transparent}
+.cpt-view{display:inline-flex;border:1px solid var(--line-strong,var(--line));border-radius:8px;overflow:hidden;flex:none}
+.cpt-view button{all:unset;cursor:pointer;font-size:13px;padding:6px 12px;color:var(--ink2)}
+.cpt-view button.on{background:var(--ink);color:var(--panel)}
+table.cpo{width:100%;border-collapse:collapse;font-size:13px}
+.cpo th{position:sticky;top:0;z-index:2;background:var(--panel-2,var(--panel));text-align:left;font-size:11px;color:var(--ink3);font-weight:600;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.cpo td{padding:7px 10px;border-bottom:1px solid var(--line-2,var(--line));white-space:nowrap}
+.cpo tbody tr{cursor:pointer}
+.cpo tbody tr:hover td{background:var(--gray-soft)}
+.cpo tr.first td{border-top:1px solid var(--line)}
+.cpo .cpo-b{font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.cpo .cpo-pct{font-variant-numeric:tabular-nums;text-align:right;color:var(--ink2)}
+.cpo-c{min-width:74px}
+.cpo-c .bar{display:inline-block;width:34px;height:6px;border-radius:3px;background:var(--gray-soft);vertical-align:middle;margin-right:7px;overflow:hidden}
+.cpo-c .bar i{display:block;height:100%;background:var(--amber);border-radius:3px}
+.cpo-c.ok .bar i{background:var(--green)}
+.cpo-c .n{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.cpo-c.ok .n{color:var(--green)}
+.cpo-c.none{color:var(--ink3)}
+.cpo-chip{display:inline-block;font-size:12px;border-radius:999px;padding:2px 9px;background:var(--amber-soft);color:var(--amber);font-weight:600}
+.cpo-chip.ok{background:var(--green-soft);color:var(--green)}
+.cpl-sec{margin:14px 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink3);font-weight:600;display:flex;gap:8px;align-items:baseline}
+table.cpl{width:100%;border-collapse:collapse;font-size:13px}
+.cpl td{padding:6px 8px;border-bottom:1px solid var(--line-2,var(--line));vertical-align:middle}
+.cpl td.nm{white-space:normal} .cpl td.nm small{display:block;color:var(--ink3);font-size:11.5px}
+.cpl td.nm small.late{color:var(--red)}
+.cpl td.st{width:150px} .cpl td.st select{font:inherit;font-size:13px;padding:4px 6px;border-radius:7px;border:1px solid var(--line);width:100%;background:var(--panel);color:var(--ink)}
+.cpl select.done{background:var(--green-soft);color:var(--green)} .cpl select.pend{background:var(--amber-soft);color:var(--amber)} .cpl select.inprog{background:var(--blue-soft,#e0ecff);color:var(--blue,#1d4ed8)}
+.cpl td.tk{width:230px;white-space:normal;font-size:12.5px}
+.cpl td.tk a{color:var(--accent);font-weight:600;text-decoration:none;margin-right:8px}
+.cpl td.tk .no{color:var(--amber)}
+.cpl tr.na td{color:var(--ink3)}
 .cpd-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.cpt-bar .btn.warn{border-color:var(--amber);color:var(--amber)}
+.cpt-miss{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px}
+.cpt-miss td{padding:5px 8px;border-bottom:1px solid var(--line-2,var(--line));vertical-align:middle}
+.cpt-miss td.act{text-align:right;white-space:nowrap}
 .cpd-tbl th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
 .cpd-tbl td{padding:3px 6px;border-bottom:1px solid var(--line-2,var(--line))}
 .cpd-tbl td:first-child{padding-left:10px;font-weight:600;white-space:nowrap}
@@ -9933,7 +9988,178 @@ table.cpt{border-collapse:separate;border-spacing:0;font-size:12px}
 </style>
 <script>
 /* ---------- state ---------- */
-const CPT = { trackers:null, cur:null, steps:[], lines:[], fold:null, f:{svc:'', brand:'', kam:'', lead:'', q:'', late:false} };
+const CPT = { trackers:null, cur:null, steps:[], lines:[], fold:null, tix:null, tixBy:{}, tixOn:true, f:{svc:'', brand:'', kam:'', lead:'', q:'', late:false, miss:false} };
+
+/* ---------- which tickets prove a step (the teams' boards are the source of truth) ----------
+   A step is matched by its name to a ticket board (its code) and a kind of request on it. First match wins.
+   need: 'exists' = the ticket has been raised (KAM "Submit …" steps); 'done' = the team finished it. */
+const CPT_RULES = [
+  {re:/book platform|stock forecast|lazada bonus|barter|visibility banner/i, skip:true},
+  {el:/graphic/i, re:/frame\/pdp/i,   boards:['CRE'], kind:/frame|pdp/i},
+  {el:/graphic/i, re:/sis/i,          boards:['CRE'], kind:/sis/i},
+  {el:/graphic/i, re:/cpas/i,         boards:['CRE'], kind:/cpas|marketing/i},
+  {el:/graphic/i, re:/visi/i,         boards:['CRE'], kind:/visibility/i},
+  {el:/graphic/i, re:/./,             boards:['CRE'], kind:null},
+  {el:/listing/i, re:/frame/i,        boards:['CFR'], kind:null},
+  {re:/co-?fund voucher/i,            boards:['VCH'], kind:/co-?fund/i},
+  {re:/free shipping/i,               boards:['VCH'], kind:/free ?shipping/i},
+  {re:/flexi|bundle deal/i,           boards:['VCH'], kind:/flexi|bundle/i},
+  {re:/add-?on/i,                     boards:['VCH'], kind:/add-?on/i},
+  {re:/voucher/i,                     boards:['VCH'], kind:/regular|new buyer|follower|member|repeat/i},
+  {re:/price update/i,                boards:['PTB'], kind:/price/i},
+  {re:/flash ?sale/i,                 boards:['PTB','FS'], kind:/flash|jfy|special/i},
+  {re:/rdh/i,                         boards:['PTB'], kind:/rdh/i},
+  {re:/campaign \(tb\)|cbmo|subsidy|overall tb/i, boards:['PTB'], kind:/treasure bowl/i},
+  {re:/gwp/i,                         boards:['GWP'], kind:null},
+];
+function cptRule(step){
+  if(!step) return null;
+  const r = CPT_RULES.find(x=> (!x.el || x.el.test(step.element||'')) && x.re.test(step.name||''));
+  if(!r || r.skip) return null;
+  const need = /store ops|graphic|listing|readiness/i.test(step.element||'') || /^(join|set|recheck)\b/i.test(step.name||'') ? 'done' : 'exists';
+  return {boards:r.boards, kind:r.kind, need};
+}
+const cptNorm = v => String(v==null ? '' : v).toLowerCase().replace(/[^a-z0-9]+/g,'');
+const cptTkCancelled = t => /won.?t do|cancel/i.test(t.team_status||'');
+const cptTkDone = t => t.status==='done' || /^(done|approved|resolved)/i.test(t.team_status||'');
+function cptIndexTix(tix){ const by = {}; (tix||[]).forEach(t=>{ const k = cptNorm(t.brand); (by[k] = by[k] || []).push(t); }); return by; }
+/* The tickets behind one cell: same brand, the line's platform among the ticket's platforms (a ticket
+   with no platform counts for all), on the rule's board, of the rule's kind, not cancelled. */
+function cptTixFor(line, step, by, brands){
+  const rule = cptRule(step); if(!rule) return null;
+  const b = (brands||[]).find(x=>x.id===line.brand_id), keys = [...new Set([cptNorm(b && b.name), cptNorm(line.brand_name)].filter(Boolean))];
+  const lp = cptNorm(line.platform);
+  const list = keys.flatMap(k=> (by||{})[k] || []).filter(t=> rule.boards.includes(t.board_key) && !cptTkCancelled(t)
+    && (!rule.kind || rule.kind.test(t.kind||''))
+    && (!t.platform || !lp || String(t.platform).split(',').some(p=>{ const n = cptNorm(p); return n && (n===lp || lp.includes(n) || n.includes(lp)); })));
+  return {rule, list};
+}
+/* null = nothing to check (no rule, or the cell is n/a / empty); otherwise
+   state none = no ticket found · open = ticket(s) not finished · done = finished (or raised, when that is all the step asks) */
+function cptCheck(line, step, by, brands){
+  const v = (line.cells||{})[step.position]; if(cptKind(v)==='na') return null;
+  const r = cptTixFor(line, step, by, brands); if(!r) return null;
+  if(!r.list.length) return {state:'none', list:[], rule:r.rule};
+  const fin = r.rule.need==='exists' || r.list.every(cptTkDone);
+  return {state: fin ? 'done' : 'open', list:r.list, rule:r.rule};
+}
+/* ---------- missing tickets → raise them on the team board ----------
+   One row per ticket that is needed and not there: several steps of a line can ask for the same ticket
+   (KAM "Submit voucher" + Store Ops "Set voucher"), so they are folded by line + board + kind. */
+function cptMissing(lines, steps, chk){
+  const out = [], seen = {};
+  (lines||[]).forEach(l=> (steps||[]).forEach(s=>{ const c = chk(l, s); if(!c || c.state!=='none') return;
+    const k = l.id+'|'+c.rule.boards.join('+')+'|'+(c.rule.kind ? c.rule.kind.source : '');
+    if(seen[k]){ seen[k].steps.push(s); if(s.due && (!seen[k].due || s.due < seen[k].due)) seen[k].due = s.due; return; }
+    out.push(seen[k] = {line:l, step:s, steps:[s], rule:c.rule, due:s.due||null}); }));
+  return out;
+}
+const CPT_COUNTRY = {th:'thailand', sg:'singapore', my:'malaysia'};
+/* The board's own spelling of a value ("Tiktok" for TikTok, "Thailand" for TH); '' when the board has no such option. */
+function cptPickOpt(options, want, alt){
+  const o = (Array.isArray(options) ? options : []).map(x=> typeof x==='string' ? x : (x && (x.label || x.name || x.value)) || '').filter(Boolean);
+  const w = cptNorm(want), a = cptNorm(alt); if(!w) return '';
+  return o.find(x=>cptNorm(x)===w) || (a && o.find(x=>cptNorm(x)===a)) || '';
+}
+const cptKindOpts = (options, kind) => (Array.isArray(options) ? options : []).filter(x=> typeof x==='string' && (!kind || kind.test(x)));
+/* Which field of a board plays which part; the same labels cp_tracker_tickets reads. fields = project_fields rows. */
+function cptRoles(fields){
+  const by = (...labels) => (fields||[]).find(f=> labels.includes(String(f.label||'').trim().toLowerCase())) || null;
+  return {brand:(fields||[]).find(f=>f.ftype==='brand') || by('brand'), platform:by('platform','platfrom'), kind:by('request for','artwork type','campaign requests'),
+          start:by('start date','live date','campaign start date'), end:by('end date','campaign end date'), country:by('country','country / region')};
+}
+/* What the new ticket would say, before the person edits it. */
+function cptDraft(line, step, rule, tracker, roles, brands){
+  const b = (brands||[]).find(x=>x.id===line.brand_id), brand = (b && b.name) || line.brand_name;
+  const kinds = roles.kind ? cptKindOpts(roles.kind.options, rule.kind) : [];
+  const cc = cptNorm(line.country);
+  return {brand, title:`${brand} ${line.platform||''} – ${step.name} (${tracker.name})`.replace(/\s+/g,' ').trim(),
+    platform: roles.platform ? cptPickOpt(roles.platform.options, line.platform) : '',
+    kind: kinds.length===1 ? kinds[0] : '', kinds,
+    country: roles.country ? cptPickOpt(roles.country.options, line.country, CPT_COUNTRY[cc]) : '',
+    start:tracker.dday, end:tracker.dday};
+}
+/* The ticket as the tasks table takes it: custom = {field id: value}, empty values left out. */
+function cptTicketRow(board, roles, v, groupId, position, me){
+  const custom = {}; [['brand',v.brand],['platform',v.platform],['kind',v.kind],['country',v.country],['start',v.start],['end',v.end]].forEach(([r, val])=>{ if(roles[r] && val) custom[roles[r].id] = val; });
+  return {project_id:board.id, group_id:groupId||null, title:v.title, description:v.description||'', status:'todo', priority:'normal', created_by:me, position, custom};
+}
+async function cptBoard(key){
+  CPT.boards = CPT.boards || {};
+  if(CPT.boards[key]) return CPT.boards[key];
+  const p = (S.projects||[]).find(x=>x.key===key && x.status!=='archived'); if(!p) throw new Error(`No board with the code ${key}.`);
+  const [f, g] = await Promise.all([db.from('project_fields').select('id,label,ftype,options').eq('project_id', p.id).order('position'),
+    db.from('project_groups').select('id,name,position').eq('project_id', p.id).order('position').order('created_at')]);
+  if(f.error || g.error) throw new Error((f.error || g.error).message);
+  return CPT.boards[key] = {id:p.id, key, name:p.name, fields:f.data||[], groups:g.data||[], roles:cptRoles(f.data||[])};
+}
+/* The form: board, what is asked, platform, dates. Nothing is created until "Create ticket" is pressed. */
+async function cptCreateModal(line, step, after){
+  const rule = cptRule(step); if(!rule) return;
+  let board; try{ board = await cptBoard(rule.boards[0]); }catch(e){ return toast(e.message, true); }
+  const m = modal(`<div class="modal-head"><h2>Create the ticket</h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div><div class="modal-body" id="cpm-body"></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="cpm-save">Create ticket</button></div>`);
+  const paint = () => {
+    const d = cptDraft(line, step, rule, CPT.cur, board.roles, S.brandsList), R = board.roles;
+    const sel = (id, opts, cur, blank) => `<select id="${id}"><option value="">${blank}</option>${opts.map(o=>`<option${o===cur ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+    const all = f => (f && Array.isArray(f.options) ? f.options.filter(x=>typeof x==='string') : []);
+    m.querySelector('#cpm-body').innerHTML = `
+      <p class="muted">${esc(line.brand_name)} · ${esc(line.platform||'')} · ${esc(step.name)}${step.due ? ' · due '+esc(fmtDate(step.due)) : ''}</p>
+      <label>Board</label>${rule.boards.length > 1 ? `<select id="cpm-board">${rule.boards.map(k=>`<option${k===board.key ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select>` : `<input value="${esc(board.key+' · '+board.name)}" disabled>`}
+      <label>Title</label><input id="cpm-title" value="${esc(d.title)}">
+      ${R.kind ? `<label>${esc(R.kind.label)}</label>${sel('cpm-kind', d.kinds.length ? d.kinds.concat(all(R.kind).filter(o=>!d.kinds.includes(o))) : all(R.kind), d.kind, 'Choose…')}` : ''}
+      ${R.platform ? `<label>${esc(R.platform.label)}</label>${sel('cpm-plat', all(R.platform), d.platform, 'Choose…')}` : ''}
+      ${R.country ? `<label>${esc(R.country.label)}</label>${sel('cpm-country', all(R.country), d.country, '—')}` : ''}
+      <div style="display:flex;gap:10px"><div style="flex:1"><label>${esc(R.start ? R.start.label : 'Start')}</label><input type="date" id="cpm-start" value="${esc(d.start||'')}"></div>
+        <div style="flex:1"><label>${esc(R.end ? R.end.label : 'End')}</label><input type="date" id="cpm-end" value="${esc(d.end||'')}"></div></div>
+      <label>Details for the team</label><textarea id="cpm-desc" rows="3">${esc(`Raised from the campaign tracker "${CPT.cur.name}", step "${step.name}"${step.due ? ', due '+fmtDate(step.due) : ''}.`)}</textarea>
+      <p class="hint">Brand: ${esc(d.brand)}. The ticket goes to "${esc((board.groups[0]||{}).name || 'the first group')}" on ${esc(board.name)} and the board's own rules (assignment, notifications) apply.</p>`;
+    const bs = m.querySelector('#cpm-board'); if(bs) bs.onchange = async () => { try{ board = await cptBoard(bs.value); paint(); }catch(e){ toast(e.message, true); } };
+  };
+  paint();
+  m.querySelector('#cpm-save').onclick = async e => {
+    const g = id => { const x = m.querySelector('#'+id); return x ? x.value.trim() : ''; };
+    const v = {brand:cptDraft(line, step, rule, CPT.cur, board.roles, S.brandsList).brand, title:g('cpm-title'), kind:g('cpm-kind'), platform:g('cpm-plat'), country:g('cpm-country'), start:g('cpm-start'), end:g('cpm-end'), description:g('cpm-desc')};
+    if(!v.title) return toast('Title is required', true);
+    if(board.roles.kind && !v.kind) return toast(`Choose the ${board.roles.kind.label}`, true);
+    if(board.roles.platform && !v.platform) return toast('Choose the platform', true);
+    if(!v.start) return toast('The start date is required', true);
+    if(v.end && v.end < v.start) return toast('The end date is before the start date', true);
+    if(typeof canEditOnBoard==='function' && !canEditOnBoard(board.id)) return toast(`You cannot add tickets on ${board.name}.`, true);
+    e.target.disabled = true;
+    const top = await db.from('tasks').select('position').eq('project_id', board.id).order('position', {ascending:false}).limit(1);
+    const pos = ((top.data && top.data[0] && top.data[0].position) || 0) + 1;
+    const {data, error} = await db.from('tasks').insert(cptTicketRow(board, board.roles, v, (board.groups[0]||{}).id, pos, S.me.id)).select().single();
+    if(error){ e.target.disabled = false; return toast(error.message, true); }
+    (CPT.tix = CPT.tix || []).push({task_id:data.id, ticket_no:data.ticket_no, title:data.title, project_id:board.id, board_key:board.key, board_name:board.name,
+      brand:v.brand, platform:v.platform, kind:v.kind, status:data.status, team_status:null, start_date:v.start, end_date:v.end || v.start});
+    CPT.tixBy = cptIndexTix(CPT.tix);
+    closeModals(); toast(`Ticket ${data.ticket_no || ''} created on ${board.name}`);
+    if(CPT.draw) CPT.draw();
+    if(after) after(data);
+  };
+}
+/* Every ticket the campaign still needs, by team board, each with its own Create button (never in bulk:
+   the team boards notify people). Follows the filters of the sheet. */
+function cptMissingHTML(miss, canMake){
+  if(!miss.length) return '<div class="empty">Nothing is missing: every step that needs a ticket has one.</div>';
+  const by = {}; miss.forEach((x, i)=>{ const k = x.rule.boards.join(' / '); (by[k] = by[k] || []).push({...x, i}); });
+  return Object.keys(by).sort().map(k=>`<div class="section-title">${esc(k)} <span class="hint">${by[k].length} missing</span></div>
+    <table class="cpt-miss"><tbody>${by[k].map(x=>`<tr data-i="${x.i}"><td><b>${esc(x.line.brand_name)}</b> <span class="hint">${esc(x.line.country||'')}</span></td><td>${esc(x.line.platform||'')}</td>
+      <td title="${esc(x.steps.map(s=>s.name).join(' · '))}">${esc(x.step.name)}${x.steps.length > 1 ? ` <span class="hint">+${x.steps.length-1} more</span>` : ''}</td>
+      <td class="hint">${x.due ? esc(fmtDate(x.due)) : ''}</td><td class="hint">${esc(x.line.kam||'')}</td>
+      <td class="act">${canMake ? '<button class="btn btn-ghost btn-sm" data-mk>＋ Create</button>' : ''}</td></tr>`).join('')}</tbody></table>`).join('');
+}
+function cptMissingModal(){
+  if(!CPT.tix) return;
+  const chk = (l, s) => cptCheck(l, s, CPT.tixBy, S.brandsList);
+  const miss = cptMissing(cptFiltered(CPT.lines, {...CPT.f, chk}, CPT.steps, cptToday()), CPT.steps, chk);
+  const m = modal(`<div class="modal-head"><h2>Missing tickets <span class="hint">${miss.length}</span></h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div>
+    <div class="modal-body"><p class="muted">Steps of ${esc(CPT.cur.name)} that need a ticket on a team board and have none for that brand and platform around D-day. If the work is not needed, set the step to n/a in the sheet instead.</p>
+    <div id="cpm-list" style="max-height:60vh;overflow:auto">${cptMissingHTML(miss, canEdit())}</div></div>`, true);
+  m.querySelector('#cpm-list').onclick = e => { const b = e.target.closest('[data-mk]'); if(!b) return;
+    const x = miss[+b.closest('tr').dataset.i]; closeModals(); cptCreateModal(x.line, x.step, ()=> cptMissingModal()); };
+}
 const CPT_OPEN = ['pending','in progress','brand review'];          // still to do
 const CPT_CHOICES = ['Done','In Progress','Pending','Brand Review','n/a'];
 
@@ -10007,7 +10233,8 @@ function cptFiltered(lines, f, steps, today){
   const q = String(f.q||'').trim().toLowerCase();
   return (lines||[]).filter(l=> (!f.svc || l.service_type===f.svc) && (!f.brand || l.brand_name===f.brand) && (!f.kam || l.kam===f.kam || l.associate===f.kam) && (!f.lead || l.lead===f.lead)
     && (!q || [l.brand_name,l.platform,l.kam,l.associate,l.lead].some(x=> String(x||'').toLowerCase().includes(q)))
-    && (!f.late || cptStats(l, steps, today).late > 0));
+    && (!f.late || cptStats(l, steps, today).late > 0)
+    && (!f.miss || !f.chk || (steps||[]).some(s=>{ const c = f.chk(l, s); return c && c.state==='none'; })));
 }
 const cptToday = () => new Date(Date.now() + 7*3600e3).toISOString().slice(0,10);   // Bangkok date
 const cptElements = steps => { const out = []; (steps||[]).forEach(s=>{ let g = out[out.length-1]; if(!g || g.name!==s.element){ g = {name:s.element||'Steps', steps:[]}; out.push(g); } g.steps.push(s); }); return out; };
@@ -10025,11 +10252,14 @@ async function cptLoad(trackerId){
     db.from('campaign_tracker_lines').select('*').eq('tracker_id', CPT.cur.id).order('position').limit(2000)]);
   if(st.error || ln.error) throw new Error((st.error || ln.error).message);
   CPT.steps = st.data || []; CPT.lines = ln.data || [];
+  CPT.tix = null; CPT.tixErr = null;
+  try{ const tk = await db.rpc('cp_tracker_tickets', {p_tracker:CPT.cur.id}); if(tk.error) CPT.tixErr = tk.error.message; else CPT.tix = tk.data || []; }catch(e){ CPT.tixErr = e.message; }
+  CPT.tixBy = cptIndexTix(CPT.tix);
   if(!CPT.fold || CPT.foldFor!==CPT.cur.id){ CPT.fold = {}; cptElements(CPT.steps).forEach((g,i)=>{ if(i>0) CPT.fold[g.name] = 1; }); CPT.foldFor = CPT.cur.id; }
 }
 
 /* ---------- the sheet ---------- */
-function cptSheetHTML(lines, steps, fold, today){
+function cptSheetHTML(lines, steps, fold, today, chk){
   const groups = cptElements(steps);
   let h1 = `<th class="fx c0" rowspan="2">Brand</th><th class="fx c1" rowspan="2">Platform</th><th class="fx c2" rowspan="2">KAM</th><th class="fx c3" rowspan="2">Done</th>`, h2 = '';
   groups.forEach((g, gi)=>{
@@ -10044,18 +10274,71 @@ function cptSheetHTML(lines, steps, fold, today){
       if(fold[g.name]){ const s = cptStats(l, g.steps, today);
         tds += `<td class="gs ge${s.late ? ' bad' : s.applicable && !s.open ? ' ok' : ''}" data-el="${gi}">${s.applicable ? `${s.done}/${s.applicable}${s.late ? ` · ${s.late} late` : ''}` : '—'}</td>`; return; }
       g.steps.forEach((s, i)=>{ const v = (l.cells||{})[s.position];
-        tds += `<td class="cc ${cptKind(v)}${cptIsLate(s, v, today) ? ' late' : ''}${i===g.steps.length-1 ? ' ge' : ''}" data-line="${l.id}" data-step="${s.position}" title="${esc(v||'')}">${esc(cptLabel(v))}</td>`; });
+        const c = chk ? chk(l, s) : null;
+        tds += `<td class="cc ${cptKind(v)}${cptIsLate(s, v, today) ? ' late' : ''}${c ? ' tk-'+c.state : ''}${i===g.steps.length-1 ? ' ge' : ''}" data-line="${l.id}" data-step="${s.position}" title="${esc((v||'')+(c ? (c.state==='none' ? ' · no ticket found on '+c.rule.boards.join(' / ') : ` · ${c.list.length} ticket${c.list.length===1?'':'s'}, ${c.state==='done' ? 'finished' : 'not finished'}`) : ''))}">${esc(cptLabel(v))}${c && c.list.length ? `<sup>${c.list.length}</sup>` : ''}</td>`; });
     });
     return `<tr>${tds}</tr>`;
   }).join('');
   return `<table class="cpt"><thead><tr>${h1}</tr><tr class="r2">${h2}</tr></thead><tbody>${body}</tbody></table>`;
 }
-function cptSumHTML(lines, steps, today){
+function cptSumHTML(lines, steps, today, chk){
   const t = {applicable:0, done:0, open:0, late:0}; lines.forEach(l=>{ const s = cptStats(l, steps, today); Object.keys(t).forEach(k=> t[k] += s[k]); });
   const brands = new Set(lines.map(l=>l.brand_name)).size;
   return `<div class="cpt-sum"><div class="b"><b>${brands}</b><span>brands · ${lines.length} lines</span></div>
     <div class="b green"><b>${t.applicable ? Math.round(100*t.done/t.applicable) : 0}%</b><span>${t.done} of ${t.applicable} steps done</span></div>
-    <div class="b"><b>${t.open}</b><span>still open</span></div><div class="b${t.late ? ' red' : ''}"><b>${t.late}</b><span>past their due date</span></div></div>`;
+    <div class="b"><b>${t.open}</b><span>still open</span></div><div class="b${t.late ? ' red' : ''}"><b>${t.late}</b><span>past their due date</span></div>${chk ? (()=>{ let none = 0, open = 0, ok = 0; lines.forEach(l=> steps.forEach(s=>{ const c = chk(l, s); if(!c) return; if(c.state==='none') none++; else if(c.state==='open') open++; else ok++; }));
+      return `<div class="b${none ? ' red' : ''}"><b>${none}</b><span>steps with no ticket</span></div><div class="b"><b>${open}</b><span>tickets not finished</span></div><div class="b green"><b>${ok}</b><span>backed by a ticket</span></div>`; })() : ''}</div>`;
+}
+/* ---------- overview: one row per brand line, one cell per section (the default view) ----------
+   The sheet has ~90 columns; this answers "is anything open or missing for this brand" at a glance.
+   Click a row for that line's checklist (cptLineModal). */
+function cptOverviewHTML(lines, steps, today, chk){
+  const groups = cptElements(steps);
+  const short = n => { let s = String(n||'').toLowerCase().replace(/(^|\s)\S/g, c=>c.toUpperCase()); s = s.replace(/^Platform Mechanics.*/,'Mechanics & Vouchers').replace(/^Marketing \((\w+).*/,'Mkt $1').replace('Target & Budgeting','Target & Budget'); return s.length > 22 ? s.slice(0,20)+'…' : s; };
+  let prev = null;
+  const body = lines.map(l=>{
+    const st = cptStats(l, steps, today), first = l.brand_name!==prev; prev = l.brand_name;
+    const cells = groups.map((g, gi)=>{ const s = cptStats(l, g.steps, today);
+      if(!s.applicable) return `<td class="cpo-c none" data-g="${gi}">—</td>`;
+      return `<td class="cpo-c${s.open ? '' : ' ok'}" data-g="${gi}" title="${esc(g.name)}: ${s.done} of ${s.applicable} done${s.late ? ', '+s.late+' past due' : ''}"><span class="bar"><i style="width:${Math.round(100*s.done/s.applicable)}%"></i></span><span class="n">${s.open ? s.done+'/'+s.applicable : '✓'}</span></td>`; }).join('');
+    let tk = '';
+    if(chk){ let none = 0, any = 0; const seen = {}; steps.forEach(s=>{ const c = chk(l, s); if(!c) return; any++; if(c.state==='none'){ const k = c.rule.boards.join('+')+'|'+(c.rule.kind ? c.rule.kind.source : ''); if(!seen[k]){ seen[k] = 1; none++; } } });
+      tk = `<td>${none ? `<span class="cpo-chip">${none} missing</span>` : any ? '<span class="cpo-chip ok">all raised</span>' : ''}</td>`; }
+    return `<tr data-ov="${l.id}"${first ? ' class="first"' : ''}><td class="cpo-b" title="${esc(l.brand_name)}">${first ? esc(l.brand_name)+` <span class="hint">${esc(l.country||'')}</span>` : ''}</td><td>${esc(l.platform||'')}</td><td>${esc(l.kam||'')}</td><td class="cpo-pct">${st.applicable ? Math.round(100*st.done/st.applicable)+'%' : '—'}</td>${tk}${cells}</tr>`;
+  }).join('');
+  return `<table class="cpo"><thead><tr><th>Brand</th><th>Platform</th><th>KAM</th><th style="text-align:right">Done</th>${chk ? '<th>Tickets</th>' : ''}${groups.map(g=>`<th title="${esc(g.name)} · ${g.steps.length} steps">${esc(short(g.name))}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table>`;
+}
+/* One line's checklist: its steps by section, each with a status to change and its tickets (or Create). */
+function cptLineHTML(line, steps, today, by, brands, edit, showNa, hasTix){
+  return cptElements(steps).map((g, gi)=>{
+    const s = cptStats(line, g.steps, today), rows = g.steps.filter(x=> showNa || cptKind((line.cells||{})[x.position])!=='na');
+    if(!rows.length) return '';
+    return `<div class="cpl-sec" id="cpl-g${gi}"><span>${esc(g.name)}</span><span class="hint">${s.done}/${s.applicable} done</span></div><table class="cpl"><tbody>${rows.map(x=>{
+      const v = (line.cells||{})[x.position] || '', k = cptKind(v), tk = hasTix ? cptTixFor(line, x, by, brands) : null;
+      const opts = CPT_CHOICES.concat(v && !CPT_CHOICES.some(c=>c.toLowerCase()===v.toLowerCase()) ? [v] : []);
+      const stc = edit ? `<select class="${k}" data-step="${x.position}" aria-label="Status of ${esc(x.name)}"><option value="">—</option>${opts.map(c=>`<option${c.toLowerCase()===v.toLowerCase() ? ' selected' : ''}>${esc(c)}</option>`).join('')}<option value="__other">Other value…</option></select>` : esc(v || '—');
+      const tkc = !tk || k==='na' ? '' : tk.list.length ? tk.list.slice(0,4).map(t=>`<a href="${esc(taskHash({id:t.task_id, ticket_no:t.ticket_no}))}" title="${esc((t.kind||'')+' · '+(cptTkDone(t) ? 'done' : t.team_status || t.status || ''))}">${esc(t.ticket_no||'ticket')}${cptTkDone(t) ? ' ✓' : ''}</a>`).join('')+(tk.list.length > 4 ? `<span class="hint">+${tk.list.length-4}</span>` : '')
+        : `<span class="no">No ticket</span>${edit ? ` <button class="btn btn-ghost btn-sm" data-mk="${x.position}">＋ Create on ${esc(tk.rule.boards[0])}</button>` : ''}`;
+      return `<tr class="${k==='na' ? 'na' : ''}"><td class="nm" title="${esc(x.how||'')}">${esc(x.name)}<small class="${cptIsLate(x, v, today) ? 'late' : ''}">${x.due ? 'due '+esc(fmtDate(x.due)) : ''}${cptIsLate(x, v, today) ? ' · past due' : ''}</small></td><td class="st">${stc}</td><td class="tk">${tkc}</td></tr>`; }).join('')}</tbody></table>`; }).join('') || '<div class="empty">No steps apply to this line.</div>';
+}
+function cptLineModal(lineId, gi){
+  const line = CPT.lines.find(l=>l.id===lineId); if(!line) return;
+  let showNa = false;
+  const m = modal(`<div class="modal-head"><h2>${esc(line.brand_name)} · ${esc(line.platform||'')}</h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div>
+    <div class="modal-body"><p class="muted" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center"><span>${esc([line.country, line.service_type, line.kam && 'KAM '+line.kam, line.associate && line.associate!==line.kam && 'Asso '+line.associate, line.lead && 'Lead '+line.lead].filter(Boolean).join(' · '))}</span>
+      <label style="font-size:13px;display:flex;gap:5px;align-items:center"><input type="checkbox" id="cpl-na"> Show steps marked n/a</label></p>
+      <div id="cpl-body" style="max-height:64vh;overflow:auto"></div></div>`, true);
+  const body = m.querySelector('#cpl-body');
+  const paint = () => { const y = body.scrollTop; body.innerHTML = cptLineHTML(line, CPT.steps, cptToday(), CPT.tixBy, S.brandsList, canEdit(), showNa, !!(CPT.tix && CPT.tixOn)); body.scrollTop = y; };
+  paint();
+  if(gi!=null){ const t = body.querySelector('#cpl-g'+gi); if(t) body.scrollTop = t.offsetTop - body.offsetTop; }
+  m.querySelector('#cpl-na').onchange = e => { showNa = e.target.checked; paint(); };
+  body.onchange = async e => { const s = e.target.closest('select[data-step]'); if(!s) return;
+    const step = CPT.steps.find(x=>x.position===+s.dataset.step); let v = s.value;
+    if(v==='__other'){ v = prompt('Value for this step (an amount, "Yes", "MKT set" …)', (line.cells||{})[step.position] || ''); if(v==null) return paint(); }
+    await cptSetCell(line, step, v, null); paint(); };
+  body.onclick = e => { if(e.target.closest('a')) return closeModals(); const b = e.target.closest('[data-mk]'); if(!b) return;
+    const step = CPT.steps.find(x=>x.position===+b.dataset.mk); closeModals(); cptCreateModal(line, step, ()=> cptLineModal(line.id)); };
 }
 const cptOpts = (vals, cur, all) => `<option value="">${all}</option>` + [...new Set(vals.filter(Boolean))].sort((a,b)=>a.localeCompare(b)).map(v=>`<option${v===cur ? ' selected' : ''}>${esc(v)}</option>`).join('');
 
@@ -10066,32 +10349,53 @@ async function cptMount(){
   if(!CPT.cur){ root.innerHTML = `<div class="card empty">No campaign tracker yet.${canEdit() ? ' Import the planning sheet (.xlsx) to start.<br><br><button class="btn btn-primary" id="cpt-imp">Import tracker (.xlsx)</button>' : ''}</div>`;
     const b = root.querySelector('#cpt-imp'); if(b) b.onclick = cptImportPick; return; }
   const f = CPT.f, L = CPT.lines;
+  if(!CPT.view){ CPT.view = 'overview'; try{ if(localStorage.getItem('cpt-view')==='sheet') CPT.view = 'sheet'; }catch(e){} }
   root.innerHTML = `<div class="cpt-bar">
-      <select id="cpt-tr" aria-label="Campaign">${CPT.trackers.map(t=>`<option value="${t.id}"${t.id===CPT.cur.id ? ' selected' : ''}>${esc(t.name)} · D-day ${esc(fmtDate(t.dday))}</option>`).join('')}</select>
+      <span class="cpt-view" role="group" aria-label="View"><button data-view="overview">Overview</button><button data-view="sheet">Full sheet</button></span>
+      <select id="cpt-tr" class="cpt-trsel" aria-label="Campaign">${CPT.trackers.map(t=>`<option value="${t.id}"${t.id===CPT.cur.id ? ' selected' : ''}>${esc(t.name)} · D-day ${esc(fmtDate(t.dday))}</option>`).join('')}</select>
       <select data-f="svc" aria-label="Service type">${cptOpts(L.map(l=>l.service_type), f.svc, 'All services')}</select>
       <select data-f="brand" aria-label="Brand">${cptOpts(L.map(l=>l.brand_name), f.brand, 'All brands')}</select>
       <select data-f="kam" aria-label="KAM or associate">${cptOpts(L.flatMap(l=>[l.kam, l.associate]), f.kam, 'All KAMs')}</select>
       <select data-f="lead" aria-label="Category lead">${cptOpts(L.map(l=>l.lead), f.lead, 'All leads')}</select>
       <input type="search" id="cpt-q" placeholder="Find…" aria-label="Find a brand or person" value="${esc(f.q)}">
       <label style="font-size:13px;display:flex;gap:5px;align-items:center"><input type="checkbox" id="cpt-late"${f.late ? ' checked' : ''}> Late only</label>
+      ${CPT.tix ? `<label style="font-size:13px;display:flex;gap:5px;align-items:center" title="Compare each step with the tickets on the team boards"><input type="checkbox" id="cpt-tk"${CPT.tixOn ? ' checked' : ''}> Check tickets</label>
+      <label style="font-size:13px;display:flex;gap:5px;align-items:center"><input type="checkbox" id="cpt-miss"${f.miss ? ' checked' : ''}> No ticket only</label>` : ''}
       <span class="grow"></span>
+      ${CPT.tix ? '<button class="btn btn-ghost btn-sm" id="cpt-mis">Missing tickets</button>' : ''}
       <button class="btn btn-ghost btn-sm" id="cpt-fold">Fold all</button>
       <button class="btn btn-ghost btn-sm" id="cpt-xl">⇩ Excel</button>
       ${canEdit() ? '<button class="btn btn-ghost btn-sm" id="cpt-imp">Import tracker (.xlsx)</button>' : ''}</div>
     <div id="cpt-sum"></div><div class="cpt-wrap" id="cpt-sheet"></div>
-    <div class="hint" style="margin-top:8px">Click a cell to change it. Click a section name to show or hide its steps, and a step name for its how-to. Red outline = past its due date and not done.</div>`;
-  const draw = () => { const today = cptToday(), rows = cptFiltered(CPT.lines, CPT.f, CPT.steps, today);
-    root.querySelector('#cpt-sum').innerHTML = cptSumHTML(rows, CPT.steps, today);
-    root.querySelector('#cpt-sheet').innerHTML = rows.length ? cptSheetHTML(rows, CPT.steps, CPT.fold, today) : '<div class="empty">No lines match these filters.</div>'; };
+    ${CPT.tix ? `<div class="cpt-lg"><span>${CPT.tix.length} tickets from the team boards match this campaign.</span><span><i style="border-color:var(--green)"></i>backed by a ticket</span><span><i style="border-color:var(--blue,#1d4ed8)"></i>ticket not finished</span><span><i style="border-color:var(--amber)"></i>no ticket found</span><span>The small number is how many tickets. Click the cell to open them.</span></div>` : CPT.tixErr ? `<div class="cpt-lg" style="color:var(--amber)">Tickets could not be loaded (${esc(CPT.tixErr)}); the sheet shows the typed statuses only.</div>` : ''}
+    <div class="hint" style="margin-top:8px" id="cpt-help"></div>`;
+  const draw = () => { const today = cptToday(), wrap = root.querySelector('#cpt-sheet'), sx = wrap.scrollLeft, sy = wrap.scrollTop;
+    const chk = CPT.tix && CPT.tixOn ? (l, s) => cptCheck(l, s, CPT.tixBy, S.brandsList) : null;
+    const rows = cptFiltered(CPT.lines, {...CPT.f, chk}, CPT.steps, today);
+    root.querySelector('#cpt-sum').innerHTML = cptSumHTML(rows, CPT.steps, today, chk);
+    const sheet = CPT.view==='sheet';
+    wrap.innerHTML = rows.length ? (sheet ? cptSheetHTML(rows, CPT.steps, CPT.fold, today, chk) : cptOverviewHTML(rows, CPT.steps, today, chk)) : '<div class="empty">No lines match these filters.</div>';
+    root.querySelectorAll('.cpt-view button').forEach(b=> b.classList.toggle('on', b.dataset.view===CPT.view));
+    root.querySelector('#cpt-fold').style.display = sheet ? '' : 'none'; const lg = root.querySelector('.cpt-lg'); if(lg && !lg.style.color) lg.style.display = sheet ? '' : 'none';
+    root.querySelector('#cpt-help').textContent = sheet ? 'Click a cell to change it. Click a section name to show or hide its steps, and a step name for its how-to. Red outline = past its due date and not done.'
+      : 'Each bar is one part of the campaign plan for that brand and platform. Click a row to open its checklist, change a status, open its tickets or create a missing one.';
+    wrap.scrollLeft = sx; wrap.scrollTop = sy;
+    const mb = root.querySelector('#cpt-mis'); if(mb && CPT.tix){ const all = (l, s) => cptCheck(l, s, CPT.tixBy, S.brandsList), n = cptMissing(cptFiltered(CPT.lines, {...CPT.f, chk:all}, CPT.steps, today), CPT.steps, all).length;
+      mb.textContent = `Missing tickets (${n})`; mb.classList.toggle('warn', n > 0); } };
   draw(); CPT.draw = draw;
+  root.querySelectorAll('.cpt-view button').forEach(b=>{ b.onclick = ()=>{ CPT.view = b.dataset.view; try{ localStorage.setItem('cpt-view', CPT.view); }catch(e){} root.querySelector('#cpt-sheet').scrollTop = 0; draw(); }; });
   root.querySelector('#cpt-tr').onchange = e => { CPT.cur = {id:e.target.value}; CPT.fold = null; cptMount(); };
   root.querySelectorAll('[data-f]').forEach(s=>{ s.onchange = ()=>{ CPT.f[s.dataset.f] = s.value; draw(); }; });
   root.querySelector('#cpt-q').oninput = e => { CPT.f.q = e.target.value; draw(); };
   root.querySelector('#cpt-late').onchange = e => { CPT.f.late = e.target.checked; draw(); };
+  const tkb = root.querySelector('#cpt-tk'); if(tkb) tkb.onchange = e => { CPT.tixOn = e.target.checked; draw(); };
+  const msb = root.querySelector('#cpt-miss'); if(msb) msb.onchange = e => { CPT.f.miss = e.target.checked; if(e.target.checked){ CPT.tixOn = true; if(tkb) tkb.checked = true; } draw(); };
   root.querySelector('#cpt-fold').onclick = ()=>{ const g = cptElements(CPT.steps), all = g.every(x=>CPT.fold[x.name]); CPT.fold = {}; if(!all) g.forEach(x=>{ CPT.fold[x.name] = 1; }); draw(); };
   root.querySelector('#cpt-xl').onclick = cptExport;
+  const mis = root.querySelector('#cpt-mis'); if(mis) mis.onclick = cptMissingModal;
   const imp = root.querySelector('#cpt-imp'); if(imp) imp.onclick = cptImportPick;
   root.querySelector('#cpt-sheet').onclick = e => {
+    const ov = e.target.closest('tr[data-ov]'); if(ov){ const c = e.target.closest('td[data-g]'); return cptLineModal(ov.dataset.ov, c ? +c.dataset.g : null); }
     const eh = e.target.closest('[data-el]'); if(eh){ const g = cptElements(CPT.steps)[+eh.dataset.el]; if(CPT.fold[g.name]) delete CPT.fold[g.name]; else CPT.fold[g.name] = 1; draw(); return; }
     const sh = e.target.closest('th[data-step]'); if(sh) return cptStepModal(+sh.dataset.step);
     const td = e.target.closest('td.cc'); if(td) cptCellMenu(td);
@@ -10099,16 +10403,29 @@ async function cptMount(){
 }
 function cptMenuClose(){ const m = document.getElementById('cpt-menu'); if(m) m.remove(); document.removeEventListener('mousedown', cptMenuAway, true); }
 function cptMenuAway(e){ if(!e.target.closest('#cpt-menu')) cptMenuClose(); }
+/* The tickets behind a cell, each a link to the ticket on its team board. tk = cptTixFor(...) or null (no rule). */
+function cptTicketsHTML(tk, canMake){
+  if(!tk) return '';
+  const where = tk.rule.boards.join(' / '), mk = canMake ? `<button role="menuitem" data-mk>＋ Create ${tk.list.length ? 'another ticket' : 'the ticket'} on ${esc(tk.rule.boards[0])}</button>` : '';
+  if(!tk.list.length) return `<div class="tkh">Tickets on ${esc(where)}</div><div class="tkn">No ticket found for this brand and platform around D-day.</div>${mk}`;
+  const st = t => cptTkDone(t) ? 'done' : (t.team_status || (typeof CP_ST_WORD!=='undefined' && CP_ST_WORD[t.status]) || String(t.status||'').replace('_',' '));
+  return `<div class="tkh">${tk.list.length} ticket${tk.list.length===1?'':'s'} on ${esc(where)}</div>`
+    + tk.list.slice(0, 8).map(t=>`<a class="tk" href="${esc(taskHash({id:t.task_id, ticket_no:t.ticket_no}))}" title="${esc(t.title||'')}"><b>${esc(t.ticket_no||'ticket')}</b> ${esc(t.kind||'')} · ${esc(st(t))}${t.start_date ? ` · ${esc(fmtDate(t.start_date))}${t.end_date && t.end_date!==t.start_date ? '–'+esc(fmtDate(t.end_date)) : ''}` : ''}</a>`).join('')
+    + (tk.list.length > 8 ? `<div class="tkn" style="color:var(--ink3)">and ${tk.list.length-8} more</div>` : '') + mk;
+}
 function cptCellMenu(td){
   cptMenuClose();
   const line = CPT.lines.find(l=>l.id===td.dataset.line), step = CPT.steps.find(s=>s.position===+td.dataset.step); if(!line || !step) return;
   const cur = (line.cells||{})[step.position] || '';
-  if(!canEdit()){ toast(`${step.name}: ${cur || 'empty'}`); return; }
-  const m = el(`<div class="cpt-menu" id="cpt-menu" role="menu"><div class="hd"><b>${esc(line.brand_name)} · ${esc(line.platform||'')}</b><br>${esc(step.name)}${step.due ? ' · due '+esc(fmtDate(step.due)) : ''}</div>
-    ${CPT_CHOICES.map(c=>`<button role="menuitem" data-v="${c}">${c===cur ? '● ' : ''}${c}</button>`).join('')}<button role="menuitem" data-other>Other value…</button><button role="menuitem" data-v="">Clear</button></div>`);
+  const tk = CPT.tix ? cptTixFor(line, step, CPT.tixBy, S.brandsList) : null, edit = canEdit();
+  if(!edit && !tk){ toast(`${step.name}: ${cur || 'empty'}`); return; }
+  const m = el(`<div class="cpt-menu" id="cpt-menu" role="menu"><div class="hd"><b>${esc(line.brand_name)} · ${esc(line.platform||'')}</b><br>${esc(step.name)}${step.due ? ' · due '+esc(fmtDate(step.due)) : ''}${edit ? '' : '<br>Now: '+esc(cur || 'empty')}</div>
+    ${cptTicketsHTML(tk, edit)}
+    ${edit ? `${tk ? '<hr>' : ''}${CPT_CHOICES.map(c=>`<button role="menuitem" data-v="${c}">${c===cur ? '● ' : ''}${c}</button>`).join('')}<button role="menuitem" data-other>Other value…</button><button role="menuitem" data-v="">Clear</button>` : ''}</div>`);
   document.body.appendChild(m);
   const r = td.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left, innerWidth - m.offsetWidth - 8))+'px'; m.style.top = Math.max(8, Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 8))+'px';
-  m.onclick = e => { const b = e.target.closest('button'); if(!b) return;
+  m.onclick = e => { if(e.target.closest('a.tk')){ cptMenuClose(); return; } const b = e.target.closest('button'); if(!b) return;
+    if(b.hasAttribute('data-mk')){ cptMenuClose(); return cptCreateModal(line, step); }
     let v = b.dataset.v; if(b.hasAttribute('data-other')){ v = prompt('Value for this cell (an amount, "Yes", "MKT set" …)', cur); if(v==null) return cptMenuClose(); }
     cptMenuClose(); cptSetCell(line, step, v, td); };
   setTimeout(()=> document.addEventListener('mousedown', cptMenuAway, true), 0);
@@ -10121,6 +10438,7 @@ async function cptSetCell(line, step, value, td){
   if(td && td.isConnected){ td.className = `cc ${cptKind(v)}${cptIsLate(step, v, today) ? ' late' : ''}${td.classList.contains('ge') ? ' ge' : ''}`; td.textContent = cptLabel(v); td.title = v; }
   const {error} = await db.rpc('cp_tracker_set_cell', {p_line:line.id, p_step:step.position, p_value:v});
   if(error){ line.cells = {...line.cells}; if(old) line.cells[step.position] = old; else delete line.cells[step.position]; toast('Not saved: '+error.message, true); if(CPT.draw) CPT.draw(); return; }
+  if((!td || (CPT.tix && CPT.tixOn)) && CPT.draw){ CPT.draw(); return; }   // ticket marks depend on the cell's value
   const rows = cptFiltered(CPT.lines, CPT.f, CPT.steps, today), sum = document.getElementById('cpt-sum'); if(sum) sum.innerHTML = cptSumHTML(rows, CPT.steps, today);
   const tr = td && td.closest('tr'), pc = tr && tr.querySelector('.c3'); if(pc){ const st = cptStats(line, CPT.steps, today); pc.textContent = st.applicable ? Math.round(100*st.done/st.applicable)+'%' : '—'; }
 }
@@ -11221,7 +11539,7 @@ const LT = { rows:[], month:{y:0,m:0}, loaded:false, lastSynced:null, noIdTasks:
    "13333214952 LZD 25-31 OCT 26 (PDP+Frame)" or "CFR-0412 SHP 25-31 Oct 2026 (Frame)". */
 function ltParseName(name){
   const s = String(name==null ? '' : name);
-  const t = s.match(/^\s*([A-Za-z]{2,5}-\d+|\d{4,})(?=\s|$)/);
+  const t = s.match(/^\s*([A-Za-z][A-Za-z0-9]{1,5}-\d+(?:-\d+)?|\d{4,})(?=\s|$)/);
   const p = s.match(/(?:^|[^A-Za-z0-9])(SHP|SHOPEE|LZD|LAZADA|TT|TIKTOK)(?![A-Za-z0-9])/i);
   const platform = p ? ({shp:'Shopee',shopee:'Shopee',lzd:'Lazada',lazada:'Lazada',tt:'TikTok',tiktok:'TikTok'})[p[1].toLowerCase()] : null;
   const d = s.match(/\b\d{1,2}(?:\s*-\s*\d{1,2})?\s+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[A-Za-z]*\s+\d{2,4}\b/i);
