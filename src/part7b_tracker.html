@@ -47,7 +47,10 @@ table.cpt{border-collapse:separate;border-spacing:0;font-size:12px}
 .cpd-tbl{width:100%;border-collapse:collapse;font-size:13px}
 .cpd-tbl th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
 .cpd-tbl td{padding:3px 6px;border-bottom:1px solid var(--line-2,var(--line))}
-.cpd-tbl td:first-child{padding-left:10px;font-weight:600}
+.cpd-tbl td:first-child{padding-left:10px;font-weight:600;white-space:nowrap}
+.cpd-tbl .cpd-rn{font-weight:400;padding:1px 7px;font-size:11.5px;opacity:.55}
+.cpd-tbl tr:hover .cpd-rn{opacity:1}
+.cpd-tbl .cpd-pl{font-size:12.5px;color:var(--ink2);white-space:nowrap}
 .cpd-tbl input{font:inherit;font-size:13px;width:100%;min-width:90px;box-sizing:border-box;border:1px solid transparent;border-radius:6px;padding:5px 7px;background:transparent;color:var(--ink)}
 .cpd-tbl input:hover{border-color:var(--line)} .cpd-tbl input:focus{outline:none;border-color:var(--accent);background:var(--panel)}
 .cpd-tbl input.empty{background:var(--amber-soft)}
@@ -311,22 +314,41 @@ async function cptImport(p, fileName){
 
 /* ---------- brand directory ---------- */
 const CPD_COLS = [['service_model','Service'],['category','Category'],['category_lead','Category lead'],['kam','KAM'],['associate','Associate'],['cs_owner','CS owner']];
-function cpdRowsHTML(brands, q, edit){
+const CPD_PLAT_ORDER = ['Shopee','Lazada','TikTok','Line MyShop','Amaze','Brand.com','Call CC'];
+/* stores: {brand_id: [platform…]} from brand_stores (the platforms we manage, loaded from NiRM); rename: show the Rename button */
+function cpdRowsHTML(brands, q, edit, stores, rename){
   const k = String(q||'').trim().toLowerCase();
   const list = (brands||[]).filter(b=> !b.merged_into && b.active!==false && (!k || [b.name, b.kam, b.associate, b.category_lead, b.category, b.service_model].some(x=> String(x||'').toLowerCase().includes(k))));
-  if(!list.length) return '<tr><td colspan="7" class="empty">No brands match.</td></tr>';
-  return list.map(b=>`<tr><td>${esc(b.name)}${b.cusp_country ? ` <span class="hint">${esc(b.cusp_country)}</span>` : ''}</td>${CPD_COLS.map(([f, label])=>
+  if(!list.length) return '<tr><td colspan="8" class="empty">No brands match.</td></tr>';
+  const plats = b => { const p = [...new Set((stores||{})[b.id] || [])].sort((x,y)=> (CPD_PLAT_ORDER.indexOf(x)+99)%99 - (CPD_PLAT_ORDER.indexOf(y)+99)%99 || x.localeCompare(y)); return p.length ? esc(p.join(' · ')) : '<span class="hint">not in the managed list</span>'; };
+  return list.map(b=>`<tr><td>${esc(b.name)}${b.cusp_country ? ` <span class="hint">${esc(b.cusp_country)}</span>` : ''}${rename ? ` <button type="button" class="btn btn-ghost btn-sm cpd-rn" data-rename="${b.id}" title="Rename this brand on every board">Rename</button>` : ''}</td><td class="cpd-pl">${stores ? plats(b) : ''}</td>${CPD_COLS.map(([f, label])=>
     edit ? `<td><input data-brand="${b.id}" data-f="${f}" value="${esc(b[f]||'')}" aria-label="${esc(label)} of ${esc(b.name)}" class="${b[f] ? '' : (f==='kam' || f==='category_lead' ? 'empty' : '')}" list="cpd-${f}"></td>` : `<td>${esc(b[f]||'—')}</td>`).join('')}</tr>`).join('');
 }
-function cpdMount(){
-  const root = document.getElementById('cpd-root'); if(!root) return;
-  const brands = (S.brandsList||[]).filter(b=> !b.merged_into && b.active!==false), edit = canEdit();
+/* Rename a brand everywhere. The database carries the new name to every board's tickets and every routing
+   rule (trigger brands_rename_propagate) and keeps the old name as an alias. */
+async function brandRename(id, after){
+  const b = (S.brandsList||[]).find(x=>x.id===id); if(!b) return;
+  const name = (prompt(`Rename "${b.name}" on every board, form and routing rule.\nThe old name is kept as an alternative name, so imports still find it.\n\nNew name:`, b.name) || '').trim();
+  if(!name || name===b.name) return;
+  if((S.brandsList||[]).some(x=> x.id!==id && String(x.name||'').toLowerCase()===name.toLowerCase())) return toast(`"${name}" already exists. Two brands cannot share a name.`, true);
+  const {error} = await db.from('brands').update({name}).eq('id', id);
+  if(error) return toast('Not renamed: '+error.message, true);
+  toast(`Renamed to ${name} on every board`); await refreshCore(); if(after) after();
+}
+async function cpdMount(){
+  const _nav = S.nav, root = document.getElementById('cpd-root'); if(!root) return;
+  const brands = (S.brandsList||[]).filter(b=> !b.merged_into && b.active!==false), edit = canEdit(), rename = typeof isAdmin==='function' && isAdmin();
+  const stores = {};
+  try{ const {data} = await db.from('brand_stores').select('brand_id,platform,launch_state').neq('launch_state','closed').limit(5000); (data||[]).forEach(s=>{ (stores[s.brand_id] = stores[s.brand_id] || []).push(s.platform); }); }catch(e){}
+  if(navStale(_nav) || !document.getElementById('cpd-root')) return;
+  const managed = brands.filter(b=> (stores[b.id]||[]).length).length;
   const miss = brands.filter(b=> !b.kam || !b.category_lead).length;
-  root.innerHTML = `<div class="cpt-bar"><input type="search" id="cpd-q" placeholder="Find a brand or person…" aria-label="Find a brand or person"><span class="hint">${brands.length} brands${miss ? ` · <b style="color:var(--amber)">${miss} without a KAM or category lead</b>` : ''}</span><span class="grow"></span><span class="hint">${edit ? 'Type in a cell; it saves when you leave it.' : 'Read only'}</span></div>
+  root.innerHTML = `<div class="cpt-bar"><input type="search" id="cpd-q" placeholder="Find a brand or person…" aria-label="Find a brand or person"><span class="hint">${brands.length} brands · ${managed} with managed platforms${miss ? ` · <b style="color:var(--amber)">${miss} without a KAM or category lead</b>` : ''}</span><span class="grow"></span><span class="hint">${edit ? 'Type in a cell; it saves when you leave it.' : 'Read only'}</span></div>
     ${CPD_COLS.map(([f])=>`<datalist id="cpd-${f}">${[...new Set(brands.map(b=>b[f]).filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
-    <div class="cpt-wrap"><table class="cpd-tbl"><thead><tr><th>Brand</th>${CPD_COLS.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead><tbody id="cpd-body">${cpdRowsHTML(brands, '', edit)}</tbody></table></div>`;
+    <div class="cpt-wrap"><table class="cpd-tbl"><thead><tr><th>Brand</th><th>Platforms we manage</th>${CPD_COLS.map(c=>`<th>${c[1]}</th>`).join('')}</tr></thead><tbody id="cpd-body">${cpdRowsHTML(brands, '', edit, stores, rename)}</tbody></table></div>`;
   const body = root.querySelector('#cpd-body');
-  root.querySelector('#cpd-q').oninput = e => { body.innerHTML = cpdRowsHTML(brands, e.target.value, edit); };
+  root.querySelector('#cpd-q').oninput = e => { body.innerHTML = cpdRowsHTML(brands, e.target.value, edit, stores, rename); };
+  body.addEventListener('click', e => { const b = e.target.closest('[data-rename]'); if(b) brandRename(b.dataset.rename, cpdMount); });
   body.addEventListener('change', async e => { const i = e.target.closest('input[data-brand]'); if(!i) return;
     const b = (S.brandsList||[]).find(x=>x.id===i.dataset.brand), f = i.dataset.f, v = i.value.trim() || null; if(!b || (b[f]||null)===v) return;
     const {error} = await db.from('brands').update({[f]:v}).eq('id', b.id);
