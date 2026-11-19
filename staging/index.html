@@ -1154,7 +1154,7 @@ body.modal-open{overflow:hidden}
 .kb-more{padding:10px;font-size:12px;color:var(--ink3);text-align:center}
 </style>
 <script>
-/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · 5dfd64d</div> so a dark-theme user never sees a flash of the light app. The real
+/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · c9fa05d</div> so a dark-theme user never sees a flash of the light app. The real
    preference lives in profiles.nav_prefs.theme and is applied again at boot; this is only
    the fast local echo of it. 'system' follows the OS. */
 (function(){
@@ -10959,8 +10959,11 @@ function obActivitiesFromChecklists(o, typeIds, startPos){
    (migrations/2026-11-18_onboarding_timeline_owner.sql). */
 function obCanCustomise(o){
   if(!o || !S.me) return false;
-  return isAdmin() || S.me.role==='management' || o.lead_id===S.me.id || o.created_by===S.me.id || !!(o.workspace_id && canManageWs(o.workspace_id));
+  return isAdmin() || S.me.role==='management' || obInTeam() || o.lead_id===S.me.id || o.created_by===S.me.id || !!(o.workspace_id && canManageWs(o.workspace_id));
 }
+/* The Onboarding team looks after every tracker (19 Nov 2026). Everyone else who is invited changes
+   status and remarks only; the database enforces the same rule (ob_guard_activity). */
+function obInTeam(){ const t=(S.teams||[]).find(x=>/^onboarding$/i.test(String(x.name||'').trim())); return !!(t && S.me && teamMemberIds(t.id).includes(S.me.id)); }
 const obOwnerName = o => { const p=(S.profiles||[]).find(x=>x.id===(o.lead_id||o.created_by)); return p? p.full_name : ''; };
 OB.custom = OB.custom || {};   /* onboarding id -> "Customise timeline" is on */
 async function obRenderTracker(oid){
@@ -10982,11 +10985,12 @@ async function obRenderTracker(oid){
       <td><b>${esc(a.title)}</b>${a.responsibility? `<br><span class="muted">${esc(a.responsibility)}</span>`:''}</td>
       <td class="muted ob-desc">${esc(a.crea_delivers||'')}</td>
       <td class="muted ob-desc">${esc(a.brand_provides||'')}</td>
-      <td class="ed"><select class="ob-team" onchange="obSetAct('${a.id}',{team_id:this.value||null})"><option value="">—</option>${(S.teams||[]).map(t=>`<option value="${t.id}" ${t.id===a.team_id?'selected':''}>${esc(obTeamShort(t.id))}</option>`).join('')}</select></td>
-      <td class="ed"><select onchange="obSetAct('${a.id}',{assignee_id:this.value||null},false)">${obPeopleOptions(a.team_id, a.assignee_id)}</select></td>
+      ${own? `<td class="ed"><select class="ob-team" onchange="obSetAct('${a.id}',{team_id:this.value||null})"><option value="">—</option>${(S.teams||[]).map(t=>`<option value="${t.id}" ${t.id===a.team_id?'selected':''}>${esc(obTeamShort(t.id))}</option>`).join('')}</select></td>
+      <td class="ed"><select onchange="obSetAct('${a.id}',{assignee_id:this.value||null},false)">${obPeopleOptions(a.team_id, a.assignee_id)}</select></td>`
+      : `<td>${obTeamTag(a.team_id)||'<span class="muted">—</span>'}</td><td class="muted">${esc((prof(a.assignee_id)||{}).full_name||'—')}</td>`}
       ${own? `<td class="ed"><input type="number" value="${a.offset_days==null?'':a.offset_days}" placeholder="—" title="Days before go-live (negative = after)" onchange="obSetDays('${a.id}',this.value)"></td>` : `<td class="muted" title="Only the tracker owner changes the timeline">${a.offset_days==null?'—':a.offset_days}</td>`}
       <td class="dl">${a.deadline? fmtDate(a.deadline):'<span class="muted">—</span>'}${obOverdue(a)?' ⚠':''}</td>
-      <td class="ed"><input type="date" value="${a.done_date||''}" onchange="obSetDone('${a.id}',this.value)"></td>
+      ${own? `<td class="ed"><input type="date" value="${a.done_date||''}" onchange="obSetDone('${a.id}',this.value)"></td>` : `<td class="muted">${a.done_date? fmtDate(a.done_date):'—'}</td>`}
       <td class="ed"><select class="ob-stsel ${a.status}" onchange="obSetStatus('${a.id}',this.value)">${OB_STATUS.map(st=>`<option value="${st.k}" ${st.k===a.status?'selected':''}>${st.label}</option>`).join('')}</select></td>
       <td class="ed"><input class="ob-remark" value="${esc(a.remark||'')}" placeholder="…" onchange="obSetAct('${a.id}',{remark:this.value.trim()||null},false)"></td>
       ${cz? `<td class="ob-cz"><button class="btn btn-ghost btn-sm" title="Move up" aria-label="Move ${esc(a.title)} up" onclick="obMoveAct('${a.id}',-1)">↑</button><button class="btn btn-ghost btn-sm" title="Move down" aria-label="Move ${esc(a.title)} down" onclick="obMoveAct('${a.id}',1)">↓</button><button class="btn btn-ghost btn-sm" title="Edit this activity" onclick="obEditActModal('${a.id}')">Edit</button><button class="btn btn-ghost btn-sm" title="Remove this activity" style="color:var(--red)" onclick="obDeleteAct('${a.id}')">✕</button></td>`:''}
@@ -11014,7 +11018,7 @@ async function obRenderTracker(oid){
       <button class="btn btn-ghost" onclick="obShareModal('${oid}')">${o.share_token? 'Shared with brand':'Share with brand'}</button>
       <button class="btn btn-ghost" onclick="obTrackerMenu(this,'${oid}')" aria-label="More">⋯</button>
     </div>
-    <div class="ob-owner muted" style="margin:-6px 0 12px;font-size:13px">Timeline owner: <b>${esc(obOwnerName(o)||'not set')}</b>${own? (cz? ' · You are customising: use Edit, ↑ ↓ and ✕ on a row, Rename on a phase or section.' : '') : ' · Only the owner changes the timeline (dates, activities, order). You can update team, PIC, done date, status and remarks.'}</div>
+    <div class="ob-owner muted" style="margin:-6px 0 12px;font-size:13px">Looked after by the Onboarding team · lead: <b>${esc(obOwnerName(o)||'not set')}</b>${own? (cz? ' · You are customising: use Edit, ↑ ↓ and ✕ on a row, Rename on a phase or section.' : '') : ' · The Onboarding team looks after this tracker. You can change the status and add remarks.'}</div>
     <div id="ob-bi">${obBrandInfoHTML(o, b, (OB.stores||{})[o.brand_id]||null, s, !!OB.biOpen)}</div>
     <div class="ob-sum">
       <div class="ob-kpi"><b>Overall</b><div class="v">${s.pct}%</div><div class="ob-bar"><i style="width:${s.pct}%"></i></div></div>
