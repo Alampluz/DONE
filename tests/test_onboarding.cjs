@@ -129,6 +129,15 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  r.wsSection = /Onboarding trackers/.test(W) && /Decathlon/.test(W) && /New onboarding/.test(W) && W.indexOf('Onboarding trackers') < W.indexOf('No boards yet');
  await renderWorkspace('ws-cs'); await new Promise(x=>setTimeout(x,30)); r.wsOther = !/Onboarding trackers/.test(document.getElementById('content').innerHTML);
  // 9. list page shows the tracker
+ { const GA=[{id:'g1',service_name:'Svc',phase:'1. A',title:'<i>One',deadline:'2027-03-10',status:'done',done_date:'2027-03-09',position:1},{id:'g2',service_name:'Svc',phase:'1. A',title:'Two',deadline:'2027-03-15',status:'not_started',position:2},{id:'g3',service_name:'Svc',phase:'2. B',title:'Three',deadline:'2027-03-25',status:'waiting_brand',position:3},{id:'g4',service_name:'Svc',phase:'2. B',title:'No date',deadline:null,status:'na',position:4}];
+   const GO={id:'go',go_live:'2027-04-01',created_at:'2027-03-01T00:00:00Z'}, GM=obGanttModel(GO,GA,'2027-03-20');
+   r.gModel=JSON.stringify([GM.groups.length,GM.groups[0].phases.map(p=>[p.name,obDI(p.start),obDI(p.end),p.d,p.n]),obDI(GM.today),obDI(GM.go),GM.min<obDN('2027-03-01'),GM.max>obDN('2027-04-01')]);
+   const GH=document.createElement('div'); GH.innerHTML=obGanttHTML(GO,GA,'2027-03-20',{},10);
+   const bar=id=>GH.querySelector('.r[data-id='+id+'] .bar');
+   r.gHtml=JSON.stringify([GH.querySelectorAll('.r.sv').length,GH.querySelectorAll('.r.ph').length,GH.querySelectorAll('.r[data-id]').length,bar('g1').className,bar('g2').className,bar('g3').className,!bar('g4'),GH.querySelectorAll('.vl').length,!GH.querySelector('.l i'),parseFloat(bar('g3').style.left)+parseFloat(bar('g3').style.width)===(obDN('2027-03-25')-GM.min)*10]);
+   GH.innerHTML=obGanttHTML(GO,GA,'2027-03-20',{'Svc|1. A':true},10); r.gShut=GH.querySelectorAll('.r[data-id]').length+'|'+/No dates yet/.test(obGanttHTML(GO,[{status:'na'}],'2027-03-20',{}));
+   const BH=document.createElement('div'); BH.innerHTML=obBrandInfoHTML({name:'X',platforms:['Shopee'],go_live:'2027-04-01'},{name:'<b>Acme',category:'Beauty',kam:'Yves'},[{platform:'Shopee',name:'Acme Official',platform_store_id:'123',launch_state:'live'}],{byService:{'Store Ops':{n:4,d:1}}},true);
+   r.bi=JSON.stringify([BH.querySelectorAll('dd.no').length,/Acme Official/.test(BH.textContent)&&/ID 123/.test(BH.textContent),/1\/4 · 25%/.test(BH.textContent),!BH.querySelector('dd b'),/2 not set/.test(BH.querySelector('summary').textContent)]); }
  obListView='pipeline'; await obRenderList(); const PL=document.getElementById('content');
  r.pipe=JSON.stringify([PL.querySelectorAll('.ob-col').length, PL.querySelectorAll('.ob-card').length, (PL.querySelector('.ob-card')||{getAttribute:()=>''}).getAttribute('href')===('#/onboarding/'+OB.onboardings[0].id), /Decathlon/.test((PL.querySelector('.ob-card')||{}).textContent||''), !!PL.querySelector('.ob-card .chips')]);
  const SM=(d,w,dn)=>({days:d,waiting:w,done:dn});
@@ -182,6 +191,10 @@ check('editing D- re-dates; moving Shop Live re-dates every D- activity', r.days
 check('overdue only for open activities with a past deadline', r.overdue);
 check('tracker listed on its workspace page above the boards, not on others', r.wsSection && r.wsOther);
 check('list shows go-live, overdue and waiting counts', r.listRow);
+check('gantt model: phases in order, a phase starts where the previous one ends, today and Shop Live inside the range', r.gModel===JSON.stringify([1,[['1. A','2027-03-01','2027-03-15',1,2],['2. B','2027-03-15','2027-03-25',0,1]],'2027-03-20','2027-04-01',true,true]), r.gModel);
+check('gantt: a bar per dated activity ending on its deadline, coloured by status, titles escaped, today + Shop Live lines', r.gHtml===JSON.stringify([1,2,4,'bar done','bar not_started','bar waiting_brand',true,2,true,true]), r.gHtml);
+check('gantt: a collapsed phase hides its activities; no dates says so', r.gShut==='2|true', r.gShut);
+check('brand information: fields from the brand list, missing ones flagged, services with progress, managed stores, escaped', r.bi===JSON.stringify([7,true,true,true,true]), r.bi);
 check('pipeline: the brand is a card linking to its tracker, with its warning chips', r.pipe===JSON.stringify([6,1,true,true,true]), r.pipe);
 check('pipeline stages: live, on hold, date passed, final week, waiting on brand, setting up, kick-off', r.stages==='live,hold,late,final,waiting,setup,kickoff', r.stages);
 check('pipeline: current phase = earliest open activity; none when all done', r.nowPhase==='2. B|', r.nowPhase);

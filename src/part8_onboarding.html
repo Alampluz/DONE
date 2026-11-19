@@ -85,6 +85,46 @@
 .ob-card .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .ob-card .chips span{font-size:11.5px;font-weight:700;border-radius:20px;padding:2px 8px}
 .ob-card .chips .w{background:var(--amber-soft);color:var(--amber)} .ob-card .chips .o{background:var(--red-soft,#fde8e8);color:var(--red)}
+/* gantt: the tracker on a calendar */
+.ob-gw{overflow:auto;max-height:calc(100vh - 250px)}
+.ob-g{position:relative;font-size:12.5px;min-width:100%}
+.ob-g .r{display:flex;align-items:center;height:30px;border-bottom:1px solid var(--line)}
+.ob-g .l{position:sticky;left:0;z-index:3;flex:none;width:300px;height:100%;display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--panel);border-right:1px solid var(--line);overflow:hidden;white-space:nowrap}
+.ob-g .l span.t{overflow:hidden;text-overflow:ellipsis}
+.ob-g .l .m{margin-left:auto;color:var(--ink3);font-size:11.5px;flex:none}
+.ob-g .tr{position:relative;flex:none;height:100%}
+.ob-g .r.hd{position:sticky;top:0;z-index:5;height:44px;background:var(--panel);align-items:stretch}
+.ob-g .r.hd .l{z-index:6;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3);font-weight:700}
+.ob-g .mo{position:absolute;top:4px;font-weight:700;font-size:11.5px;color:var(--ink2);white-space:nowrap;padding-left:4px;border-left:1px solid var(--line);height:18px}
+.ob-g .wk{position:absolute;top:24px;font-size:10.5px;color:var(--ink3);padding-left:3px;border-left:1px solid var(--line);height:20px;white-space:nowrap}
+.ob-g .r.sv{background:var(--ink)} .ob-g .r.sv .l{background:var(--ink);color:var(--panel);font-weight:700;font-size:12px;letter-spacing:.4px} .ob-g .r.sv .l .m{color:var(--panel);opacity:.8}
+.ob-g .r.ph .l{background:var(--gray-soft);font-weight:700;color:var(--ink2);cursor:pointer} .ob-g .r.ph{background:var(--gray-soft)}
+.ob-g .bar{position:absolute;top:8px;height:14px;border-radius:7px;background:var(--gray-soft);border:1px solid var(--line);min-width:6px;overflow:hidden}
+.ob-g .bar.p{top:10px;height:10px;background:var(--panel);border-color:var(--ink3)} .ob-g .bar.p i{display:block;height:100%;background:var(--green)}
+.ob-g .bar.not_started{background:var(--gray-soft);border-color:var(--ink3)}
+.ob-g .bar.in_progress{background:var(--accent-soft);border-color:var(--accent)}
+.ob-g .bar.waiting_brand{background:var(--amber-soft);border-color:var(--amber)}
+.ob-g .bar.done{background:var(--green);border-color:var(--green)}
+.ob-g .bar.na{background:transparent;border-style:dashed}
+.ob-g .bar.over{background:var(--red-soft,#fde8e8);border-color:var(--red)}
+.ob-g .dd{position:absolute;top:8px;font-size:11px;color:var(--ink3);white-space:nowrap;line-height:14px} .ob-g .dd.over{color:var(--red);font-weight:700}
+.ob-g .vl{position:absolute;top:0;bottom:0;width:0;border-left:2px solid var(--red);z-index:2;pointer-events:none}
+.ob-g .vl.go{border-left:2px dashed var(--ink)}
+.ob-g .vl b{position:absolute;top:46px;left:4px;font-size:10.5px;white-space:nowrap;background:var(--panel);padding:0 4px;border-radius:4px;color:var(--red)} .ob-g .vl.go b{color:var(--ink);top:62px}
+.ob-g .we{position:absolute;top:0;bottom:0;background:var(--gray-soft);opacity:.45;pointer-events:none}
+.ob-g .r.sv .tr{background:var(--ink);z-index:1}
+/* brand information on the tracker */
+.ob-bi{margin-bottom:14px;padding:0}
+.ob-bi summary{cursor:pointer;padding:12px 16px;font-weight:700;display:flex;gap:10px;align-items:baseline;list-style:none}
+.ob-bi summary::-webkit-details-marker{display:none}
+.ob-bi summary .muted{font-weight:400;font-size:12.5px;color:var(--ink3)}
+.ob-bi-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:0 28px;padding:2px 16px 14px}
+.ob-bi-g h4{margin:10px 0 6px;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--ink3)}
+.ob-bi-g dl{display:grid;grid-template-columns:110px 1fr;gap:5px 10px;margin:0;font-size:13px}
+.ob-bi-g dt{color:var(--ink3)} .ob-bi-g dd{margin:0;font-weight:600;min-width:0;overflow-wrap:anywhere}
+.ob-bi-g dd.no{font-weight:400;color:var(--amber)}
+.ob-bi-g .svc{display:flex;gap:8px;align-items:center;font-size:13px;margin:5px 0} .ob-bi-g .svc span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600} .ob-bi-g .svc .ob-bar{width:70px;margin:0;flex:none} .ob-bi-g .svc small{color:var(--ink3);width:70px;text-align:right;flex:none}
+.ob-bi-g .sto{font-size:13px;margin:5px 0} .ob-bi-g .sto small{color:var(--ink3)}
 .ob-vw{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .ob-vw button{all:unset;cursor:pointer;font-size:13px;padding:6px 12px;color:var(--ink2)}
 .ob-vw button.on{background:var(--ink);color:var(--panel)}
@@ -382,6 +422,8 @@ async function obRenderTracker(oid){
   const services=[...new Set(acts.map(a=>a.service_name))];
   const col = OB.collapsed[oid]=OB.collapsed[oid]||{};
   const own = obCanCustomise(o), cz = own && !!OB.custom[oid], cols = cz? 12 : 11;
+  if(!OB.view){ OB.view='table'; try{ if(localStorage.getItem('ob-tracker-view')==='gantt') OB.view='gantt'; }catch(e){} }
+  const gantt = OB.view==='gantt' && !cz;
   let lastSvc=null, lastPh=null, svcIdx=0;
   const rowHTML = a => `<tr data-id="${a.id}" class="${obOverdue(a)?'over':''}">
       <td class="muted">${esc(a.code||'')}</td>
@@ -421,6 +463,7 @@ async function obRenderTracker(oid){
       <button class="btn btn-ghost" onclick="obTrackerMenu(this,'${oid}')" aria-label="More">⋯</button>
     </div>
     <div class="ob-owner muted" style="margin:-6px 0 12px;font-size:13px">Timeline owner: <b>${esc(obOwnerName(o)||'not set')}</b>${own? (cz? ' · You are customising: use Edit, ↑ ↓ and ✕ on a row, Rename on a phase or section.' : '') : ' · Only the owner changes the timeline (dates, activities, order). You can update team, PIC, done date, status and remarks.'}</div>
+    <div id="ob-bi">${obBrandInfoHTML(o, b, (OB.stores||{})[o.brand_id]||null, s, !!OB.biOpen)}</div>
     <div class="ob-sum">
       <div class="ob-kpi"><b>Overall</b><div class="v">${s.pct}%</div><div class="ob-bar"><i style="width:${s.pct}%"></i></div></div>
       ${services.map(n=>{ const sv=s.byService[n]; const p=sv.n? Math.round(sv.d/sv.n*100):0; return `<div class="ob-kpi"><b>${esc(n.replace(/ — .*$/,''))}</b><div class="v">${p}%</div><div class="ob-bar"><i style="width:${p}%"></i></div></div>`; }).join('')}
@@ -430,11 +473,81 @@ async function obRenderTracker(oid){
       <div class="ob-kpi"><b>Next deadline</b><div class="v" style="font-size:13.5px">${s.next? esc(s.next.title)+'<br><small>'+fmtDate(s.next.deadline)+'</small>' : '<small>all done</small>'}</div></div>
       <div class="ob-kpi"><b>Days to go-live</b><div class="v">${s.days==null?'—': s.days<0? `<small>live ${-s.days}d ago</small>` : s.days}</div></div>
     </div>
+    <div style="margin:0 0 10px"><span class="ob-vw" role="group" aria-label="View"><button class="${gantt?'':'on'}" onclick="obSetView('${oid}','table')">Table</button><button class="${gantt?'on':''}" onclick="obSetView('${oid}','gantt')">Gantt timeline</button></span></div>
+    ${gantt? `<div class="card"><div class="ob-gw">${obGanttHTML(o, acts, obISO(obToday()), col)}</div>
+      <div class="ob-legend"><span>Each bar ends on the activity's deadline and starts where the previous phase ends.</span><span>Grey = not started · teal = in progress · amber = waiting on brand · green = done · red = overdue.</span><span>Red line = today, dashed line = Shop Live. Click a phase to collapse it. Change dates and status in the Table view.</span></div></div>` : `
     <div class="card"><div style="overflow:auto"><table class="ob-tbl ${obShowDetails()?'':'ob-compact'}">
       <thead><tr><th style="width:40px">#</th><th style="min-width:200px">Activity</th><th class="ob-desc" style="min-width:140px">What CREA delivers</th><th class="ob-desc" style="min-width:140px">What brand provides</th><th>Team</th><th>PIC</th><th title="Days before go-live">D-</th><th>Deadline</th><th>Done</th><th>Status</th><th>Remark</th>${cz? '<th>Customise</th>':''}</tr></thead>
       <tbody>${body || '<tr><td colspan="'+cols+'" class="empty">No activities yet — add a service or an activity.</td></tr>'}</tbody></table></div>
       <div class="ob-legend"><button class="btn btn-ghost btn-sm" onclick="OB.details=!obShowDetails();obRenderTracker('${oid}')">${obShowDetails()? 'Hide':'Show'} CREA / brand columns</button><span>Shaded cells save as you leave them.</span><span>Deadline = Shop Live minus D- (${unit==='working'?'working days':'calendar days, moved back to a working day'}); negative D- = after go-live.</span><span>Click a phase row to collapse it.</span></div>
-    </div>`;
+    </div>`}`;
+  if(o.brand_id && !(OB.stores||{})[o.brand_id]) obLoadStores(o.brand_id).then(st=>{ const h=document.getElementById('ob-bi'); if(h && !navStale(_nav)) h.innerHTML = obBrandInfoHTML(o, b, st, s, !!OB.biOpen); });
+  else if(!o.brand_id){ const h=document.getElementById('ob-bi'); if(h) h.innerHTML = obBrandInfoHTML(o, b, [], s, !!OB.biOpen); }
+  if(gantt){ const gw=C.querySelector('.ob-gw'), tl=C.querySelector('.ob-g .vl'); if(gw && tl) gw.scrollLeft = Math.max(0, parseFloat(tl.style.left) - 200); }
+}
+/* Who the brand is to us: the brand list's own fields, the services this onboarding sets up, and the
+   stores we manage for it (brand_stores, from NiRM). Read-only here; edited in Campaigns → Brands. */
+function obBrandInfoHTML(o, b, stores, sum, open){
+  b = b || {}; const v = x => x? `<dd>${esc(x)}</dd>` : '<dd class="no">not set</dd>';
+  const lead = (S.profiles||[]).find(p=>p.id===o.lead_id);
+  const svc = Object.keys(sum.byService||{});
+  const miss = ['category','kam','category_lead','cs_owner'].filter(k=>!b[k]).length;
+  return `<details class="card ob-bi"${open? ' open':''} ontoggle="OB.biOpen=this.open"><summary>Brand information <span class="muted">${esc([b.category, b.service_model, svc.length+' service'+(svc.length===1?'':'s'), (o.platforms||[]).length? (o.platforms||[]).join(', ') : o.platform].filter(Boolean).join(' · '))}${miss? ` · <span style="color:var(--amber)">${miss} not set</span>`:''}</span></summary>
+    <div class="ob-bi-g">
+      <div><h4>Brand</h4><dl><dt>Name</dt>${v(b.name||o.name)}<dt>Group</dt>${v(b.brand_group)}<dt>Category</dt>${v(b.category)}<dt>Service model</dt>${v(b.service_model)}<dt>Country</dt>${v(b.cusp_country)}</dl></div>
+      <div><h4>Who looks after it</h4><dl><dt>KAM</dt>${v(b.kam)}<dt>Associate</dt>${v(b.associate)}<dt>Category lead</dt>${v(b.category_lead)}<dt>CS owner</dt>${v(b.cs_owner)}<dt>Onboarding lead</dt>${v(lead && lead.full_name)}</dl></div>
+      <div><h4>Services in this onboarding</h4>${svc.map(n=>{ const x=sum.byService[n], p=x.n? Math.round(100*x.d/x.n):0; return `<div class="svc"><span title="${esc(n)}">${esc(n)}</span><div class="ob-bar"><i style="width:${p}%"></i></div><small>${x.d}/${x.n} · ${p}%</small></div>`; }).join('') || '<div class="muted">No service yet.</div>'}
+        <dl style="margin-top:8px"><dt>Shop Live</dt>${v(o.go_live && fmtDate(o.go_live))}</dl></div>
+      <div><h4>Stores we manage</h4>${stores==null? '<div class="muted">Loading…</div>' : stores.length? stores.map(st=>`<div class="sto"><b>${esc(st.platform||'')}</b> ${esc(st.name||'')} <small>${esc([st.platform_store_id && 'ID '+st.platform_store_id, st.launch_state].filter(Boolean).join(' · '))}</small></div>`).join('') : '<div class="muted">None in the managed list yet. A store appears here once it is in NiRM.</div>'}</div>
+    </div>
+    ${canEdit()? '<div class="ob-legend"><span>These come from the brand list. Change KAM, associate, category lead or CS owner in <a href="#/campaigns/brands">Campaigns → Brands</a>; a rename there carries to every board.</span></div>':''}</details>`;
+}
+async function obLoadStores(brandId){
+  OB.stores = OB.stores || {};
+  if(!brandId || OB.stores[brandId]) return OB.stores[brandId] || [];
+  try{ const {data} = await db.from('brand_stores').select('name,platform,platform_store_id,launch_state').eq('brand_id', brandId).order('platform').limit(200); OB.stores[brandId] = data||[]; }catch(e){ OB.stores[brandId] = []; }
+  return OB.stores[brandId];
+}
+function obSetView(oid, v){ OB.view = v; try{ localStorage.setItem('ob-tracker-view', v); }catch(e){} obRenderTracker(oid); }
+/* ---------- gantt ----------
+   Activities only carry a deadline, so a bar is the working window that ends on it: it starts where the
+   previous phase of the same service ends (the first phase starts when the tracker was created).
+   Phase rows carry the summary bar with the share done. Pure: returns HTML. */
+const obDN = iso => { const p=String(iso).slice(0,10).split('-'); return Math.round(Date.UTC(+p[0], +p[1]-1, +p[2])/86400000); };
+const obDI = n => new Date(n*86400000).toISOString().slice(0,10);
+function obGanttModel(o, acts, todayISO){
+  const dated = acts.filter(a=>a.deadline), today = obDN(todayISO);
+  const created = o.created_at? obDN(o.created_at) : null, first = dated.length? Math.min(...dated.map(a=>obDN(a.deadline))) : today;
+  const start0 = Math.min(created==null? first-14 : created, first-7);
+  const groups=[]; let svc=null, ph=null;
+  acts.forEach(a=>{ if(!svc || svc.name!==a.service_name){ svc={name:a.service_name, phases:[]}; groups.push(svc); ph=null; }
+    if(!ph || ph.name!==(a.phase||'')){ ph={name:a.phase||'', acts:[]}; svc.phases.push(ph); } ph.acts.push(a); });
+  groups.forEach(g=>{ let prev=start0; g.phases.forEach(p=>{ const ds=p.acts.filter(a=>a.deadline).map(a=>obDN(a.deadline));
+    p.end = ds.length? Math.max(...ds) : null; p.start = p.end==null? null : Math.min(prev, Math.min(...ds)-2);
+    p.n = p.acts.filter(a=>a.status!=='na').length; p.d = p.acts.filter(a=>a.status==='done').length; if(p.end!=null) prev=Math.max(prev, p.end); }); });
+  const ends=[today, ...dated.map(a=>obDN(a.deadline))]; if(o.go_live) ends.push(obDN(o.go_live));
+  const min = Math.min(start0, today)-2, max = Math.max(...ends)+5;
+  return {groups, min, max, today, go: o.go_live? obDN(o.go_live) : null};
+}
+function obGanttHTML(o, acts, todayISO, collapsed, pxDay){
+  if(!acts.some(a=>a.deadline)) return '<div class="empty">No dates yet. Set the Shop Live date and the timeline appears.</div>';
+  const M = obGanttModel(o, acts, todayISO), px = pxDay || Math.max(6, Math.min(18, Math.round(1100/(M.max-M.min)))), W = (M.max-M.min)*px, col = collapsed||{};
+  const x = n => (n-M.min)*px, MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let head='', we='';
+  for(let n=M.min; n<M.max; n++){ const d=new Date(n*86400000), dom=d.getUTCDate(), dow=d.getUTCDay();
+    if(dom===1 || n===M.min) head+=`<span class="mo" style="left:${x(n)}px">${MON[d.getUTCMonth()]} ${d.getUTCFullYear()}</span>`;
+    if(dow===1 && px*7>=26) head+=`<span class="wk" style="left:${x(n)}px">${dom}</span>`;
+    if(dow===6) we+=`<span class="we" style="left:${x(n)}px;width:${px*2}px"></span>`; }
+  const tr = inner => `<div class="tr" style="width:${W}px">${inner}</div>`;
+  let rows = `<div class="r hd"><div class="l">Activity</div>${tr(head)}</div>`, si=0;
+  M.groups.forEach(g=>{ si++; const all=g.phases.flatMap(p=>p.acts), n=all.filter(a=>a.status!=='na').length, d=all.filter(a=>a.status==='done').length;
+    rows += `<div class="r sv"><div class="l"><span class="t">${String.fromCharCode(64+si)} · ${esc(String(g.name||'').toUpperCase())}</span><span class="m">${d}/${n}</span></div>${tr('')}</div>`;
+    g.phases.forEach(p=>{ const key=g.name+'|'+p.name, shut=!!col[key];
+      rows += `<div class="r ph" data-key="${esc(key)}"><div class="l" onclick="obTogglePhase('${o.id}',this.parentNode.dataset.key)"><span class="t">${shut?'▸':'▾'} ${esc(p.name||'Activities')}</span><span class="m">${p.d}/${p.n}</span></div>${tr(p.end==null? '' : `<span class="bar p" style="left:${x(p.start)}px;width:${Math.max(6,(p.end-p.start)*px)}px" title="${esc(p.name||'Activities')}: ${p.d} of ${p.n} done · until ${esc(fmtDate(obDI(p.end)))}"><i style="width:${p.n? Math.round(100*p.d/p.n):0}%"></i></span>`)}</div>`;
+      if(shut) return;
+      p.acts.forEach(a=>{ const over=obOverdue(a), e=a.deadline? obDN(a.deadline) : null, st=e==null? null : Math.min(p.start, e-2);
+        rows += `<div class="r" data-id="${a.id}"><div class="l" title="${esc(a.title)}"><span class="t">${esc(a.title)}</span><span class="m">${obTeamTag(a.team_id)}</span></div>${tr(e==null? '' : `<span class="bar ${over?'over':a.status}" style="left:${x(st)}px;width:${Math.max(6,(e-st)*px)}px" title="${esc(a.title)} · ${esc(obStLabel(a.status))} · due ${esc(fmtDate(a.deadline))}${a.done_date? ' · done '+esc(fmtDate(a.done_date)):''}"></span><span class="dd ${over?'over':''}" style="left:${x(e)+6}px">${a.status==='done'? '✓ ' : ''}${esc(fmtDate(a.deadline))}${over?' ⚠':''}</span>`)}</div>`; }); }); });
+  return `<div class="ob-g" style="width:${300+W}px"><div style="position:absolute;left:300px;top:0;bottom:0;width:${W}px;pointer-events:none">${we}<span class="vl" style="left:${x(M.today)}px"><b>Today</b></span>${M.go!=null? `<span class="vl go" style="left:${x(M.go)}px"><b>Shop Live</b></span>`:''}</div>${rows}</div>`;
 }
 function obTogglePhase(oid, key){ const c=OB.collapsed[oid]=OB.collapsed[oid]||{}; c[key]=!c[key]; obRenderTracker(oid); }
 function obFindAct(aid){ for(const k in OB.acts){ const a=OB.acts[k].find(x=>x.id===aid); if(a) return a; } return null; }
