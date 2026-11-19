@@ -129,6 +129,14 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  r.wsSection = /Onboarding trackers/.test(W) && /Decathlon/.test(W) && /New onboarding/.test(W) && W.indexOf('Onboarding trackers') < W.indexOf('No boards yet');
  await renderWorkspace('ws-cs'); await new Promise(x=>setTimeout(x,30)); r.wsOther = !/Onboarding trackers/.test(document.getElementById('content').innerHTML);
  // 9. list page shows the tracker
+ obListView='pipeline'; await obRenderList(); const PL=document.getElementById('content');
+ r.pipe=JSON.stringify([PL.querySelectorAll('.ob-col').length, PL.querySelectorAll('.ob-card').length, (PL.querySelector('.ob-card')||{getAttribute:()=>''}).getAttribute('href')===('#/onboarding/'+OB.onboardings[0].id), /Decathlon/.test((PL.querySelector('.ob-card')||{}).textContent||''), !!PL.querySelector('.ob-card .chips')]);
+ const SM=(d,w,dn)=>({days:d,waiting:w,done:dn});
+ r.stages=[obStage({status:'live'},SM(-5,0,9)),obStage({status:'on_hold'},SM(20,0,1)),obStage({status:'active'},SM(-1,2,3)),obStage({status:'active'},SM(7,2,3)),obStage({status:'active'},SM(30,1,3)),obStage({status:'active'},SM(30,0,3)),obStage({status:'active'},SM(null,0,0))].join(',');
+ r.nowPhase=obNowPhase([{status:'done',phase:'1. A',deadline:'2027-01-01',position:1},{status:'not_started',phase:'3. C',deadline:'2027-03-01',position:2},{status:'in_progress',phase:'2. B',deadline:'2027-02-01',position:3},{status:'na',phase:'0',deadline:'2026-01-01',position:0}])+'|'+obNowPhase([{status:'done'}]);
+ const PH=document.createElement('div'); PH.innerHTML=obPipelineHTML([{id:'x1',status:'active',go_live:'2020-01-01',name:'<b>X'},{id:'x2',status:'cancelled',name:'Gone'},{id:'x3',status:'on_hold',name:'Held'}],()=>[]);
+ r.pipeCols=JSON.stringify([PH.querySelectorAll('.ob-col').length, PH.querySelector('[data-stage=late] .ob-card .nm span').textContent, PH.querySelectorAll('.ob-card').length, /d late/.test(PH.textContent), !PH.querySelector('.ob-card b')]);
+ obListView='table';
  await obRenderList(); const L=document.getElementById('content').innerHTML;
  r.listRow = /Decathlon/.test(L) && /8 Apr 2027/.test(L) && /ob-over">1</.test(L) && /ob-wait">1</.test(L);
  // 10. export rows
@@ -174,6 +182,10 @@ check('editing D- re-dates; moving Shop Live re-dates every D- activity', r.days
 check('overdue only for open activities with a past deadline', r.overdue);
 check('tracker listed on its workspace page above the boards, not on others', r.wsSection && r.wsOther);
 check('list shows go-live, overdue and waiting counts', r.listRow);
+check('pipeline: the brand is a card linking to its tracker, with its warning chips', r.pipe===JSON.stringify([6,1,true,true,true]), r.pipe);
+check('pipeline stages: live, on hold, date passed, final week, waiting on brand, setting up, kick-off', r.stages==='live,hold,late,final,waiting,setup,kickoff', r.stages);
+check('pipeline: current phase = earliest open activity; none when all done', r.nowPhase==='2. B|', r.nowPhase);
+check('pipeline: cancelled left out, On hold column only when used, names escaped', r.pipeCols===JSON.stringify([7,'<b>X',2,true,true]), r.pipeCols);
 check('Excel export has one row per activity', r.exportOk);
 check('timeline owner: admin, management, lead and creator may customise', r.ownAdmin && r.ownLead && r.ownCreator && r.ownMgmt);
 check('timeline owner: other staff see no timeline controls but keep status, remark, PIC', r.ownNo);
