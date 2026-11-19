@@ -10618,6 +10618,28 @@ async function cpdMount(){
 .ob-wait{color:var(--amber)}
 .ob-over{color:var(--red)}
 .ob-grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+/* pipeline: every brand as a card, in the column of where it stands */
+.ob-pipe{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:12px;overflow-x:auto;padding-bottom:8px;align-items:start}
+.ob-col{background:var(--gray-soft);border-radius:12px;padding:10px;min-height:120px}
+.ob-col h3{margin:0 2px 8px;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--ink2);display:flex;gap:6px;align-items:baseline}
+.ob-col h3 .n{color:var(--ink3);font-weight:500}
+.ob-col h3{flex-wrap:wrap} .ob-col h3 small{flex-basis:100%;font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink3);font-size:11px}
+.ob-col.late h3{color:var(--red)} .ob-col.wait h3{color:var(--amber)} .ob-col.live h3{color:var(--green)}
+.ob-col .none{color:var(--ink3);font-size:12px;padding:6px 2px}
+.ob-card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;color:var(--ink);text-decoration:none;cursor:pointer}
+.ob-card:hover{border-color:var(--accent)}
+.ob-card .nm{font-weight:700;font-size:13.5px;display:flex;gap:8px;align-items:center}
+.ob-card .nm > :not(:first-child){flex:none} .ob-card .gl span{white-space:nowrap}
+.ob-card .nm > span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ob-card .pl,.ob-card .now{font-size:12px;color:var(--ink3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ob-card .gl{font-size:12px;margin-top:8px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 8px}
+.ob-card .gl .bad{color:var(--red);font-weight:700}
+.ob-card .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.ob-card .chips span{font-size:11.5px;font-weight:700;border-radius:20px;padding:2px 8px}
+.ob-card .chips .w{background:var(--amber-soft);color:var(--amber)} .ob-card .chips .o{background:var(--red-soft,#fde8e8);color:var(--red)}
+.ob-vw{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.ob-vw button{all:unset;cursor:pointer;font-size:13px;padding:6px 12px;color:var(--ink2)}
+.ob-vw button.on{background:var(--ink);color:var(--panel)}
 </style>
 <script>
 /* ---------- state ---------- */
@@ -10743,23 +10765,65 @@ async function renderOnboarding(sub, id){
   obRenderList();
 }
 
+/* ======================= PIPELINE ======================= */
+/* Where a brand stands, worked out from its tracker (nothing to maintain by hand). First match wins. */
+const OB_STAGES = [
+  {k:'kickoff', label:'Kick-off', hint:'nothing done yet'},
+  {k:'setup',   label:'Setting up', hint:'work in progress'},
+  {k:'waiting', label:'Waiting on brand', hint:'blocked on the brand', cls:'wait'},
+  {k:'final',   label:'Final week', hint:'Shop Live within 7 days'},
+  {k:'late',    label:'Shop Live date passed', hint:'not live yet', cls:'late'},
+  {k:'live',    label:'Live', hint:'handed over', cls:'live'},
+  {k:'hold',    label:'On hold', hint:''},
+];
+function obStage(o, s){
+  if(o.status==='live') return 'live';
+  if(o.status==='on_hold') return 'hold';
+  if(s.days!=null && s.days < 0) return 'late';
+  if(s.days!=null && s.days <= 7) return 'final';
+  if(s.waiting) return 'waiting';
+  return s.done ? 'setup' : 'kickoff';
+}
+/* The phase the brand is in now = the phase of its earliest open activity (by deadline, then order). */
+function obNowPhase(acts){
+  const open=(acts||[]).filter(obOpen).sort((a,b)=> (a.deadline||'9999').localeCompare(b.deadline||'9999') || (a.position||0)-(b.position||0))[0];
+  return open? (open.phase || open.title || '') : '';
+}
+function obPipelineHTML(rows, actsOf){
+  const cols={}; OB_STAGES.forEach(st=>cols[st.k]=[]);
+  rows.filter(o=>o.status!=='cancelled').forEach(o=>{ const acts=actsOf(o)||[], s=obSummary(o, acts); cols[obStage(o, s)].push({o, s, acts}); });
+  Object.values(cols).forEach(l=>l.sort((a,b)=> String(a.o.go_live||'9999').localeCompare(String(b.o.go_live||'9999'))));
+  return `<div class="ob-pipe">${OB_STAGES.filter(st=> st.k!=='hold' || cols.hold.length).map(st=>`<div class="ob-col ${st.cls||''}" data-stage="${st.k}"><h3>${esc(st.label)} <span class="n">${cols[st.k].length}</span><small>${esc(st.hint)}</small></h3>
+    ${cols[st.k].map(({o, s, acts})=>{ const b=obBrand(o.brand_id)||{}, now=obNowPhase(acts);
+      return `<a class="ob-card" href="#/onboarding/${o.id}"><div class="nm"><span title="${esc(b.name||o.name)}">${esc(b.name||o.name)}</span>${o.lead_id? avatar(prof(o.lead_id),true) : ''}</div>
+        <div class="pl">${esc(o.platform||(o.platforms||[]).join(', ')||'')}</div>
+        ${now && o.status!=='live'? `<div class="now" title="${esc(now)}">Now: ${esc(now)}</div>`:''}
+        <div class="gl"><span>${o.go_live? 'Shop Live '+esc(fmtDate(o.go_live)) : 'No Shop Live date'}</span><span class="${s.days!=null && s.days<0 && o.status!=='live'?'bad':''}">${s.days==null? '' : o.status==='live'? '' : s.days<0? (-s.days)+'d late' : s.days===0? 'today' : s.days+'d to go'}</span></div>
+        <div class="ob-bar"><i style="width:${s.pct}%"></i></div><div class="pl">${s.pct}% · ${s.done}/${s.total} activities</div>
+        ${s.waiting||s.overdue? `<div class="chips">${s.waiting? `<span class="w">${s.waiting} waiting on brand</span>`:''}${s.overdue? `<span class="o">${s.overdue} overdue</span>`:''}</div>`:''}</a>`; }).join('') || '<div class="none">—</div>'}</div>`).join('')}</div>`;
+}
+
 /* ======================= LIST ======================= */
-let obListTab='active';
+let obListTab='active', obListView=null;
 async function obRenderList(){
   const _nav = S.nav; const C=$('#content');
-  const rows = OB.onboardings.filter(o=> obListTab==='active'? ['active','on_hold'].includes(o.status||'active') : obListTab==='live'? o.status==='live' : true);
+  if(!obListView){ obListView='pipeline'; try{ if(localStorage.getItem('ob-view')==='table') obListView='table'; }catch(e){} }
+  const pipe = obListView==='pipeline';
+  const rows = pipe? OB.onboardings.filter(o=>o.status!=='cancelled') : OB.onboardings.filter(o=> obListTab==='active'? ['active','on_hold'].includes(o.status||'active') : obListTab==='live'? o.status==='live' : true);
   await Promise.all(rows.map(o=>obLoadActs(o.id)));
   if(navStale(_nav)) return;
+  const vw = v => `obListView='${v}';try{localStorage.setItem('ob-view','${v}')}catch(e){};obRenderList()`;
   C.innerHTML = `
     <div class="page-head"><h1>Onboarding — all brands</h1>
-      <div class="tabs">
+      <span class="ob-vw" role="group" aria-label="View"><button class="${pipe?'on':''}" onclick="${vw('pipeline')}">Pipeline</button><button class="${pipe?'':'on'}" onclick="${vw('table')}">Table</button></span>
+      <div class="tabs" ${pipe?'style="display:none"':''}>
         <button class="tab ${obListTab==='active'?'active':''}" onclick="obListTab='active';obRenderList()">In progress</button>
         <button class="tab ${obListTab==='live'?'active':''}" onclick="obListTab='live';obRenderList()">Live</button>
         <button class="tab ${obListTab==='all'?'active':''}" onclick="obListTab='all';obRenderList()">All</button>
       </div>
       <div class="actions">${obDefaultWs()? `<button class="btn btn-ghost" onclick="location.hash='#/ws/${obDefaultWs().id}'">Workspace</button>`:''}<button class="btn btn-ghost" onclick="location.hash='#/onboarding/checklists'">Checklists</button><button class="btn btn-primary" onclick="obNewModal()">＋ New onboarding</button></div>
     </div>
-    <div class="card ob-list">${obListTableHTML(rows)}</div>`;
+    ${pipe && rows.length? obPipelineHTML(rows, o=>OB.acts[o.id]) : `<div class="card ob-list">${obListTableHTML(rows)}</div>`}`;
 }
 function obListTableHTML(rows){
   if(!rows.length) return `<div class="empty">No onboarding here yet. Click <b>＋ New onboarding</b>, pick the brand and its services, set the Shop Live date — the tracker appears with every activity filled in.</div>`;
