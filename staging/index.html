@@ -1154,7 +1154,7 @@ body.modal-open{overflow:hidden}
 .kb-more{padding:10px;font-size:12px;color:var(--ink3);text-align:center}
 </style>
 <script>
-/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · e3403bb</div> so a dark-theme user never sees a flash of the light app. The real
+/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · 0047788</div> so a dark-theme user never sees a flash of the light app. The real
    preference lives in profiles.nav_prefs.theme and is applied again at boot; this is only
    the fast local echo of it. 'system' follows the OS. */
 (function(){
@@ -9933,6 +9933,10 @@ table.cpt{border-collapse:separate;border-spacing:0;font-size:12px}
 .cpt-menu button:hover,.cpt-menu button:focus{background:var(--gray-soft)}
 .cpt-menu .hd{font-size:11.5px;color:var(--ink3);padding:4px 10px 6px;max-width:240px;white-space:normal}
 .cpd-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.cpt-bar .btn.warn{border-color:var(--amber);color:var(--amber)}
+.cpt-miss{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px}
+.cpt-miss td{padding:5px 8px;border-bottom:1px solid var(--line-2,var(--line));vertical-align:middle}
+.cpt-miss td.act{text-align:right;white-space:nowrap}
 .cpd-tbl th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
 .cpd-tbl td{padding:3px 6px;border-bottom:1px solid var(--line-2,var(--line))}
 .cpd-tbl td:first-child{padding-left:10px;font-weight:600;white-space:nowrap}
@@ -9999,6 +10003,123 @@ function cptCheck(line, step, by, brands){
   if(!r.list.length) return {state:'none', list:[], rule:r.rule};
   const fin = r.rule.need==='exists' || r.list.every(cptTkDone);
   return {state: fin ? 'done' : 'open', list:r.list, rule:r.rule};
+}
+/* ---------- missing tickets → raise them on the team board ----------
+   One row per ticket that is needed and not there: several steps of a line can ask for the same ticket
+   (KAM "Submit voucher" + Store Ops "Set voucher"), so they are folded by line + board + kind. */
+function cptMissing(lines, steps, chk){
+  const out = [], seen = {};
+  (lines||[]).forEach(l=> (steps||[]).forEach(s=>{ const c = chk(l, s); if(!c || c.state!=='none') return;
+    const k = l.id+'|'+c.rule.boards.join('+')+'|'+(c.rule.kind ? c.rule.kind.source : '');
+    if(seen[k]){ seen[k].steps.push(s); if(s.due && (!seen[k].due || s.due < seen[k].due)) seen[k].due = s.due; return; }
+    out.push(seen[k] = {line:l, step:s, steps:[s], rule:c.rule, due:s.due||null}); }));
+  return out;
+}
+const CPT_COUNTRY = {th:'thailand', sg:'singapore', my:'malaysia'};
+/* The board's own spelling of a value ("Tiktok" for TikTok, "Thailand" for TH); '' when the board has no such option. */
+function cptPickOpt(options, want, alt){
+  const o = (Array.isArray(options) ? options : []).map(x=> typeof x==='string' ? x : (x && (x.label || x.name || x.value)) || '').filter(Boolean);
+  const w = cptNorm(want), a = cptNorm(alt); if(!w) return '';
+  return o.find(x=>cptNorm(x)===w) || (a && o.find(x=>cptNorm(x)===a)) || '';
+}
+const cptKindOpts = (options, kind) => (Array.isArray(options) ? options : []).filter(x=> typeof x==='string' && (!kind || kind.test(x)));
+/* Which field of a board plays which part; the same labels cp_tracker_tickets reads. fields = project_fields rows. */
+function cptRoles(fields){
+  const by = (...labels) => (fields||[]).find(f=> labels.includes(String(f.label||'').trim().toLowerCase())) || null;
+  return {brand:(fields||[]).find(f=>f.ftype==='brand') || by('brand'), platform:by('platform','platfrom'), kind:by('request for','artwork type','campaign requests'),
+          start:by('start date','live date','campaign start date'), end:by('end date','campaign end date'), country:by('country','country / region')};
+}
+/* What the new ticket would say, before the person edits it. */
+function cptDraft(line, step, rule, tracker, roles, brands){
+  const b = (brands||[]).find(x=>x.id===line.brand_id), brand = (b && b.name) || line.brand_name;
+  const kinds = roles.kind ? cptKindOpts(roles.kind.options, rule.kind) : [];
+  const cc = cptNorm(line.country);
+  return {brand, title:`${brand} ${line.platform||''} – ${step.name} (${tracker.name})`.replace(/\s+/g,' ').trim(),
+    platform: roles.platform ? cptPickOpt(roles.platform.options, line.platform) : '',
+    kind: kinds.length===1 ? kinds[0] : '', kinds,
+    country: roles.country ? cptPickOpt(roles.country.options, line.country, CPT_COUNTRY[cc]) : '',
+    start:tracker.dday, end:tracker.dday};
+}
+/* The ticket as the tasks table takes it: custom = {field id: value}, empty values left out. */
+function cptTicketRow(board, roles, v, groupId, position, me){
+  const custom = {}; [['brand',v.brand],['platform',v.platform],['kind',v.kind],['country',v.country],['start',v.start],['end',v.end]].forEach(([r, val])=>{ if(roles[r] && val) custom[roles[r].id] = val; });
+  return {project_id:board.id, group_id:groupId||null, title:v.title, description:v.description||'', status:'todo', priority:'normal', created_by:me, position, custom};
+}
+async function cptBoard(key){
+  CPT.boards = CPT.boards || {};
+  if(CPT.boards[key]) return CPT.boards[key];
+  const p = (S.projects||[]).find(x=>x.key===key && x.status!=='archived'); if(!p) throw new Error(`No board with the code ${key}.`);
+  const [f, g] = await Promise.all([db.from('project_fields').select('id,label,ftype,options').eq('project_id', p.id).order('position'),
+    db.from('project_groups').select('id,name,position').eq('project_id', p.id).order('position').order('created_at')]);
+  if(f.error || g.error) throw new Error((f.error || g.error).message);
+  return CPT.boards[key] = {id:p.id, key, name:p.name, fields:f.data||[], groups:g.data||[], roles:cptRoles(f.data||[])};
+}
+/* The form: board, what is asked, platform, dates. Nothing is created until "Create ticket" is pressed. */
+async function cptCreateModal(line, step, after){
+  const rule = cptRule(step); if(!rule) return;
+  let board; try{ board = await cptBoard(rule.boards[0]); }catch(e){ return toast(e.message, true); }
+  const m = modal(`<div class="modal-head"><h2>Create the ticket</h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div><div class="modal-body" id="cpm-body"></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModals()">Cancel</button><button class="btn btn-primary" id="cpm-save">Create ticket</button></div>`);
+  const paint = () => {
+    const d = cptDraft(line, step, rule, CPT.cur, board.roles, S.brandsList), R = board.roles;
+    const sel = (id, opts, cur, blank) => `<select id="${id}"><option value="">${blank}</option>${opts.map(o=>`<option${o===cur ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+    const all = f => (f && Array.isArray(f.options) ? f.options.filter(x=>typeof x==='string') : []);
+    m.querySelector('#cpm-body').innerHTML = `
+      <p class="muted">${esc(line.brand_name)} · ${esc(line.platform||'')} · ${esc(step.name)}${step.due ? ' · due '+esc(fmtDate(step.due)) : ''}</p>
+      <label>Board</label>${rule.boards.length > 1 ? `<select id="cpm-board">${rule.boards.map(k=>`<option${k===board.key ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select>` : `<input value="${esc(board.key+' · '+board.name)}" disabled>`}
+      <label>Title</label><input id="cpm-title" value="${esc(d.title)}">
+      ${R.kind ? `<label>${esc(R.kind.label)}</label>${sel('cpm-kind', d.kinds.length ? d.kinds.concat(all(R.kind).filter(o=>!d.kinds.includes(o))) : all(R.kind), d.kind, 'Choose…')}` : ''}
+      ${R.platform ? `<label>${esc(R.platform.label)}</label>${sel('cpm-plat', all(R.platform), d.platform, 'Choose…')}` : ''}
+      ${R.country ? `<label>${esc(R.country.label)}</label>${sel('cpm-country', all(R.country), d.country, '—')}` : ''}
+      <div style="display:flex;gap:10px"><div style="flex:1"><label>${esc(R.start ? R.start.label : 'Start')}</label><input type="date" id="cpm-start" value="${esc(d.start||'')}"></div>
+        <div style="flex:1"><label>${esc(R.end ? R.end.label : 'End')}</label><input type="date" id="cpm-end" value="${esc(d.end||'')}"></div></div>
+      <label>Details for the team</label><textarea id="cpm-desc" rows="3">${esc(`Raised from the campaign tracker "${CPT.cur.name}", step "${step.name}"${step.due ? ', due '+fmtDate(step.due) : ''}.`)}</textarea>
+      <p class="hint">Brand: ${esc(d.brand)}. The ticket goes to "${esc((board.groups[0]||{}).name || 'the first group')}" on ${esc(board.name)} and the board's own rules (assignment, notifications) apply.</p>`;
+    const bs = m.querySelector('#cpm-board'); if(bs) bs.onchange = async () => { try{ board = await cptBoard(bs.value); paint(); }catch(e){ toast(e.message, true); } };
+  };
+  paint();
+  m.querySelector('#cpm-save').onclick = async e => {
+    const g = id => { const x = m.querySelector('#'+id); return x ? x.value.trim() : ''; };
+    const v = {brand:cptDraft(line, step, rule, CPT.cur, board.roles, S.brandsList).brand, title:g('cpm-title'), kind:g('cpm-kind'), platform:g('cpm-plat'), country:g('cpm-country'), start:g('cpm-start'), end:g('cpm-end'), description:g('cpm-desc')};
+    if(!v.title) return toast('Title is required', true);
+    if(board.roles.kind && !v.kind) return toast(`Choose the ${board.roles.kind.label}`, true);
+    if(board.roles.platform && !v.platform) return toast('Choose the platform', true);
+    if(!v.start) return toast('The start date is required', true);
+    if(v.end && v.end < v.start) return toast('The end date is before the start date', true);
+    if(typeof canEditOnBoard==='function' && !canEditOnBoard(board.id)) return toast(`You cannot add tickets on ${board.name}.`, true);
+    e.target.disabled = true;
+    const top = await db.from('tasks').select('position').eq('project_id', board.id).order('position', {ascending:false}).limit(1);
+    const pos = ((top.data && top.data[0] && top.data[0].position) || 0) + 1;
+    const {data, error} = await db.from('tasks').insert(cptTicketRow(board, board.roles, v, (board.groups[0]||{}).id, pos, S.me.id)).select().single();
+    if(error){ e.target.disabled = false; return toast(error.message, true); }
+    (CPT.tix = CPT.tix || []).push({task_id:data.id, ticket_no:data.ticket_no, title:data.title, project_id:board.id, board_key:board.key, board_name:board.name,
+      brand:v.brand, platform:v.platform, kind:v.kind, status:data.status, team_status:null, start_date:v.start, end_date:v.end || v.start});
+    CPT.tixBy = cptIndexTix(CPT.tix);
+    closeModals(); toast(`Ticket ${data.ticket_no || ''} created on ${board.name}`);
+    if(CPT.draw) CPT.draw();
+    if(after) after(data);
+  };
+}
+/* Every ticket the campaign still needs, by team board, each with its own Create button (never in bulk:
+   the team boards notify people). Follows the filters of the sheet. */
+function cptMissingHTML(miss, canMake){
+  if(!miss.length) return '<div class="empty">Nothing is missing: every step that needs a ticket has one.</div>';
+  const by = {}; miss.forEach((x, i)=>{ const k = x.rule.boards.join(' / '); (by[k] = by[k] || []).push({...x, i}); });
+  return Object.keys(by).sort().map(k=>`<div class="section-title">${esc(k)} <span class="hint">${by[k].length} missing</span></div>
+    <table class="cpt-miss"><tbody>${by[k].map(x=>`<tr data-i="${x.i}"><td><b>${esc(x.line.brand_name)}</b> <span class="hint">${esc(x.line.country||'')}</span></td><td>${esc(x.line.platform||'')}</td>
+      <td title="${esc(x.steps.map(s=>s.name).join(' · '))}">${esc(x.step.name)}${x.steps.length > 1 ? ` <span class="hint">+${x.steps.length-1} more</span>` : ''}</td>
+      <td class="hint">${x.due ? esc(fmtDate(x.due)) : ''}</td><td class="hint">${esc(x.line.kam||'')}</td>
+      <td class="act">${canMake ? '<button class="btn btn-ghost btn-sm" data-mk>＋ Create</button>' : ''}</td></tr>`).join('')}</tbody></table>`).join('');
+}
+function cptMissingModal(){
+  if(!CPT.tix) return;
+  const chk = (l, s) => cptCheck(l, s, CPT.tixBy, S.brandsList);
+  const miss = cptMissing(cptFiltered(CPT.lines, {...CPT.f, chk}, CPT.steps, cptToday()), CPT.steps, chk);
+  const m = modal(`<div class="modal-head"><h2>Missing tickets <span class="hint">${miss.length}</span></h2><button class="x" onclick="closeModals()" aria-label="Close">✕</button></div>
+    <div class="modal-body"><p class="muted">Steps of ${esc(CPT.cur.name)} that need a ticket on a team board and have none for that brand and platform around D-day. If the work is not needed, set the step to n/a in the sheet instead.</p>
+    <div id="cpm-list" style="max-height:60vh;overflow:auto">${cptMissingHTML(miss, canEdit())}</div></div>`, true);
+  m.querySelector('#cpm-list').onclick = e => { const b = e.target.closest('[data-mk]'); if(!b) return;
+    const x = miss[+b.closest('tr').dataset.i]; closeModals(); cptCreateModal(x.line, x.step, ()=> cptMissingModal()); };
 }
 const CPT_OPEN = ['pending','in progress','brand review'];          // still to do
 const CPT_CHOICES = ['Done','In Progress','Pending','Brand Review','n/a'];
@@ -10149,6 +10270,7 @@ async function cptMount(){
       ${CPT.tix ? `<label style="font-size:13px;display:flex;gap:5px;align-items:center" title="Compare each step with the tickets on the team boards"><input type="checkbox" id="cpt-tk"${CPT.tixOn ? ' checked' : ''}> Check tickets</label>
       <label style="font-size:13px;display:flex;gap:5px;align-items:center"><input type="checkbox" id="cpt-miss"${f.miss ? ' checked' : ''}> No ticket only</label>` : ''}
       <span class="grow"></span>
+      ${CPT.tix ? '<button class="btn btn-ghost btn-sm" id="cpt-mis">Missing tickets</button>' : ''}
       <button class="btn btn-ghost btn-sm" id="cpt-fold">Fold all</button>
       <button class="btn btn-ghost btn-sm" id="cpt-xl">⇩ Excel</button>
       ${canEdit() ? '<button class="btn btn-ghost btn-sm" id="cpt-imp">Import tracker (.xlsx)</button>' : ''}</div>
@@ -10160,7 +10282,9 @@ async function cptMount(){
     const rows = cptFiltered(CPT.lines, {...CPT.f, chk}, CPT.steps, today);
     root.querySelector('#cpt-sum').innerHTML = cptSumHTML(rows, CPT.steps, today, chk);
     wrap.innerHTML = rows.length ? cptSheetHTML(rows, CPT.steps, CPT.fold, today, chk) : '<div class="empty">No lines match these filters.</div>';
-    wrap.scrollLeft = sx; wrap.scrollTop = sy; };
+    wrap.scrollLeft = sx; wrap.scrollTop = sy;
+    const mb = root.querySelector('#cpt-mis'); if(mb && CPT.tix){ const all = (l, s) => cptCheck(l, s, CPT.tixBy, S.brandsList), n = cptMissing(cptFiltered(CPT.lines, {...CPT.f, chk:all}, CPT.steps, today), CPT.steps, all).length;
+      mb.textContent = `Missing tickets (${n})`; mb.classList.toggle('warn', n > 0); } };
   draw(); CPT.draw = draw;
   root.querySelector('#cpt-tr').onchange = e => { CPT.cur = {id:e.target.value}; CPT.fold = null; cptMount(); };
   root.querySelectorAll('[data-f]').forEach(s=>{ s.onchange = ()=>{ CPT.f[s.dataset.f] = s.value; draw(); }; });
@@ -10170,6 +10294,7 @@ async function cptMount(){
   const msb = root.querySelector('#cpt-miss'); if(msb) msb.onchange = e => { CPT.f.miss = e.target.checked; if(e.target.checked){ CPT.tixOn = true; if(tkb) tkb.checked = true; } draw(); };
   root.querySelector('#cpt-fold').onclick = ()=>{ const g = cptElements(CPT.steps), all = g.every(x=>CPT.fold[x.name]); CPT.fold = {}; if(!all) g.forEach(x=>{ CPT.fold[x.name] = 1; }); draw(); };
   root.querySelector('#cpt-xl').onclick = cptExport;
+  const mis = root.querySelector('#cpt-mis'); if(mis) mis.onclick = cptMissingModal;
   const imp = root.querySelector('#cpt-imp'); if(imp) imp.onclick = cptImportPick;
   root.querySelector('#cpt-sheet').onclick = e => {
     const eh = e.target.closest('[data-el]'); if(eh){ const g = cptElements(CPT.steps)[+eh.dataset.el]; if(CPT.fold[g.name]) delete CPT.fold[g.name]; else CPT.fold[g.name] = 1; draw(); return; }
@@ -10180,14 +10305,14 @@ async function cptMount(){
 function cptMenuClose(){ const m = document.getElementById('cpt-menu'); if(m) m.remove(); document.removeEventListener('mousedown', cptMenuAway, true); }
 function cptMenuAway(e){ if(!e.target.closest('#cpt-menu')) cptMenuClose(); }
 /* The tickets behind a cell, each a link to the ticket on its team board. tk = cptTixFor(...) or null (no rule). */
-function cptTicketsHTML(tk){
+function cptTicketsHTML(tk, canMake){
   if(!tk) return '';
-  const where = tk.rule.boards.join(' / ');
-  if(!tk.list.length) return `<div class="tkh">Tickets on ${esc(where)}</div><div class="tkn">No ticket found for this brand and platform around D-day.</div>`;
+  const where = tk.rule.boards.join(' / '), mk = canMake ? `<button role="menuitem" data-mk>＋ Create ${tk.list.length ? 'another ticket' : 'the ticket'} on ${esc(tk.rule.boards[0])}</button>` : '';
+  if(!tk.list.length) return `<div class="tkh">Tickets on ${esc(where)}</div><div class="tkn">No ticket found for this brand and platform around D-day.</div>${mk}`;
   const st = t => cptTkDone(t) ? 'done' : (t.team_status || (typeof CP_ST_WORD!=='undefined' && CP_ST_WORD[t.status]) || String(t.status||'').replace('_',' '));
   return `<div class="tkh">${tk.list.length} ticket${tk.list.length===1?'':'s'} on ${esc(where)}</div>`
     + tk.list.slice(0, 8).map(t=>`<a class="tk" href="${esc(taskHash({id:t.task_id, ticket_no:t.ticket_no}))}" title="${esc(t.title||'')}"><b>${esc(t.ticket_no||'ticket')}</b> ${esc(t.kind||'')} · ${esc(st(t))}${t.start_date ? ` · ${esc(fmtDate(t.start_date))}${t.end_date && t.end_date!==t.start_date ? '–'+esc(fmtDate(t.end_date)) : ''}` : ''}</a>`).join('')
-    + (tk.list.length > 8 ? `<div class="tkn" style="color:var(--ink3)">and ${tk.list.length-8} more</div>` : '');
+    + (tk.list.length > 8 ? `<div class="tkn" style="color:var(--ink3)">and ${tk.list.length-8} more</div>` : '') + mk;
 }
 function cptCellMenu(td){
   cptMenuClose();
@@ -10196,11 +10321,12 @@ function cptCellMenu(td){
   const tk = CPT.tix ? cptTixFor(line, step, CPT.tixBy, S.brandsList) : null, edit = canEdit();
   if(!edit && !tk){ toast(`${step.name}: ${cur || 'empty'}`); return; }
   const m = el(`<div class="cpt-menu" id="cpt-menu" role="menu"><div class="hd"><b>${esc(line.brand_name)} · ${esc(line.platform||'')}</b><br>${esc(step.name)}${step.due ? ' · due '+esc(fmtDate(step.due)) : ''}${edit ? '' : '<br>Now: '+esc(cur || 'empty')}</div>
-    ${cptTicketsHTML(tk)}
+    ${cptTicketsHTML(tk, edit)}
     ${edit ? `${tk ? '<hr>' : ''}${CPT_CHOICES.map(c=>`<button role="menuitem" data-v="${c}">${c===cur ? '● ' : ''}${c}</button>`).join('')}<button role="menuitem" data-other>Other value…</button><button role="menuitem" data-v="">Clear</button>` : ''}</div>`);
   document.body.appendChild(m);
   const r = td.getBoundingClientRect(); m.style.left = Math.max(8, Math.min(r.left, innerWidth - m.offsetWidth - 8))+'px'; m.style.top = Math.max(8, Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 8))+'px';
   m.onclick = e => { if(e.target.closest('a.tk')){ cptMenuClose(); return; } const b = e.target.closest('button'); if(!b) return;
+    if(b.hasAttribute('data-mk')){ cptMenuClose(); return cptCreateModal(line, step); }
     let v = b.dataset.v; if(b.hasAttribute('data-other')){ v = prompt('Value for this cell (an amount, "Yes", "MKT set" …)', cur); if(v==null) return cptMenuClose(); }
     cptMenuClose(); cptSetCell(line, step, v, td); };
   setTimeout(()=> document.addEventListener('mousedown', cptMenuAway, true), 0);
