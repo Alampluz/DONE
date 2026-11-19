@@ -56,6 +56,28 @@ const driver=`window.__run=function(){const r={};
  const pl=[...host.querySelectorAll('td.cpd-pl')].map(t=>t.textContent), rn=host.querySelectorAll('[data-rename]').length;
  host.innerHTML='<table><tbody>'+cpdRowsHTML(B,'',true,{},false)+'</tbody></table>';
  r.dirPl=JSON.stringify([pl[0],pl[1],rn,host.querySelectorAll('[data-rename]').length]);
+ // tickets from the team boards
+ const ST=(el,name,pos)=>({element:el,name,position:pos,due:'2026-09-27'});
+ r.rules=JSON.stringify([ST('Platform mechanics and Voucher Submission','Submit Cofund Voucher',0),ST('Store Ops','Join Voucher (New Buyer, New Follower, Member, Regular)',1),ST('Store Ops','Join Campaign (TB)',2),ST('Store Ops','Set GWP in CUSP',3),
+   ST('GRAPHIC DESIGN','DDAY Frame/PDP Final AW',4),ST('Listing','Teasing Frame',5),ST('Platform mechanics and Voucher Submission','Book Platform flashsale slot in Platform Sheet',6),ST('TARGET & BUDGETING','Brand Target Alignment',7),ST('Platform mechanics and Voucher Submission','Submit Price update Ticket',8)]
+   .map(x=>{ const q=cptRule(x); return q? q.boards.join('+')+':'+q.need : null; }));
+ const TK=(no,board,brand,plat,kind,status,ts)=>({task_id:no,ticket_no:no,board_key:board,brand,platform:plat,kind,status,team_status:ts,start_date:'2026-10-01',end_date:'2026-10-31',title:no+' <t>'});
+ const tix=[TK('VCH-1','VCH','Crocs','Lazada, Shopee','Regular Vouchers','done','Done'),TK('VCH-2','VCH','Crocs','Shopee','New buyer / Follower','in_progress','Open'),TK('VCH-3','VCH','Crocs','Tiktok','Co-Fund','todo','Open'),
+   TK('VCH-4','VCH','Crocs','Lazada','Regular Vouchers','todo',"Won't do"),TK('PTB-1','PTB','CROCS ','Lazada','Join Treasure Bowl','review','Approved'),TK('GWP-1','GWP','Crocs',null,'CUSP GWP','todo','Open'),TK('VCH-9','VCH','Lee','Lazada','Regular Vouchers','done','Done')];
+ const by=cptIndexTix(tix), BR=[{id:'bc',name:'Crocs'}];
+ const LN=(plat,cells)=>({id:'x'+plat,brand_id:'bc',brand_name:'Crocs-CMG',platform:plat,cells});
+ const vS=ST('Store Ops','Join Voucher (New Buyer, New Follower, Member, Regular)',1), cS=ST('Platform mechanics and Voucher Submission','Submit Cofund Voucher',0), tS=ST('Store Ops','Join Campaign (TB)',2), gS=ST('Store Ops','Set GWP in CUSP',3), nS=ST('TARGET & BUDGETING','Brand Target Alignment',7);
+ const ck=(l,s)=>{ const c=cptCheck(l,s,by,BR); return c? c.state+':'+c.list.map(t=>t.ticket_no).join('+') : null; };
+ r.checks=JSON.stringify([ck(LN('Lazada',{1:'Done'}),vS), ck(LN('Shopee',{1:'Pending'}),vS), ck(LN('TikTok',{1:'Pending'}),vS), ck(LN('TikTok',{0:'Done'}),cS), ck(LN('Lazada',{0:'Done'}),cS),
+   ck(LN('Lazada',{2:'Done'}),tS), ck(LN('Shopee',{3:'Pending'}),gS), ck(LN('Lazada',{1:'n/a'}),vS), ck(LN('Lazada',{}),vS), ck(LN('Lazada',{7:'Done'}),nS)]);
+ const chk=(l,s)=>cptCheck(l,s,by,BR), L2=[LN('Lazada',{0:'Done',1:'Done',2:'Done',3:'Pending'}),LN('TikTok',{0:'Pending',1:'Pending'})], S2=[cS,vS,tS,gS];
+ host.innerHTML=cptSheetHTML(L2,S2,{},'2026-10-01',chk);
+ r.tkCells=JSON.stringify([...host.querySelectorAll('td.cc')].map(t=>(t.className.match(/tk-[a-z]+/)||['-'])[0]+(t.querySelector('sup')?t.querySelector('sup').textContent:'')));
+ host.innerHTML=cptSumHTML(L2,S2,'2026-10-01',chk); r.tkSum=host.textContent.split(' ').filter(x=>x.trim()).map(x=>x.trim()).join(' ');
+ r.tkMiss=cptFiltered(L2,{svc:'',brand:'',kam:'',lead:'',q:'',late:false,miss:true,chk},S2,'2026-10-01').map(l=>l.id).join(',');
+ host.innerHTML=cptTicketsHTML(cptTixFor(L2[0],vS,by,BR)); r.tkList=JSON.stringify([host.querySelectorAll('a.tk').length, host.querySelector('a.tk').getAttribute('href'), /VCH-1.*Regular Vouchers.*done/.test(host.textContent), !host.querySelector('t')]);
+ host.innerHTML=cptTicketsHTML(cptTixFor(L2[0],cS,by,BR)); r.tkNone=/No ticket found/.test(host.textContent) && host.querySelectorAll('a.tk').length===0;
+ r.tkNoRule=cptTicketsHTML(cptTixFor(L2[0],nS,by,BR))==='';
  const REAL=${real}; if(REAL){ const q=cptParseSheet(REAL); r.real=JSON.stringify([q.name,q.dday,q.steps.length,q.lines.length,new Set(q.lines.map(l=>l.brand_name)).size,q.lines.reduce((n,l)=>n+Object.keys(l.cells).length,0),cptElements(q.steps).length]); }
  return Promise.resolve(JSON.stringify(r)); };`;
 w.eval(scripts.join('\n')+'\n'+driver);
@@ -86,5 +108,11 @@ check('summary numbers', r.sum==='2brands · 3 lines 70%7 of 10 steps done 3stil
 check('directory: active, unmerged brands; editable cells; missing KAM / lead highlighted', r.dir===J([2,12,1,'Yves']), r.dir);
 check('directory: search and read-only', r.dirRO===J([1,0,true]), r.dirRO);
 check('directory: platforms we manage per brand, in a fixed order; Rename only when allowed', r.dirPl===J(['Shopee · Lazada · TikTok','not in the managed list',2,0]), r.dirPl);
+check('ticket rules: step → board and what it needs (raised or finished); non-ticket steps have none', r.rules===J(['VCH:exists','VCH:done','PTB:done','GWP:done','CRE:done','CFR:done',null,null,'PTB:exists']), r.rules);
+check('ticket check: brand by master name, platform inside the ticket list, kind, cancelled ignored, n/a skipped', r.checks===J(['done:VCH-1','open:VCH-1+VCH-2','none:','done:VCH-3','none:','done:PTB-1','open:GWP-1',null,null,null]), r.checks);
+check('sheet: cells carry the ticket state and count', r.tkCells===J(['tk-none','tk-done1','tk-done1','tk-open1','tk-done1','tk-none','-','-']), r.tkCells);
+check('summary: steps with no ticket, not finished, backed', /2steps with no ticket.*1tickets not finished.*3backed by a ticket/.test(r.tkSum), r.tkSum);
+check('filter: no ticket only', r.tkMiss==='xLazada,xTikTok', r.tkMiss);
+check('cell menu: tickets link to the team board ticket, escaped; says so when none; nothing for steps without a rule', r.tkList===J([1,'#/t/VCH-1',true,true]) && r.tkNone && r.tkNoRule, [r.tkList,r.tkNone,r.tkNoRule]);
 if(r.real) console.log('REAL FILE', r.real);
 if(!ok) process.exit(1); });
