@@ -97,7 +97,9 @@ const driver=String.raw`window.__run=async function(){const r={};try{
    await obRenderTracker(o.id); let N=document.getElementById('content').innerHTML;
    const row=document.querySelector('tr[data-id="'+by('S3').id+'"]');
    r.ownNo = !obCanCustomise(o) && !/Customise timeline/.test(N) && !/obGoLiveModal/.test(N) && !/＋ Activity/.test(N) && !/＋ Service/.test(N)
-     && /Only the owner changes the timeline/.test(N) && !row.querySelector('input[type=number]') && !!row.querySelector('select.ob-stsel') && !!row.querySelector('input.ob-remark');
+     && /You can change the status and add remarks/.test(N) && !row.querySelector('input[type=number]') && !!row.querySelector('select.ob-stsel') && !!row.querySelector('input.ob-remark')
+     && !row.querySelector('select.ob-team') && !row.querySelector('input[type=date]') && row.querySelectorAll('select').length===1;
+   S.me={id:'anch',role:'internal',full_name:'Anch'}; o.lead_id='boss2'; r.ownTeam = obInTeam() && obCanCustomise(o); S.me={id:'liam',role:'internal',full_name:'Liam'}; r.ownOtherTeam = !obInTeam() && !obCanCustomise(o); S.me={id:'someone',role:'internal',full_name:'Someone'};
    o.lead_id='someone'; r.ownLead = obCanCustomise(o); o.lead_id='anch'; o.created_by='someone'; r.ownCreator = obCanCustomise(o); o.created_by='april';
    S.me={id:'boss',role:'management',full_name:'Boss'}; r.ownMgmt = obCanCustomise(o);
    S.me=me0; o.lead_id=lead0; o.created_by=cb0; o.workspace_id=ws0;
@@ -201,7 +203,8 @@ check('pipeline: current phase = earliest open activity; none when all done', r.
 check('pipeline: cancelled left out, On hold column only when used, names escaped', r.pipeCols===JSON.stringify([7,'<b>X',2,true,true]), r.pipeCols);
 check('Excel export has one row per activity', r.exportOk);
 check('timeline owner: admin, management, lead and creator may customise', r.ownAdmin && r.ownLead && r.ownCreator && r.ownMgmt);
-check('timeline owner: other staff see no timeline controls but keep status, remark, PIC', r.ownNo);
+check('invited people: no timeline, team, PIC or done-date controls; status and remark only', r.ownNo);
+check('the Onboarding team looks after every tracker; another team does not', r.ownTeam && r.ownOtherTeam);
 check('customise mode: row controls, rename on phases and sections', r.czOn);
 check('customise mode: move stays inside the phase and saves the whole order in one call', r.czMove && r.czEdge && r.czBack);
 check('customise mode: edit an activity, fixed deadline when D- is empty, text escaped', r.czModal && r.czSaved);
