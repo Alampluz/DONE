@@ -122,6 +122,36 @@
       "reason": "Confirmed by CREA: Etude House products are made in Korea.",
       "approved_by": "niramol.k",
       "approved_on": "2026-11-21"
+    },
+    {
+      "id": "jsm-origin-korea",
+      "brand_id": 402,
+      "shop": "JUNGSAEMMOOL [TH] [lazada]",
+      "attribute": "country_origin_hb",
+      "value": "Korea",
+      "reason": "Confirmed by CREA.",
+      "approved_by": "niramol.k",
+      "approved_on": "2026-11-21"
+    },
+    {
+      "id": "sulwhasoo-origin-korea",
+      "brand_id": 699,
+      "shop": "Sulwhasoo Official Store [TH] [lazada]",
+      "attribute": "country_origin_hb",
+      "value": "Korea",
+      "reason": "Confirmed by CREA.",
+      "approved_by": "niramol.k",
+      "approved_on": "2026-11-21"
+    },
+    {
+      "id": "laneige-origin-korea",
+      "brand_id": 633,
+      "shop": "Laneige [TH] [lazada]",
+      "attribute": "country_origin_hb",
+      "value": "Korea",
+      "reason": "Confirmed by CREA.",
+      "approved_by": "niramol.k",
+      "approved_on": "2026-11-21"
     }
   ],
   "rule_semantics": "A rule applies when brand_id matches (number or list), the attribute key matches, item_id (if given) matches, category_id (if given) matches, and title_regex (if given) matches the title. The written value is `value`, or for value_source.type=title_regex the regex match (group) from the title; no match = rule does not apply. A rule with blocked_by is reported, not written.",
