@@ -37,4 +37,11 @@ STEPS
 
 7. WEEKLY KAF REFRESH: once per run, with Microsoft 365 (ToolSearch "select:mcp__Microsoft_365__sharepoint_search,mcp__Microsoft_365__read_resource"), search SharePoint for the newest "2026Q4_CREA_Week" (or current quarter) Lazada assessment workbook. If its week is newer than data/team/shops[*].kaf_week, read its first sheet and update each shop's kaf_pct (the KAF% column) and kaf_week (e.g. "2026 Q4 W7"), matching rows by Short Code = short_code. Never change anything else from that file.
 
+KNOWN LAZADA BEHAVIOUR (learned 23 Nov 2026):
+- Place of Origin (country_origin_hb) in makeup brush / tool categories (4125, 4126, 4127) is accepted by the API ("updated") but NEVER stored. Do not write it there; mark the row "Blocked - Lazada API does not save Place of Origin for brush/tool categories" with the value in known, for Seller Center entry.
+- Numeric measure attributes (capacity, volume, Net_Content in ml/g, weight, length, Width, Height) fail with BIZ_CHECK_MEASURE_UNIT_INVALID / UNIT_IS_EMPTY because the tool sends no unit: status "Manual - Seller Center".
+- color_family on single-variant jewellery fails with BIZ_CHECK_TOTAL_SALE_PROP_MAX_ITEMS: status "Manual - Seller Center".
+- Before applying, check the preview's "current" value: never overwrite a non-empty current value (drop that attribute from the change).
+- Listing descriptions (get_product, HTML stripped) are a valid source for shelf life, net content, composition (e.g. "100% Wool"), SPF, embroidered logo, swimwear etc. Cite "Lazada description" as source.
+
 RULES OF CONDUCT: Never write a value you cannot trace to a rule or an official brand page. Never change price, stock, title, description or images. Never skip the preview step. Do not create pull requests. Do not send messages anywhere except the three configured channels.
