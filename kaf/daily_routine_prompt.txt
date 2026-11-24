@@ -2,7 +2,7 @@ ROUTINE SETTINGS (claude.ai → Routines → New)
 Name: Lazada KAF daily
 Schedule: every day 09:45 Asia/Bangkok
 Model: Claude Haiku
-Connectors to attach: Product-MCP, Microsoft 365
+Connectors to attach: Product-MCP, Microsoft 365 (created from the session via create_trigger with connectors on 24 Nov 2026)
 Environment: same as this session (alampluz/admin)
 
 PROMPT (copy everything below this line)
@@ -21,7 +21,7 @@ Collections:
 - data/team/config/teams: {team_id, channels: {Fashion: <channelId>, FMCG: <channelId>, Beauty: <channelId>}}
 Every document you overwrite must be pinned with its last-read version (if_version). Use batch writes (max 50 per batch).
 
-TOOLS: Product-MCP (load with ToolSearch "select:mcp__Product-MCP__list_lazada_missing_key_attributes,mcp__Product-MCP__preview_lazada_attribute_update,mcp__Product-MCP__apply_lazada_attribute_update,mcp__Product-MCP__get_product"). Lazada's ISV rate limit is shared across all shops and with CREA's data pipelines: run every call SEQUENTIALLY, never in parallel, leave ~3 seconds between calls, keep preview/apply batches to 5 items, and on LazadaAPICallLimitExceeded wait 60 seconds (bash until-loop) and retry up to 3 times. Shops known to time out on the scan call (Paul Smith 501, TOMMY HILFIGER 305, Nestle Purina 79): try once, then record scan_status "Scan error" and move on. Shop brand 150 (NEstle breakfast cereals Store) has an expired Lazada token: record "Scan error: token expired".
+TOOLS: Product-MCP (load with ToolSearch "select:mcp__Product-MCP__list_lazada_missing_key_attributes,mcp__Product-MCP__preview_lazada_attribute_update,mcp__Product-MCP__apply_lazada_attribute_update,mcp__Product-MCP__get_product"). Lazada's ISV rate limit is shared across all shops and with CREA's data pipelines: run every call SEQUENTIALLY, never in parallel, leave ~3 seconds between calls, keep preview/apply batches to 5 items, and on LazadaAPICallLimitExceeded wait 60 seconds (bash until-loop) and retry up to 3 times. If a scan call times out for a shop, try once more, then record scan_status "Scan error" and move on. Shop brand 150 (NEstle breakfast cereals Store) has an expired Lazada token: record "Scan error: token expired".
 
 STEPS
 1. Read all data/team/shops (list), data/team/rules (list), data/team/config/rule_semantics, data/team/config/settings and data/team/config/teams. Today's date = Asia/Bangkok date.
@@ -43,5 +43,11 @@ KNOWN LAZADA BEHAVIOUR (learned 23 Nov 2026):
 - color_family on single-variant jewellery fails with BIZ_CHECK_TOTAL_SALE_PROP_MAX_ITEMS: status "Manual - Seller Center".
 - Before applying, check the preview's "current" value: never overwrite a non-empty current value (drop that attribute from the change).
 - Listing descriptions (get_product, HTML stripped) are a valid source for shelf life, net content, composition (e.g. "100% Wool"), SPF, embroidered logo, swimwear etc. Cite "Lazada description" as source.
+
+- APPROVED LEAST-WRONG VALUES (niramol.k, 23 Nov 2026) for Lazada template gaps where no option can be true: Men's Jeans (category 7071) Shorts Length = "BERMUDA"; Women's Blouses & Shirts (6687) Blouse Style = "Shirred Blouse"; fashion caps in Sports Hats & Caps (12410) Activity Type = "Walking". Write these automatically for new listings and log source "least-wrong option, approved 23 Nov". Listings clearly in the wrong category (caps/skirts asked for Neckline, casual shoes asked for Formal Shoes Type, blankets asked for Heat Duration): status "Need Lazada", do not write.
+- Photo judgement is allowed for jackets_closure_type (Zipper / Single Breasted / Double Breasted / Pullover) and Bag_Feature_Design (Top Handle / Adjustable Strap where allowed) when the first product image shows it plainly; source "product photo".
+- If Lazada answers CHK_CATPROP_CPV_REQUIRED naming other empty mandatory fields, add those fields to the same change when their value is plain (Fit_Type from title, Neckline from garment type) and retry once.
+- backpack_capacity / Load_Capacity / color_family are variant-level on single-variant listings and fail with BIZ_CHECK_TOTAL_SALE_PROP_MAX_ITEMS: status "Manual - Seller Center".
+- BIZ_CHECK_QUALIFICATION_CODE_REQUIRED is about the uploaded licence document, not the code; writing TH_FDA&licenseCode does not lift it. Status "Blocked - qualification (Seller Center)".
 
 RULES OF CONDUCT: Never write a value you cannot trace to a rule or an official brand page. Never change price, stock, title, description or images. Never skip the preview step. Do not create pull requests. Do not send messages anywhere except the three configured channels.
