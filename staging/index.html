@@ -1154,7 +1154,7 @@ body.modal-open{overflow:hidden}
 .kb-more{padding:10px;font-size:12px;color:var(--ink3);text-align:center}
 </style>
 <script>
-/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · c9fa05d</div> so a dark-theme user never sees a flash of the light app. The real
+/* Runs before <body><div id="staging-ribbon" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:99999;background:#B45309;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.6px;padding:4px 12px;border-radius:0 0 8px 8px;pointer-events:none">STAGING · 2606726</div> so a dark-theme user never sees a flash of the light app. The real
    preference lives in profiles.nav_prefs.theme and is applied again at boot; this is only
    the fast local echo of it. 'system' follows the OS. */
 (function(){
@@ -1779,9 +1779,9 @@ function enhanceSelect(sel){
     let cur = {label:'', items:[]};
     for(const node of sel.children){
       if(node.tagName==='OPTGROUP'){ if(cur.items.length) groups.push(cur); cur={label:node.label, items:[]};
-        for(const op of node.children){ if(!op.hidden) cur.items.push({v:op.value, l:op.textContent.trim(), disabled:op.disabled, color:colorFor(op.value)}); }
+        for(const op of node.children){ if(!op.hidden) cur.items.push({v:op.value, l:op.textContent.trim(), sub:op.dataset.sub||'', disabled:op.disabled, color:colorFor(op.value)}); }
         groups.push(cur); cur={label:'', items:[]};
-      } else if(node.tagName==='OPTION' && !node.hidden){ cur.items.push({v:node.value, l:node.textContent.trim(), disabled:node.disabled, color:colorFor(node.value)}); }
+      } else if(node.tagName==='OPTION' && !node.hidden){ cur.items.push({v:node.value, l:node.textContent.trim(), sub:node.dataset.sub||'', disabled:node.disabled, color:colorFor(node.value)}); }
     }
     if(cur.items.length) groups.push(cur);
     const id = 'sel-'+(sel.id||Math.random().toString(36).slice(2));
@@ -10724,7 +10724,9 @@ function obPeopleOptions(teamId, cur){
   const people=S.profiles.filter(p=>p.active && (!p.role || p.role!=='partner'));
   const ids=teamId? new Set(teamMemberIds(teamId)) : new Set();
   const mine=people.filter(p=>ids.has(p.id)), rest=people.filter(p=>!ids.has(p.id));
-  const opt=p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.full_name)}</option>`;
+  /* who the person is, shown beside the name in the picker: job title, else their team(s) */
+  const sub=p=> p.job_title || (S.teamMembers||[]).filter(r=>r.user_id===p.id).map(r=>obTeamShort(r.team_id)).filter(Boolean).join(', ');
+  const opt=p=>`<option value="${p.id}" data-sub="${esc(sub(p))}" ${p.id===cur?'selected':''}>${esc(p.full_name)}</option>`;
   return `<option value="">—</option>${mine.length? `<optgroup label="${esc(obTeamName(teamId))}">${mine.map(opt).join('')}</optgroup><optgroup label="Everyone">${rest.map(opt).join('')}</optgroup>` : people.map(opt).join('')}`;
 }
 
