@@ -610,9 +610,9 @@ function enhanceSelect(sel){
     let cur = {label:'', items:[]};
     for(const node of sel.children){
       if(node.tagName==='OPTGROUP'){ if(cur.items.length) groups.push(cur); cur={label:node.label, items:[]};
-        for(const op of node.children){ if(!op.hidden) cur.items.push({v:op.value, l:op.textContent.trim(), disabled:op.disabled, color:colorFor(op.value)}); }
+        for(const op of node.children){ if(!op.hidden) cur.items.push({v:op.value, l:op.textContent.trim(), sub:op.dataset.sub||'', disabled:op.disabled, color:colorFor(op.value)}); }
         groups.push(cur); cur={label:'', items:[]};
-      } else if(node.tagName==='OPTION' && !node.hidden){ cur.items.push({v:node.value, l:node.textContent.trim(), disabled:node.disabled, color:colorFor(node.value)}); }
+      } else if(node.tagName==='OPTION' && !node.hidden){ cur.items.push({v:node.value, l:node.textContent.trim(), sub:node.dataset.sub||'', disabled:node.disabled, color:colorFor(node.value)}); }
     }
     if(cur.items.length) groups.push(cur);
     const id = 'sel-'+(sel.id||Math.random().toString(36).slice(2));

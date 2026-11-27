@@ -78,7 +78,7 @@ const driver=String.raw`window.__run=async function(){const r={};try{
  location.hash='#/onboarding/'+o.id; await obRenderTracker(o.id); let T=document.getElementById('content').innerHTML;
  r.trackerHead = /A · STORE OPERATION — TIKTOK SHOP/.test(T) && /B · LIVESTREAMING — TIKTOK LIVE/.test(T) && /2\. Brand Preparation/.test(T) && /Shop Live: <b>1 Apr 2027/.test(T);
  r.trackerKpis = />0%</.test(T) && /0 <small>\/ 7/.test(T) && /Days to go-live/.test(T);
- r.picGrouped = (()=>{ const sel=[...document.querySelectorAll('tr[data-id="'+by('S5').id+'"] select')][1]; return sel && sel.querySelector('optgroup') && sel.querySelector('optgroup').label==='Onboarding' && sel.querySelector('optgroup option').textContent==='Anchisa' && sel.value==='anch'; })();
+ r.picGrouped = (()=>{ const sel=[...document.querySelectorAll('tr[data-id="'+by('S5').id+'"] select')][1]; return sel && sel.querySelector('optgroup') && sel.querySelector('optgroup').label==='Onboarding' && sel.querySelector('optgroup option').textContent==='Anchisa' && sel.value==='anch' && sel.querySelector('optgroup option').dataset.sub==='OB'; })();
  // 6. status / done coupling + summary
  obSetStatus(by('S1').id,'done'); await new Promise(x=>setTimeout(x,0));
  r.doneSetsDate = by('S1').status==='done' && by('S1').done_date===obISO(obToday());

@@ -172,7 +172,9 @@ function obPeopleOptions(teamId, cur){
   const people=S.profiles.filter(p=>p.active && (!p.role || p.role!=='partner'));
   const ids=teamId? new Set(teamMemberIds(teamId)) : new Set();
   const mine=people.filter(p=>ids.has(p.id)), rest=people.filter(p=>!ids.has(p.id));
-  const opt=p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.full_name)}</option>`;
+  /* who the person is, shown beside the name in the picker: job title, else their team(s) */
+  const sub=p=> p.job_title || (S.teamMembers||[]).filter(r=>r.user_id===p.id).map(r=>obTeamShort(r.team_id)).filter(Boolean).join(', ');
+  const opt=p=>`<option value="${p.id}" data-sub="${esc(sub(p))}" ${p.id===cur?'selected':''}>${esc(p.full_name)}</option>`;
   return `<option value="">—</option>${mine.length? `<optgroup label="${esc(obTeamName(teamId))}">${mine.map(opt).join('')}</optgroup><optgroup label="Everyone">${rest.map(opt).join('')}</optgroup>` : people.map(opt).join('')}`;
 }
 
